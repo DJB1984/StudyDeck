@@ -1,0 +1,19 @@
+/*
+ * StudyDeck design tokens — the dark liquid-glass palette.
+ * Isolated in its own file so a shared cross-project theme can swap in here
+ * later without touching component styles. Kept 1:1 with docs/design-doc.md.
+ */
+:root {
+  --bg: #0a0a0f;                        /* near-black base */
+  --surface: rgba(255, 255, 255, 0.06); /* glass card background */
+  --surface-hover: rgba(255, 255, 255, 0.10);
+  --border: rgba(255, 255, 255, 0.12);  /* subtle glass edge */
+  --blur: blur(20px);                   /* backdrop-filter */
+  --accent: #7c3aed;                    /* purple-600 */
+  --accent-light: #a78bfa;              /* purple-400 — text on dark */
+  --text-primary: #f1f0ff;
+  --text-secondary: rgba(241, 240, 255, 0.6);
+  --correct: #22c55e;
+  --incorrect: #ef4444;
+  --radius: 16px;
+}

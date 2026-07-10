@@ -8,16 +8,18 @@ tags: [studydeck, design, architecture]
 
 ## Tech Stack
 
+> **Migration note:** StudyDeck began as a single `.html` file (preserved at `legacy/studydeck.html`). It is now a React + TypeScript app built with Vite. The JSON schema, screens, localStorage shape, visual design tokens, and graph/KaTeX behavior below are unchanged and remain authoritative; only the delivery/architecture moved.
+
 | Concern | Choice | Reason |
 |---|---|---|
-| Delivery | Single `.html` file | No install, double-click to run, trivial to share on GitHub |
-| Math rendering | KaTeX v0.16.x (CDN) | Fast, lightweight, renders LaTeX inline |
-| Graphs | Chart.js v4.x (CDN) | Handles both scatter/line (data points) and function plots — all config must use Chart.js v4 syntax |
+| Framework | React 18 + TypeScript | Component model + type safety for an app that's growing beyond a single file |
+| Build/dev | Vite | Fast dev server + static `dist/` build; no backend |
+| Math rendering | KaTeX v0.16.x (npm, bundled) | Fast, lightweight, renders LaTeX inline |
+| Graphs | Chart.js v4.x (npm, bundled) | Handles both scatter/line (data points) and function plots — all config must use Chart.js v4 syntax |
 | Persistence | localStorage | Flashcard state + file history, no backend needed |
-| Styling | Vanilla CSS (in-file) | No build step, full control over glass/blur effects |
-| JS | Vanilla ES6 (in-file) | No framework overhead; app logic is not complex enough to warrant one |
+| Styling | Vanilla CSS (`src/theme/`) | Full control over glass/blur effects; tokens isolated for a future shared theme |
 
-No build step. No Node.js. No npm. Everything ships in one file via CDN imports.
+The build output is fully static (`dist/`) — host anywhere, no server. Dependencies are bundled locally (no CDN).
 
 ## JSON Schema
 
@@ -111,7 +113,24 @@ Mode Select reads `type` to decide what to show: a quiz deck only offers Practic
 
 ## App Architecture
 
-Single HTML file. JavaScript organized into module objects — not a flat collection of global functions. Each module owns its domain; no other module bypasses it.
+React single-page app. Navigation is a screen state machine in `src/App.tsx` (a discriminated-union `Route` with per-screen payloads) — no router library. The original vanilla-JS module objects map onto React modules; each still owns its domain exclusively and no module bypasses another to touch its data.
+
+```
+src/
+├── main.tsx            Entry; imports KaTeX CSS + theme, mounts <App>
+├── App.tsx             Route state machine (Home→Mode→Quiz/Flashcard→Stats, Review branch)
+├── types.ts            Deck/Question/Session/FlashState types
+├── theme/              tokens.css (palette) + styles.css (ported component CSS)
+├── lib/                Storage, DeckValidation, clipboard, formatSpec, shuffle, toast
+├── components/         Math/Katex.tsx, Graph/Graph.tsx, Toast.tsx
+└── features/           home, modeSelect, quiz, stats, review, flashcard
+                        (each with its co-located {Feature}.spec.md)
+```
+
+Behavioral contracts per module (co-located `*.spec.md` files are the authoritative, verifiable version of these):
+
+<details>
+<summary>Legacy single-file layout (preserved at legacy/studydeck.html)</summary>
 
 ```
 studydeck.html
@@ -158,6 +177,10 @@ studydeck.html
     const Clipboard  — buildPrompt(question, chosenIndex) → navigator.clipboard.writeText().
     </script>
 ```
+
+</details>
+
+The React modules keep these same responsibilities: `Storage` → `src/lib/Storage.ts`, `Router` → the `App.tsx` route machine, `FileLoader`/validation → `HomeScreen` + `src/lib/DeckValidation.ts`, `QuizEngine` → `src/features/quiz/QuizScreen.tsx`, `FlashEngine` → `src/features/flashcard/flashEngine.ts`, `Renderer` → `components/Math/Katex.tsx` + `components/Graph/Graph.tsx` + `StatsScreen`, `Stats` → `src/features/stats/stats.ts`, `Clipboard` → `src/lib/clipboard.ts`.
 
 ## Screens and Navigation
 

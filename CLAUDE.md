@@ -4,61 +4,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-All 11 phases of `docs/task-list.md` are implemented in `studydeck.html`. Planning docs live in `docs/`:
+StudyDeck is a **React + TypeScript (Vite)** single-page app. It was migrated from an original single-file vanilla-JS HTML implementation, which is preserved unchanged at `legacy/studydeck.html` as a reference. Planning docs live in `docs/`:
 
-- `docs/PRD.md` — product requirements (problem, users, modes, features, non-goals)
-- `docs/design-doc.md` — full technical design (schema, architecture, visual design, storage, rendering) — **source of truth**, keep it in sync with any schema/architecture change
-- `docs/task-list.md` — the original phased implementation plan (historical reference)
+- `docs/PRD.md` — product requirements (problem, users, modes, features, non-goals). Still current.
+- `docs/design-doc.md` — technical design (schema, screens, visual design, storage, rendering). **Source of truth for behavior**; its "Tech Stack" and "App Architecture" sections describe the React app, and the JSON schema / localStorage / screens / graph / KaTeX sections are unchanged and still authoritative. Keep it in sync with any schema/architecture change.
+- `docs/task-list.md` — the original phased plan for the single-file app (historical reference only).
 
-**Read `docs/design-doc.md` in full before changing the JSON schema, module boundaries, localStorage shape, or CSS tokens.** `test-decks/` has working example decks (quiz and flashcard) to test against, and `studydeck-format-spec.md` is the AI-facing doc for generating new decks — update it alongside `design-doc.md` whenever the schema changes.
+`test-decks/` has working example decks (quiz and flashcard) to test against. `studydeck-format-spec.md` is the AI-facing doc for generating new decks — it is imported verbatim into the app (`src/lib/formatSpec.ts` via `?raw`) so the "Copy Format Spec" button never drifts. Update it alongside `design-doc.md` whenever the schema changes.
+
+**Read `docs/design-doc.md` before changing the JSON schema, module boundaries, localStorage shape, or CSS tokens.**
 
 ## What StudyDeck Is
 
-A single-file, dependency-light HTML app for studying from AI-generated `.json` question decks (quiz, test, flashcard modes). It deliberately contains no built-in AI — any model can generate a compatible `.json` file using the format spec (Phase 11 deliverable, `studydeck-format-spec.md`).
+A dependency-light web app for studying from AI-generated `.json` question decks (quiz, test, review, flashcard modes). It deliberately contains no built-in AI — any model can generate a compatible `.json` file using the format spec.
 
 ## Commands
 
-There is no build step, no Node.js, no npm, and no test runner. The entire app is one file: `studydeck.html`.
+Node + npm required (dev only; the built app is static).
 
-- **Run/verify:** open `studydeck.html` directly in a browser (double-click or drag into a browser window).
-- **Dependencies:** KaTeX v0.16.x and Chart.js v4.x loaded via CDN `<script>`/`<link>` tags in `<head>` — no local install.
+- **Install:** `npm install`
+- **Dev server:** `npm run dev` (Vite, hot reload)
+- **Typecheck:** `npm run typecheck` (`tsc -b`)
+- **Build:** `npm run build` (`tsc -b && vite build` → static `dist/`)
+- **Preview build:** `npm run preview`
+- **Dependencies:** KaTeX and Chart.js v4 are npm packages, bundled locally (no CDN). React 18.
+
+The output is fully static — `dist/` can be hosted anywhere or opened via `npm run preview`. There is no backend.
 
 ## Architecture
 
-Everything lives in one file: `studydeck.html`, containing `<style>` (all CSS) and `<script>` (all JS) inline.
+Single-page React app. Everything is client-side; there is no backend and no router library — navigation is a screen state machine in `src/App.tsx` (a discriminated-union `Route` with per-screen payloads: current deck, quiz session, stats record, remembered Review origin).
 
-JavaScript is organized as module objects (`const ModuleName = {...}`), not flat global functions. Each module owns its domain exclusively — no module bypasses another to touch its data directly. The module list and exact responsibilities are specified in `docs/design-doc.md` under "App Architecture":
+The original vanilla-JS module objects map onto React modules. **Each module still owns its domain exclusively — no module reaches past another to touch its data.** Preserve this separation (it's what keeps a future IndexedDB migration or spaced-repetition swap local):
 
-- `Storage` — the only module that touches `localStorage`. All other modules go through it. `deleteFile()` must remove both the history entry and the matching flashcard pile state atomically. All `setItem` calls are wrapped in try/catch for `QuotaExceededError` (drop oldest history entry, retry, surface a warning).
-- `Router` — `showScreen(id)` only; no business logic.
-- `FileLoader` — drag/drop + file picker → `validateJSON()` (field-level, actionable error messages) → `Storage.saveFile()` → `Router`.
-- `QuizEngine` — quiz session state for both practice and test modes. Tracks `firstAttemptCorrect` per question; retries never overwrite the first-attempt record. Owns the session timer.
-- `FlashEngine` — flashcard session state, pile sorting (`known`/`learning`), keyed by question `id` (not array index) so pile state survives question reordering.
-- `Renderer` — all question/graph/stats rendering, including KaTeX invocation and Chart.js setup/teardown. `renderGraph()` must never throw out to the rest of the app — catch everything, fall back to a "Graph unavailable" message.
-- `Stats` — builds the session record and derived score/pie data, kept separate from `QuizEngine` so scoring logic can evolve independently.
-- `Clipboard` — builds the copy-to-AI prompt text for wrong answers.
+- **`src/lib/Storage.ts`** — the ONLY module that touches `localStorage`. All persistence goes through it. `deleteFile()` removes the history entry AND the matching flashcard pile state atomically. All writes are wrapped for `QuotaExceededError` (evict the oldest — i.e. last — history entry, retry once, surface a toast).
+- **`src/lib/DeckValidation.ts`** — `validateDeck()` returns field-level, actionable error strings; the deck is rejected as a whole on any error.
+- **`src/lib/clipboard.ts`** — builds the copy-to-AI explanation prompt (and shared "Copied!" feedback helper).
+- **`src/lib/toast.ts`** — tiny bus so non-React modules (Storage) can surface errors through `<Toast>`.
+- **`src/lib/formatSpec.ts` / `shuffle.ts`** — format-spec text (`?raw` import) and order helpers.
+- **`src/components/Math/Katex.tsx`** — renders `$...$`/`$$...$$` via KaTeX auto-render; `throwOnError:false` so bad LaTeX falls back to raw text, never crashes.
+- **`src/components/Graph/Graph.tsx`** — Chart.js v4 rendering. `renderGraph` logic MUST never throw out to the app — every failure catches and shows "Graph unavailable". LaTeX axis labels are KaTeX HTML overlays (Chart.js can't render LaTeX on canvas). Chart destroyed/recreated per question.
+- **`src/features/quiz/`** — `QuizScreen.tsx` runs practice + test. Tracks `firstAttemptCorrect` per question; retries never overwrite the first-attempt record. Owns the session timer.
+- **`src/features/flashcard/`** — `flashEngine.ts` holds pile state (`known`/`learning`) keyed by question `id` (never index), persisted via Storage. `sortCard()` is the isolated seam for a future spaced-repetition scheduler.
+- **`src/features/stats/`** — `stats.ts` builds the session record + score/pie data, kept separate from Quiz so scoring can evolve. `StatsScreen.tsx` renders the doughnut + breakdown.
+- **`src/features/home/`, `modeSelect/`, `review/`** — the remaining screens.
 
-This module separation is intentional (see design-doc rationale for future IndexedDB migration and spaced-repetition swaps) — preserve it rather than collapsing logic into `Router` or inline event handlers.
+## Requirements specs (requirements-writer agent)
+
+This project uses the `requirements-writer` subagent (`.claude/agents/requirements-writer.md`) to keep per-feature behavior specs current. Now that the app has real feature folders, specs are **co-located next to each feature's code** as `{Feature}.spec.md` (e.g. `src/features/quiz/Quiz.spec.md`, `src/lib/Storage.spec.md`) — NOT centralized in `docs/specs/`. Each spec has an Intent, an R-ID'd Requirements checklist with `[verify:]` tags and `[caution:]` notes, and a Change log.
+
+Before writing or modifying code in a feature, invoke `requirements-writer` (before-pass) scoped to that feature. After implementation, invoke it again (after-pass), passing the invocation contract: pass, feature, intent, files touched. If the after-pass reports gaps, fix them, then re-invoke to verify. Repeat until clean, max 3 rounds; if still not clean after 3, stop and surface it to Davis.
+
+The agent is auto-discovered from `.claude/agents/requirements-writer.md` (project) and `~/.claude/agents/requirements-writer.md` (user-level, the authoritative copy) at session start, so it's spawnable as `subagent_type: "requirements-writer"`. If it doesn't appear in the available-agents list (e.g. it was added mid-session), fall back to a `general-purpose` agent told to adopt the agent file as its operating instructions.
 
 ### Data model
 
-- Deck JSON: `version`, optional `type` (`"quiz"` default, or `"flashcard"`), `title`, `questions[]`.
-- Quiz decks: each question has a stable string `id`, `question` (LaTeX via `$...$`/`$$...$$`), exactly 4 `answers`, integer `correct` (0–3), and an optional `graph` object (`points` or `equation` type).
-- Flashcard decks: each question has a stable string `id`, `front`, `back` (no `answers`/`correct`/`graph` — flashcards don't support multiple choice or graphs). `Mode Select` reads `type` to show only the matching mode(s).
+- Deck JSON: `version`, optional `type` (`"quiz"` default, or `"flashcard"`), `title`, `questions[]`. Types live in `src/types.ts`.
+- Quiz questions: stable string `id`, `question` (LaTeX via `$...$`/`$$...$$`), exactly 4 `answers`, integer `correct` (0–3), optional `graph` (`points` or `equation`).
+- Flashcards: stable string `id`, `front`, `back` (no `answers`/`correct`/`graph`). Mode Select reads `type` to show only matching mode(s).
 - `version` must currently equal `1`; unknown versions warn, not hard-fail.
-- localStorage keys: `studydeck_history` (array of loaded files with full parsed data) and `studydeck_flash_{title}` (per-file flashcard pile state, keyed by question `id`). Full schema and exact shapes are in `docs/design-doc.md` under "localStorage Schema".
+- localStorage keys: `studydeck_history` and `studydeck_flash_{title}` (keyed by question `id`). Full shapes in `docs/design-doc.md` under "localStorage Schema".
 
 ### Screens
 
-`Home → Mode Select → Quiz/Flashcard → Stats → Home`, with a `Review` branch off Stats. Screen IDs and per-screen behavior are detailed in `docs/design-doc.md` under "Screens and Navigation" — Practice mode shows live right/wrong feedback with retries (retries don't affect stats); Test mode shows no feedback until Stats and disallows retries.
+`Home → Mode Select → Quiz/Flashcard → Stats → Home`, with a `Review` branch off both Mode Select and Stats. The live app has **four** modes: Practice, Test, Review, Flashcard. Practice shows live feedback with retries (retries don't affect stats); Test shows no feedback until Stats and disallows retries; Review is a read-only browser with the correct answer shown.
 
 ### Visual design
 
-Dark liquid-glass aesthetic with a fixed set of CSS custom properties (`--bg`, `--surface`, `--accent`, etc.) defined in `docs/design-doc.md` under "Visual Design" — use those exact tokens rather than introducing new colors.
+Dark liquid-glass aesthetic. Color tokens live in `src/theme/tokens.css` (isolated so a shared cross-project theme can swap in later); component styles in `src/theme/styles.css`. Use the existing `--bg`/`--surface`/`--accent`/etc. tokens rather than introducing new colors.
 
 ## Key constraints to preserve
 
-- No build step, no framework, no backend — stays a single portable `.html` file.
+- No backend — the app stays a static client-side bundle.
 - Graph and KaTeX rendering failures must degrade gracefully (fallback text), never crash the app.
 - Flashcard and quiz stats key off question `id`, never array index.
 - Chart.js usage must be v4 syntax throughout (no v2/v3 config patterns).
+- Only `src/lib/Storage.ts` may touch `localStorage`.

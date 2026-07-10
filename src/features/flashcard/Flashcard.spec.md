@@ -1,0 +1,22 @@
+# Intent
+
+Flashcard is the Quizlet-style drilling mode: flip a card to reveal the answer, then sort it into Know It or Still Learning. Pile membership persists per deck so a returning student resumes where they left off, and the flow lets them re-drill just what they haven't learned yet. It exists to support spaced, self-graded memorization for front/back decks that have no single "correct" multiple-choice answer.
+
+# Requirements
+
+- R1 [verify: ui] A card shows `front` on the front face and `back` on the back face, both KaTeX-rendered, with a 3D flip animation between them. Clicking the card (or space/Enter) toggles the flip. [caution: flipping must be disabled while a round is complete or while a sort animation is in progress, so stray clicks don't flip a card that's leaving.]
+- R2 [verify: ui] Know It and Still Learning controls sort the current card and advance to the next. Know It plays a slide-out animation; Still Learning plays a brief shake. [caution: sorting is debounced for the animation window (~350ms) — ignore additional sort clicks until the animation completes and the next card renders, or cards get skipped.]
+- R3 [verify: unit] [caution: piles are keyed by question `id`, NEVER array index — this is what lets progress survive question reordering across deck edits. Storing indices silently corrupts a returning student's progress.] Sorting Know It adds the card's `id` to the `known` pile (and removes it from `learning`); Still Learning adds it to `learning` (and removes it from `known`). Both also record the id in the current round's known/learning sets.
+- R4 [verify: unit] Pile state is persisted to Storage (`getFlashState`/`setFlashState` by deck title) on every sort, so it survives a full page reload.
+- R5 [verify: unit] [caution: sortCard is deliberately the ONLY method that decides pile assignment, isolated so a future spaced-repetition scheduler can replace just it. Keep sorting logic out of the render/advance code.] The advance step only reads `order` and the current index; it does not itself decide pile membership.
+- R6 [verify: ui] A "Drill Still Learning only" toggle restarts the session with a deck of cards NOT in the `known` pile. [caution: "Still Learning" for drilling = every card not yet marked Know It, which INCLUDES cards never seen before, not only cards explicitly marked Still Learning.]
+- R7 [verify: ui] A "Random order" toggle restarts the session with the deck shuffled; unchecked restores natural order. Toggling either the drill or random toggle restarts the session from the top with the new options.
+- R8 [verify: ui] A progress indicator shows `Card {current} of {total}` for the active deck, where total is the current session's deck size.
+- R9 [verify: ui] When a round finishes (all cards in `order` sorted), a Round Complete screen shows a summary of `{known}/{total} known` and how many were marked Still Learning this round. It offers "Continue with Still Learning" (only when at least one card was marked Still Learning this round) and "Restart All". [caution: "Continue with Still Learning" drills exactly the cards marked Still Learning IN THE ROUND THAT JUST FINISHED (the round's learning set), not the whole persistent learning pile.]
+- R10 [verify: ui] "Restart All" restarts a full-deck round (drill toggle reset off), preserving the current random-order setting.
+- R11 [verify: ui] [caution: this "All Caught Up" state is distinct from a normal Round Complete and must not be conflated — it happens when the session's deck is empty from the START (e.g. Drill Still Learning when every card is already Know It), so there was never a round to complete.] When the session deck is empty at start, an "All Caught Up!" message is shown with no "Continue with Still Learning" option.
+- R12 [verify: ui] Entering Flashcard from Mode Select starts a fresh full-deck session with drill off and random initialized from the Mode Select random state.
+
+# Change log
+
+- 2026-07-09: Spec authored for the React + TypeScript migration, backfilled from `FlashEngine`, `renderFlashCard`, `sortCurrentCard`, and `initFlashcardScreen` in `legacy/studydeck.html`. Captures id-keyed persisted piles, the isolated `sortCard` seam for future spaced-repetition, drill-still-learning (= not-yet-known, incl. unseen), random toggle, sort-animation debounce, the round-complete vs empty-from-start "All Caught Up" distinction, and continue-with-this-round's-learning. Authored as the target for the React Flashcard feature.

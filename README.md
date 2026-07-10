@@ -34,23 +34,26 @@ I was using AI to study from my professor's slides, but the generation side and 
 
 ## Tech Stack
 
-- Vanilla JS (ES6) and CSS — no framework, single `.html` file
-- [KaTeX](https://katex.org/) v0.16.x (CDN) — LaTeX math rendering
-- [Chart.js](https://www.chartjs.org/) v4.x (CDN) — graph rendering
+- [React](https://react.dev/) 18 + [TypeScript](https://www.typescriptlang.org/) — component model with type safety
+- [Vite](https://vite.dev/) — dev server and static build (no backend)
+- [KaTeX](https://katex.org/) v0.16.x — LaTeX math rendering
+- [Chart.js](https://www.chartjs.org/) v4.x — graph rendering
 - `localStorage` — deck history and flashcard progress persistence
+
+> Originally a single-file vanilla-JS app (kept at [`legacy/studydeck.html`](legacy/studydeck.html)), rebuilt in React/TS.
 
 ---
 
 ## Getting Started
 
-No build step, no Node.js, no npm.
-
 ```bash
 git clone https://github.com/DJB1984/StudyDeck.git
 cd StudyDeck
+npm install
+npm run dev
 ```
 
-Open `studydeck.html` directly in a browser (double-click it or drag it into a browser window).
+Then open the printed local URL. Build a static bundle with `npm run build` (output in `dist/`).
 
 To try it immediately, drag one of the example decks from `test-decks/` onto the home screen. To create your own deck, give any AI model `studydeck-format-spec.md` along with your course material and ask it to generate a compatible `.json` file.
 
@@ -58,7 +61,9 @@ To try it immediately, drag one of the example decks from `test-decks/` onto the
 
 ## How It Works
 
-JavaScript is organized into module objects that each own one concern exclusively — `Storage` is the only module that touches `localStorage`, `Renderer` owns all KaTeX/Chart.js rendering and is built to degrade to fallback text/messages rather than crash the app, and `QuizEngine`/`FlashEngine` separately track session state for the two study modes. A deck is just JSON: quiz decks carry `question`/`answers`/`correct` (+ optional `graph`), flashcard decks carry `front`/`back`, and a stable string `id` on every question ties stats and pile state to the question itself rather than its position in the array — so decks can be edited or reordered without losing progress.
+The app is a client-side React SPA — a screen state machine in `App.tsx`, no backend, no router library. Logic is split into modules that each own one concern: `Storage` is the only module that touches `localStorage`; the `Katex` and `Graph` components own all rendering and degrade to fallback text/"Graph unavailable" rather than crash; the quiz and flashcard engines separately track session state. A deck is just JSON: quiz decks carry `question`/`answers`/`correct` (+ optional `graph`), flashcard decks carry `front`/`back`, and a stable string `id` on every question ties stats and pile state to the question itself rather than its array position — so decks can be edited or reordered without losing progress.
+
+Every feature has a co-located `*.spec.md` requirements file describing its intended behavior, kept honest by a requirements-writer agent that authors specs before a change and audits the code against them after.
 
 ---
 

@@ -1,0 +1,27 @@
+{
+  "name": "studydeck",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A dependency-light web app for studying from AI-generated .json question decks (quiz, test, review, flashcard).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.4",
+    "katex": "^0.16.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
