@@ -81,12 +81,15 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
 
   // R21: the ONE load path — file reads and pastes both funnel through here.
   // R8/R9/R10: parse → validate → save → open, with actionable toasts.
-  function loadDeckFromText(text: string, sourceName?: string): boolean {
+  // R20: `parseHint` is appended to PARSE failures only (never validation
+  // errors) — the paste path uses it for the copied-mid-generation tip.
+  function loadDeckFromText(text: string, sourceName?: string, parseHint?: string): boolean {
     let raw: Deck;
     try {
       raw = JSON.parse(text) as Deck;
     } catch (err) {
-      showError('Invalid JSON: ' + (err as Error).message);
+      const hint = parseHint ? '\n\n' + parseHint : '';
+      showError('Invalid JSON: ' + (err as Error).message + hint);
       return false;
     }
     const errors = validateDeck(raw as unknown as Record<string, unknown>);
@@ -138,7 +141,9 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   // an "Invalid JSON" toast instead of a silent no-op.
   function handlePasteAdd() {
     const text = stripCodeFences(pasteText);
-    if (loadDeckFromText(text)) {
+    const tip =
+      'Tip: make sure the AI finished generating before you copy — copying mid-reply cuts the set off partway.';
+    if (loadDeckFromText(text, undefined, tip)) {
       setPasteText('');
       setPasteOpen(false);
     }
@@ -202,6 +207,14 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
           <div className="add-deck-actions">
             <button className="btn" onClick={handlePasteAdd} disabled={!pasteText.trim()}>
               Add Study Set
+            </button>
+            {/* R18: Clear empties the box but keeps it open; Cancel discards AND closes. */}
+            <button
+              className="btn-ghost"
+              onClick={() => setPasteText('')}
+              disabled={!pasteText.trim()}
+            >
+              Clear
             </button>
             <button
               className="btn-ghost"
