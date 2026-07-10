@@ -347,7 +347,8 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-#quiz-question-text {
+#quiz-question-text,
+#review-question-text {
   font-size: 1.2rem;
   line-height: 1.7;
   margin-bottom: 28px;

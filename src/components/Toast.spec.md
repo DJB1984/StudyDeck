@@ -1,0 +1,20 @@
+# Intent
+
+Toast is the app's single shared error surface. It exists so that every module — React screens and non-React libs alike — reports user-facing problems through one consistent, visible channel instead of throwing, console-logging, or growing bespoke error UI. As of the 2026-07-10 change, errors are transient by design: they pop up long enough to be read, then get out of the way, rather than sitting at the bottom of the page until manually closed.
+
+# Requirements
+
+- R1 [verify: unit] `src/lib/toast.ts` is a module-level listener bus: `setToastListener(l)` registers a single listener (or clears it with `null`); `showError(msg)` invokes the current listener with the message, or falls back to `console.error('[StudyDeck]', msg)` when none is registered. `showError` never throws. [caution: the bus is the decoupling layer — it lets non-React modules (Storage's quota warning) surface errors without importing React or the component. Do not replace it with direct component imports or React context.]
+- R2 [verify: ui] The `Toast` component registers itself as the bus listener on mount and unregisters (sets `null`) on unmount. While mounted, any `showError(msg)` call from anywhere in the app displays `msg` and makes the toast visible.
+- R3 [verify: manual] The toast is a fixed-position overlay at the bottom-center of the viewport, above all screen content, and shows/hides with a slide/fade transition (the `visible` class on `#error-toast`).
+- R4 [verify: manual] Multi-line messages render with their line breaks preserved (CSS `white-space: pre-wrap`), because DeckValidation errors arrive as many newline-joined lines.
+- R5 [verify: ui] A × close button dismisses the toast immediately at any time.
+- R6 [verify: unit] The toast auto-dismisses after a delay that scales with the message's length in lines: a single-line error stays roughly 5 seconds; each additional line adds proportional reading time (on the order of 1.5s per line); the total is capped (roughly 12 seconds). Exact constants are implementation-tunable — the principle (short base, per-line growth, hard cap) is the requirement. [caution: do not flatten this to one fixed duration — deck-validation failures can be ten-plus lines and a 5s flash of a wall of text is unreadable, which defeats the reason the toast exists.]
+- R7 [verify: unit] A new `showError` arriving while a toast is already visible replaces the displayed message AND cancels the pending dismiss timer, scheduling a fresh timer computed from the NEW message. [caution: the cancel-before-reschedule is the point — without it, a stale short timer from the previous message dismisses a fresh long message early. Clear the old timer first, always.]
+- R8 [verify: ui] Manual dismissal via the × button cancels the pending auto-dismiss timer (no orphaned timer later toggling state on an already-hidden toast).
+- R9 [verify: unit] Any pending timer is cleared when the component unmounts — no state updates fire on an unmounted component.
+
+# Change log
+
+- 2026-07-10: Auto-dismiss added (R6–R9). Davis: "Errors stick around at the bottom of the page right now (they don't go away). This is poor design — they should pop up for a little bit then disappear." Dismiss delay scales with line count so multi-line validation errors get reading time; new messages restart the timer; manual × still works and cancels the timer; timers are cleaned up on unmount. Existing guarantees (bus decoupling, bottom-center position, slide/fade, multi-line rendering) preserved as R1–R5.
+- 2026-07-10: Spec backfilled from the existing implementation (`src/components/Toast.tsx`, `src/lib/toast.ts`) before the auto-dismiss change — the component predates the spec system (flagged during the React migration as "worth a small shared-UI spec if it grows behavior"; it now is). R1–R5 capture behavior as it stood: listener bus with console fallback, mount/unmount registration, fixed bottom-center slide/fade surface, pre-wrap multi-line support, manual-only dismissal.
