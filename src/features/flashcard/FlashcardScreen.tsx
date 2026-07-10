@@ -10,22 +10,22 @@ import { createFlashEngine, type FlashEngine } from './flashEngine';
 
 interface FlashcardScreenProps {
   deck: Deck;
-  initialRandom: boolean;
   onBack: () => void;
 }
 
-export function FlashcardScreen({ deck, initialRandom, onBack }: FlashcardScreenProps) {
+export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   const engineRef = useRef<FlashEngine | null>(null);
   if (!engineRef.current) {
-    // R12: fresh full-deck session, drill off, random from Mode Select state.
+    // R12: entered directly from opening a flashcard deck — fresh full-deck
+    // session, drill off, random off; the screen's own toggles take over.
     engineRef.current = createFlashEngine(deck.title, deck.questions as FlashCard[]);
-    engineRef.current.start({ drillMode: 'all', randomOrder: initialRandom });
+    engineRef.current.start({ drillMode: 'all', randomOrder: false });
   }
   const eng = engineRef.current;
 
   const [, force] = useReducer((x: number) => x + 1, 0);
   const [drillOn, setDrillOn] = useState(false);
-  const [randomOn, setRandomOn] = useState(initialRandom);
+  const [randomOn, setRandomOn] = useState(false);
   const [sortAnim, setSortAnim] = useState<'known' | 'learning' | null>(null);
   const sortingRef = useRef(false);
 

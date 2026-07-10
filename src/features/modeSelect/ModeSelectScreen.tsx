@@ -1,12 +1,13 @@
-// Mode Select — the branch point after a deck is chosen (spec: ModeSelect.spec.md).
-// Shows only the modes the deck's `type` supports, offers random order for quiz
-// modes, and launches the chosen mode.
+// Mode Select — the branch point for QUIZ decks (spec: ModeSelect.spec.md).
+// Flashcard decks never reach this screen: App routes them straight to the
+// Flashcard screen (a one-option menu is a pointless click), so this renders
+// exactly Practice / Test / Review.
 
 import { useState } from 'react';
 import type { HistoryEntry, QuizMode, QuizQuestion } from '../../types';
 import { naturalOrder, shuffledOrder } from '../../lib/shuffle';
 
-type Mode = QuizMode | 'review' | 'flashcard';
+type Mode = QuizMode | 'review';
 
 interface ModeDef {
   mode: Mode;
@@ -36,47 +37,24 @@ const QUIZ_MODES: ModeDef[] = [
   },
 ];
 
-const FLASHCARD_MODE: ModeDef = {
-  mode: 'flashcard',
-  icon: '🃏',
-  name: 'Flashcard',
-  desc: 'Flip cards, sort into Know It and Still Learning piles. Progress is saved.',
-};
-
 interface ModeSelectProps {
   file: HistoryEntry;
   onBack: () => void;
   onStartQuiz: (mode: QuizMode, order: number[], wasRandom: boolean) => void;
   onStartReview: (order: number[]) => void;
-  onStartFlashcard: (randomOrder: boolean) => void;
 }
 
-export function ModeSelectScreen({
-  file,
-  onBack,
-  onStartQuiz,
-  onStartReview,
-  onStartFlashcard,
-}: ModeSelectProps) {
-  // R2: availability is driven by deck type, not by inspecting questions.
-  const deckType = file.data.type === 'flashcard' ? 'flashcard' : 'quiz';
-  const modes = deckType === 'flashcard' ? [FLASHCARD_MODE] : QUIZ_MODES;
-
+export function ModeSelectScreen({ file, onBack, onStartQuiz, onStartReview }: ModeSelectProps) {
   // R4: selection + random reset on every entry (fresh component per mount).
-  const [selected, setSelected] = useState<Mode>(deckType === 'flashcard' ? 'flashcard' : 'practice');
+  const [selected, setSelected] = useState<Mode>('practice');
   const [random, setRandom] = useState(false);
 
   function start() {
     const questions = file.data.questions as QuizQuestion[];
     const order = random ? shuffledOrder(questions.length) : naturalOrder(questions.length);
 
-    if (selected === 'flashcard') {
-      onStartFlashcard(random);
-    } else if (selected === 'review') {
-      onStartReview(order);
-    } else {
-      onStartQuiz(selected, order, random);
-    }
+    if (selected === 'review') onStartReview(order);
+    else onStartQuiz(selected, order, random);
   }
 
   return (
@@ -90,7 +68,7 @@ export function ModeSelectScreen({
       <p className="deck-subtitle">{file.count} questions</p>
 
       <div className="mode-grid">
-        {modes.map((m) => (
+        {QUIZ_MODES.map((m) => (
           <div
             key={m.mode}
             className={'mode-card' + (selected === m.mode ? ' selected' : '')}
@@ -104,11 +82,8 @@ export function ModeSelectScreen({
       </div>
 
       <div className="mode-options">
-        {/* R6: hidden (not removed) for flashcard, which has its own random toggle. */}
-        <label
-          className="toggle-label"
-          style={{ visibility: selected === 'flashcard' ? 'hidden' : 'visible' }}
-        >
+        {/* R6: always visible — every mode here supports random order. */}
+        <label className="toggle-label">
           <input type="checkbox" checked={random} onChange={(e) => setRandom(e.target.checked)} />
           <span className="toggle-track"></span>
           Random order

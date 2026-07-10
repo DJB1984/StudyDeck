@@ -26,7 +26,7 @@ type Route =
   | { name: 'quiz'; session: QuizSession }
   | { name: 'stats'; record: SessionRecord; session: QuizSession }
   | { name: 'review'; questions: QuizQuestion[]; order: number[]; origin: Route }
-  | { name: 'flashcard'; deck: Deck; randomOrder: boolean };
+  | { name: 'flashcard'; deck: Deck };
 
 export function App() {
   const [route, setRoute] = useState<Route>({ name: 'home' });
@@ -45,7 +45,20 @@ export function App() {
   function renderScreen() {
     switch (route.name) {
       case 'home':
-        return <HomeScreen onOpenDeck={(entry) => setRoute({ name: 'mode', file: entry })} />;
+        return (
+          <HomeScreen
+            // Route by deck type: quiz decks pick a mode; flashcard decks have
+            // exactly one mode, so they auto-open (Home R4/R10, ModeSelect R2).
+            // Omitted `type` means quiz, same as validation.
+            onOpenDeck={(entry) =>
+              setRoute(
+                entry.data.type === 'flashcard'
+                  ? { name: 'flashcard', deck: entry.data }
+                  : { name: 'mode', file: entry },
+              )
+            }
+          />
+        );
 
       case 'mode':
         return (
@@ -60,9 +73,6 @@ export function App() {
                 order,
                 origin: route,
               })
-            }
-            onStartFlashcard={(randomOrder) =>
-              setRoute({ name: 'flashcard', deck: route.file.data, randomOrder })
             }
           />
         );
@@ -106,13 +116,8 @@ export function App() {
         );
 
       case 'flashcard':
-        return (
-          <FlashcardScreen
-            deck={route.deck}
-            initialRandom={route.randomOrder}
-            onBack={() => setRoute({ name: 'home' })}
-          />
-        );
+        // R13: Back exits to Home — Mode Select is unreachable for flashcard decks.
+        return <FlashcardScreen deck={route.deck} onBack={() => setRoute({ name: 'home' })} />;
     }
   }
 
