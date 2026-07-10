@@ -46,15 +46,17 @@ function GetStartedCard() {
           <span className="step-text">Copy the prompt</span>
           <CopyPromptButton />
         </div>
+        {/* R12: step 2 is a pure handoff — the pasted prompt asks for notes
+            itself, so don't tell the student to attach anything here. */}
         <div className="get-started-step">
           <span className="step-num">2</span>
           <span className="step-text">
-            Paste it into ChatGPT — or any AI — along with your notes
+            Paste it into ChatGPT — or any AI — and it'll take it from there
           </span>
         </div>
         <div className="get-started-step">
           <span className="step-num">3</span>
-          <span className="step-text">Paste the AI's reply back here</span>
+          <span className="step-text">Paste the finished study set back here</span>
         </div>
       </div>
     </div>
