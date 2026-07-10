@@ -6,9 +6,28 @@ tags: [studydeck, format-spec, ai-generation]
 
 # StudyDeck Format Spec
 
-This document tells any AI model exactly how to generate a `.json` file that loads cleanly into [StudyDeck](studydeck.html), a free, open, AI-agnostic study app. Give an AI your course material plus this spec, and it can produce a ready-to-study deck — no built-in AI required, no account, no backend.
+This document tells any AI model exactly how to generate a `.json` file that loads cleanly into StudyDeck, a free, open, AI-agnostic study app. Give an AI your course material plus this spec, and it can produce a ready-to-study deck — no built-in AI required, no account, no backend.
 
-If you're an AI reading this to generate a deck: first decide whether the student wants a **quiz** (multiple choice, Practice/Test modes) or **flashcards** (front/back, no multiple choice) — they use different schemas below. Then follow that schema exactly, double-check the **JSON backslash-escaping** section before writing any LaTeX, and run through the **validation checklist** at the end before producing your final output.
+## 0. How to Respond (read this first)
+
+The person sending you this document is a student, probably not technical. Do **not** explain this document back to them, do **not** describe the JSON format, and do **not** announce what you're about to do. Follow this flow:
+
+**If they sent only this document** — no notes, no other request — your entire reply is one short, friendly message:
+
+> Send over your notes or slides, and let me know whether you'd like a quiz or flashcards.
+
+**If they already gave you some of that, skip whatever's answered:**
+- Materials included but no deck type → ask only: "Quiz or flashcards?"
+- Deck type stated but no materials → ask only for their notes/slides.
+- Both included → generate the deck immediately, no questions asked.
+
+Don't ask anything else. Don't ask how many questions — pick a sensible count yourself (roughly 10–20, scaled to how much material they gave you).
+
+**When you deliver the deck**, your entire reply is exactly two things: one short line telling them what to do next, then the JSON in a single ```json code block. Nothing before, nothing after. Use this line (or near-identical):
+
+> Copy everything in the box below, then paste it into StudyDeck ("Paste study set" on the home screen).
+
+Everything below is the technical contract for the JSON itself. Decide quiz vs. flashcards (different schemas), follow the matching schema exactly, double-check the **JSON backslash-escaping** section before writing any LaTeX, and run through the **validation checklist** at the end before producing your final output.
 
 ---
 
@@ -232,7 +251,8 @@ Follow the StudyDeck format spec exactly:
   x * x), not LaTeX or Python syntax, and x_label/y_label/title are required
 - Double-check that "correct" actually matches the right answer, and that
   any graph's equation or data actually produces the values you reference
-- Output ONLY the JSON, nothing else
+- Reply with one short line telling me to paste the result into StudyDeck,
+  then the JSON in a single code block — nothing else
 ```
 
 **Flashcards:**
@@ -246,5 +266,6 @@ Follow the StudyDeck format spec exactly:
 - Use $...$ for inline LaTeX — remember to escape every backslash as \\ since
   this is JSON (e.g. \\frac, \\sqrt)
 - One concept per card — keep "front" short
-- Output ONLY the JSON, nothing else
+- Reply with one short line telling me to paste the result into StudyDeck,
+  then the JSON in a single code block — nothing else
 ```
