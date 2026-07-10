@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyDeck</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: rgba(255,255,255,0.06);
+    --surface-hover: rgba(255,255,255,0.10);
+    --border: rgba(255,255,255,0.12);
+    --blur: blur(20px);
+    --accent: #7c3aed;
+    --accent-light: #a78bfa;
+    --text-primary: #f1f0ff;
+    --text-secondary: rgba(241,240,255,0.6);
+    --correct: #22c55e;
+    --incorrect: #ef4444;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  #app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  .glass-card {
+    background: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .glass-card:hover {
+    background: var(--surface-hover);
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; animation: screen-in 150ms ease-out; }
+
+  @keyframes screen-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  h1, h2, h3 { margin: 0 0 8px; }
+
+  .subtitle {
+    color: var(--text-secondary);
+    margin: 0 0 24px;
+  }
+
+  button { font-family: inherit; cursor: pointer; }
+
+  .btn {
+    background: var(--accent);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    transition: transform 100ms ease, background 150ms ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:hover  { background: var(--accent-light); }
+
+  .btn-ghost {
+    background: none;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    transition: color 150ms, border-color 150ms;
+  }
+  .btn-ghost:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
+
+  /* Home screen */
+  #drop-zone {
+    padding: 48px 24px;
+    text-align: center;
+    margin-bottom: 32px;
+    border: 1px dashed var(--border);
+  }
+  #drop-zone.drag-over {
+    background: var(--surface-hover);
+    border-color: var(--accent-light);
+  }
+  #drop-zone p { color: var(--text-secondary); margin: 0 0 16px; }
+
+  #file-history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .file-card {
+    padding: 16px;
+    position: relative;
+    cursor: pointer;
+    transition: background 150ms;
+  }
+  .file-card h3 { font-size: 1rem; padding-right: 24px; }
+  .file-card .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+  .file-card .delete-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 4px;
+  }
+  .file-card .delete-btn:hover { color: var(--incorrect); }
+
+  #empty-state {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 32px;
+    display: none;
+  }
+
+  #generate-section {
+    margin-top: 32px;
+    padding: 24px;
+  }
+  #generate-section h3 {
+    margin-bottom: 8px;
+  }
+  #generate-section p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+  #generate-section ol {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0 0 20px;
+    padding-left: 20px;
+    line-height: 1.6;
+  }
+  #generate-section ol li {
+    margin-bottom: 4px;
+  }
+  #generate-section code {
+    color: var(--accent-light);
+  }
+  #generate-section strong {
+    color: var(--text-primary);
+  }
+
+  /* Error toast */
+  #error-toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(200px);
+    opacity: 0;
+    background: #1a0a0a;
+    border: 1px solid var(--incorrect);
+    border-radius: var(--radius);
+    color: #fca5a5;
+    padding: 16px 20px;
+    max-width: 480px;
+    width: calc(100% - 48px);
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    z-index: 100;
+    transition: transform 300ms ease, opacity 300ms ease;
+    pointer-events: none;
+  }
+  #error-toast.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #error-toast .toast-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #fca5a5;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  /* Quiz screen */
+  #quiz-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  #quiz-abandon-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    padding: 4px 8px;
+    flex-shrink: 0;
+  }
+  #quiz-abandon-btn:hover { color: var(--text-primary); }
+  #quiz-progress-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  #quiz-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--surface-hover);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #quiz-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 300ms ease;
+    width: 0%;
+  }
+  /* Graph area — reused by quiz and review screens via Renderer.renderGraph */
+  .graph-area {
+    height: 240px;
+    margin-bottom: 20px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    padding: 26px 10px 22px 42px;
+  }
+  .graph-area canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .graph-title {
+    position: absolute;
+    top: 4px; left: 0; right: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: rgba(241,240,255,0.85);
+    pointer-events: none;
+  }
+  .graph-xlabel {
+    position: absolute;
+    bottom: 2px; left: 0; right: 0;
+    text-align: center;
+    font-size: 0.78rem;
+    color: rgba(241,240,255,0.6);
+    pointer-events: none;
+  }
+  .graph-ylabel {
+    position: absolute;
+    left: 20px; top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    transform-origin: left center;
+    font-size: 0.78rem;
+    color: rgba(241,240,255,0.6);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  /* KaTeX renders at its own font size by default — shrink it to match the small axis/title text */
+  .graph-title .katex, .graph-xlabel .katex, .graph-ylabel .katex {
+    font-size: 1em;
+  }
+  .graph-error {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  #quiz-question-text {
+    font-size: 1.2rem;
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+  .answer-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: background 150ms, border-color 150ms, transform 100ms;
+  }
+  .answer-btn:not(:disabled):not(.selected-answer):hover { background: var(--surface-hover); border-color: rgba(255,255,255,0.2); }
+  .answer-btn:not(:disabled):active { transform: scale(0.97); }
+  .answer-btn:disabled { cursor: default; }
+  .answer-btn.correct-answer {
+    background: rgba(34,197,94,0.15) !important;
+    border-color: var(--correct) !important;
+    opacity: 1 !important;
+  }
+  .answer-btn.wrong-answer {
+    background: rgba(239,68,68,0.15) !important;
+    border-color: var(--incorrect) !important;
+    opacity: 1 !important;
+  }
+  .answer-btn.selected-answer {
+    border-color: var(--accent-light);
+    background: rgba(124,58,237,0.12);
+  }
+  .answer-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--accent-light);
+    flex-shrink: 0;
+    width: 18px;
+  }
+  .answer-text { flex: 1; }
+  #quiz-feedback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    min-height: 44px;
+    visibility: hidden;
+  }
+  #quiz-feedback-msg { flex: 1; font-size: 0.9rem; }
+  #quiz-feedback-msg.correct { color: var(--correct); }
+  #quiz-feedback-msg.incorrect { color: var(--incorrect); }
+
+  .screen-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* Mode screen */
+  #mode-screen .deck-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0 0 32px;
+  }
+
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .mode-card {
+    padding: 24px 20px;
+    cursor: pointer;
+    text-align: left;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-radius: var(--radius);
+    transition: border-color 150ms, background 150ms;
+    user-select: none;
+  }
+  .mode-card:hover { background: var(--surface-hover); }
+  .mode-card.selected {
+    border-color: var(--accent-light);
+    background: rgba(124,58,237,0.12);
+  }
+  .mode-card .mode-icon {
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+  }
+  .mode-card .mode-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .mode-card .mode-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .mode-options {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    min-height: 36px;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    user-select: none;
+  }
+  .toggle-label input[type="checkbox"] { display: none; }
+  .toggle-track {
+    width: 38px;
+    height: 22px;
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    position: relative;
+    transition: background 200ms, border-color 200ms;
+    flex-shrink: 0;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    transition: transform 200ms, background 200ms;
+  }
+  .toggle-label input:checked + .toggle-track {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .toggle-label input:checked + .toggle-track::after {
+    transform: translateX(16px);
+    background: white;
+  }
+
+  #mode-start-btn {
+    padding: 12px 36px;
+    font-size: 1rem;
+  }
+
+  /* Stats screen */
+  .stats-summary {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .stats-pie-wrap {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    flex-shrink: 0;
+  }
+  .stats-pie-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #stats-score-pct {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  #stats-score-line {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  #stats-duration-line {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+  }
+
+  .breakdown-item {
+    padding: 14px 18px;
+    margin-bottom: 10px;
+  }
+  .breakdown-correct-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .breakdown-check {
+    color: var(--correct);
+    flex-shrink: 0;
+  }
+  .breakdown-q-collapsed {
+    flex: 1;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.92rem;
+  }
+  .breakdown-item.wrong .breakdown-q-text {
+    margin-bottom: 12px;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .breakdown-answer-row {
+    font-size: 0.88rem;
+    margin-bottom: 6px;
+  }
+  .breakdown-answer-row.wrong-row { color: var(--incorrect); }
+  .breakdown-answer-row.correct-row { color: var(--correct); }
+  .copy-ai-btn {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    padding: 6px 14px;
+  }
+
+  .stats-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  #retake-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  #retake-modal.visible { display: flex; }
+  .retake-modal-card {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 260px;
+    text-align: center;
+  }
+  .retake-modal-card p {
+    margin: 0 0 8px;
+    color: var(--text-secondary);
+  }
+
+  /* Review screen */
+  .review-progress-text {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin-left: auto;
+  }
+  #review-answer-list .answer-btn {
+    cursor: default;
+  }
+  .review-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+  }
+  .review-nav button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* Flashcard screen */
+  .flash-options {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+
+  #flash-card-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 32px 0 16px;
+  }
+  #flash-card {
+    width: 100%;
+    max-width: 480px;
+    height: 280px;
+    perspective: 1000px;
+    cursor: pointer;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 400ms ease;
+  }
+  #flash-card.flipped .card-inner {
+    transform: rotateY(180deg);
+  }
+  .card-front, .card-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    text-align: center;
+    font-size: 1.3rem;
+    line-height: 1.6;
+    background: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .card-back {
+    transform: rotateY(180deg);
+    color: var(--accent-light);
+  }
+  #flash-card.sort-known {
+    animation: flash-slide-out 350ms ease forwards;
+  }
+  #flash-card.sort-learning {
+    animation: flash-shake 350ms ease;
+  }
+  @keyframes flash-slide-out {
+    to { transform: translateX(120%) rotate(8deg); opacity: 0; }
+  }
+  @keyframes flash-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+  }
+  .flash-hint {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 24px;
+  }
+  .flash-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  .flash-complete-card {
+    padding: 32px;
+    text-align: center;
+    max-width: 420px;
+    margin: 40px auto 0;
+  }
+  .flash-complete-card h3 { margin-bottom: 12px; }
+  .flash-complete-card p { color: var(--text-secondary); margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Home -->
+  <section id="home-screen" class="screen active">
+    <h1>StudyDeck</h1>
+    <p class="subtitle">Load a study set and start practicing.</p>
+
+    <div id="drop-zone" class="glass-card">
+      <p>Drag and drop a <code>.json</code> file here</p>
+      <input type="file" id="file-picker-input" accept=".json" style="display:none;">
+      <button class="btn" id="load-file-btn">Load file</button>
+    </div>
+
+    <div id="file-history-grid"></div>
+    <div id="empty-state">
+      <p>No study sets loaded yet. Drop a <code>.json</code> file above to get started.</p>
+    </div>
+
+    <div id="generate-section" class="glass-card">
+      <h3>Don't have a study set yet?</h3>
+      <p>StudyDeck has no built-in AI — any AI can generate one for you. Copy the format spec, paste it into ChatGPT, Claude, Gemini, or whatever you've got, along with your notes, and ask it to generate a quiz or a flashcard set.</p>
+      <ol>
+        <li>Click <strong>Copy Format Spec</strong> below</li>
+        <li>Paste it into your AI chat, along with your notes/slides and whether you want a <strong>quiz</strong> or <strong>flashcards</strong></li>
+        <li>Save the AI's JSON output as a <code>.json</code> file</li>
+        <li>Drag that file into the drop zone above</li>
+      </ol>
+      <button class="btn" id="copy-spec-btn">Copy Format Spec</button>
+    </div>
+  </section>
+
+  <!-- Mode Select -->
+  <section id="mode-screen" class="screen">
+    <div class="screen-header">
+      <button class="btn-ghost" id="mode-back-btn">← Back</button>
+      <h2 id="mode-title"></h2>
+    </div>
+    <p class="deck-subtitle" id="mode-deck-count"></p>
+
+    <div class="mode-grid">
+      <div class="mode-card selected" data-mode="practice">
+        <div class="mode-icon">&#x1F4DD;</div>
+        <div class="mode-name">Practice</div>
+        <div class="mode-desc">Immediate right/wrong feedback. Retry wrong answers without affecting your score.</div>
+      </div>
+      <div class="mode-card" data-mode="test">
+        <div class="mode-icon">&#x1F9EA;</div>
+        <div class="mode-name">Test</div>
+        <div class="mode-desc">No feedback until the end. See your score and review what you missed.</div>
+      </div>
+      <div class="mode-card" data-mode="review">
+        <div class="mode-icon">&#x1F4D6;</div>
+        <div class="mode-name">Review</div>
+        <div class="mode-desc">Browse every question with the correct answer shown. No scoring, no quiz.</div>
+      </div>
+      <div class="mode-card" data-mode="flashcard">
+        <div class="mode-icon">&#x1F0CF;</div>
+        <div class="mode-name">Flashcard</div>
+        <div class="mode-desc">Flip cards, sort into Know It and Still Learning piles. Progress is saved.</div>
+      </div>
+    </div>
+
+    <div class="mode-options">
+      <label class="toggle-label" id="random-toggle-label">
+        <input type="checkbox" id="random-order-toggle">
+        <span class="toggle-track"></span>
+        Random order
+      </label>
+    </div>
+
+    <button class="btn" id="mode-start-btn">Start</button>
+  </section>
+
+  <!-- Quiz -->
+  <section id="quiz-screen" class="screen">
+    <div id="quiz-header">
+      <button id="quiz-abandon-btn" title="Quit quiz">✕</button>
+      <span id="quiz-progress-text">Q 1 of 1</span>
+      <div id="quiz-progress-bar"><div id="quiz-progress-fill"></div></div>
+    </div>
+
+    <div id="quiz-graph-area" class="graph-area" style="display:none">
+      <div class="graph-title"></div>
+      <canvas id="quiz-graph-canvas"></canvas>
+      <div class="graph-xlabel"></div>
+      <div class="graph-ylabel"></div>
+      <div class="graph-error" style="display:none">Graph unavailable</div>
+    </div>
+
+    <div id="quiz-question-text"></div>
+
+    <div id="quiz-answer-list">
+      <button class="answer-btn" data-index="0"><span class="answer-label">A</span><span class="answer-text"></span></button>
+      <button class="answer-btn" data-index="1"><span class="answer-label">B</span><span class="answer-text"></span></button>
+      <button class="answer-btn" data-index="2"><span class="answer-label">C</span><span class="answer-text"></span></button>
+      <button class="answer-btn" data-index="3"><span class="answer-label">D</span><span class="answer-text"></span></button>
+    </div>
+
+    <div id="quiz-feedback">
+      <span id="quiz-feedback-msg"></span>
+      <button class="btn-ghost" id="quiz-copy-btn" style="display:none">Copy explanation prompt</button>
+      <button class="btn" id="quiz-next-btn" style="display:none">Next →</button>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section id="stats-screen" class="screen">
+    <div class="screen-header">
+      <button class="btn-ghost" id="stats-home-btn">← Home</button>
+      <h2>Results</h2>
+    </div>
+
+    <div class="stats-summary">
+      <div class="stats-pie-wrap">
+        <canvas id="stats-pie-canvas"></canvas>
+        <div class="stats-pie-center">
+          <div id="stats-score-pct"></div>
+        </div>
+      </div>
+      <div>
+        <div id="stats-score-line"></div>
+        <div id="stats-duration-line"></div>
+      </div>
+    </div>
+
+    <div id="stats-breakdown"></div>
+
+    <div class="stats-actions">
+      <button class="btn-ghost" id="stats-review-btn">Review</button>
+      <button class="btn" id="stats-retake-btn">Retake</button>
+    </div>
+  </section>
+
+  <!-- Retake order modal -->
+  <div id="retake-modal">
+    <div class="retake-modal-card glass-card">
+      <p>Retake with...</p>
+      <button class="btn" id="retake-same-btn">Same Order</button>
+      <button class="btn-ghost" id="retake-random-btn">New Random Order</button>
+    </div>
+  </div>
+
+  <!-- Flashcards -->
+  <section id="flashcard-screen" class="screen">
+    <div class="screen-header">
+      <button class="btn-ghost" id="flash-back-btn">← Back</button>
+      <h2>Flashcards</h2>
+      <span id="flash-progress-text" class="review-progress-text"></span>
+    </div>
+
+    <div class="flash-options">
+      <label class="toggle-label">
+        <input type="checkbox" id="flash-drill-toggle">
+        <span class="toggle-track"></span>
+        Drill Still Learning only
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="flash-random-toggle">
+        <span class="toggle-track"></span>
+        Random order
+      </label>
+    </div>
+
+    <div id="flash-active-area">
+      <div id="flash-card-wrap">
+        <div id="flash-card">
+          <div class="card-inner">
+            <div class="card-front">
+              <div id="flash-front-text"></div>
+            </div>
+            <div class="card-back">
+              <div id="flash-back-text"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="flash-hint">Click card to flip</p>
+
+      <div class="flash-actions">
+        <button class="btn-ghost" id="flash-learning-btn">Still Learning</button>
+        <button class="btn" id="flash-known-btn">Know It</button>
+      </div>
+    </div>
+
+    <div id="flash-complete-area" style="display:none">
+      <div class="glass-card flash-complete-card">
+        <h3 id="flash-complete-title">Session Complete</h3>
+        <p id="flash-complete-summary"></p>
+        <div class="stats-actions" style="justify-content:center">
+          <button class="btn-ghost" id="flash-restart-btn">Restart All</button>
+          <button class="btn" id="flash-drill-learning-btn">Continue with Still Learning</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Review -->
+  <section id="review-screen" class="screen">
+    <div class="screen-header">
+      <button class="btn-ghost" id="review-back-btn">← Back</button>
+      <h2>Review</h2>
+      <span id="review-progress-text" class="review-progress-text"></span>
+    </div>
+
+    <div id="review-graph-area" class="graph-area" style="display:none">
+      <div class="graph-title"></div>
+      <canvas id="review-graph-canvas"></canvas>
+      <div class="graph-xlabel"></div>
+      <div class="graph-ylabel"></div>
+      <div class="graph-error" style="display:none">Graph unavailable</div>
+    </div>
+
+    <div id="review-question-text"></div>
+
+    <div id="review-answer-list">
+      <button class="answer-btn" disabled><span class="answer-label">A</span><span class="answer-text"></span></button>
+      <button class="answer-btn" disabled><span class="answer-label">B</span><span class="answer-text"></span></button>
+      <button class="answer-btn" disabled><span class="answer-label">C</span><span class="answer-text"></span></button>
+      <button class="answer-btn" disabled><span class="answer-label">D</span><span class="answer-text"></span></button>
+    </div>
+
+    <div class="review-nav">
+      <button class="btn-ghost" id="review-prev-btn">← Prev</button>
+      <button class="btn-ghost" id="review-next-btn">Next →</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Error toast -->
+<div id="error-toast">
+  <button class="toast-close" id="error-toast-close">&times;</button>
+  <span id="error-toast-msg"></span>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Embedded verbatim from studydeck-format-spec.md so the home screen can
+  // offer a one-click copy for pasting into any AI. Keep both in sync.
+  const FORMAT_SPEC_MD = `---
+type: format-spec
+project: StudyDeck
+tags: [studydeck, format-spec, ai-generation]
+---
+
+# StudyDeck Format Spec
+
+This document tells any AI model exactly how to generate a \`.json\` file that loads cleanly into [StudyDeck](studydeck.html), a free, open, AI-agnostic study app. Give an AI your course material plus this spec, and it can produce a ready-to-study deck — no built-in AI required, no account, no backend.
+
+If you're an AI reading this to generate a deck: first decide whether the student wants a **quiz** (multiple choice, Practice/Test modes) or **flashcards** (front/back, no multiple choice) — they use different schemas below. Then follow that schema exactly, double-check the **JSON backslash-escaping** section before writing any LaTeX, and run through the **validation checklist** at the end before producing your final output.
+
+---
+
+## 1. Two Deck Types
+
+A deck is either a **quiz** or a **flashcard set** — never both, and the shape of each \`question\` object is different. Declare it with a top-level \`"type"\` field:
+
+- \`"type": "quiz"\` (or omit \`type\` entirely — quiz is the default) → unlocks Practice and Test modes in the app.
+- \`"type": "flashcard"\` → unlocks Flashcard mode only.
+
+Pick whichever matches what was asked for. If someone wants to drill vocab/terms/definitions, that's flashcards. If they want multiple-choice practice or a test, that's a quiz.
+
+### Quiz schema
+
+\`\`\`json
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Physics Chapter 3 — Kinematics",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "An object accelerates from rest at $a = 9.8 \\\\text{ m/s}^2$. What is its velocity after $t = 3$ s?",
+      "answers": [
+        "$v = 19.6 \\\\text{ m/s}$",
+        "$v = 29.4 \\\\text{ m/s}$",
+        "$v = 9.8 \\\\text{ m/s}$",
+        "$v = 39.2 \\\\text{ m/s}$"
+      ],
+      "correct": 1,
+      "graph": {
+        "type": "points",
+        "data": [[0, 0], [1, 9.8], [2, 19.6], [3, 29.4]],
+        "x_label": "Time (s)",
+        "y_label": "Velocity (m/s)",
+        "title": "Velocity vs Time"
+      }
+    },
+    {
+      "id": "q2",
+      "question": "Which equation describes the position of an object under constant acceleration?",
+      "answers": [
+        "$x = x_0 + v_0 t + \\\\frac{1}{2}at^2$",
+        "$x = v_0 t$",
+        "$x = \\\\frac{1}{2}at^2$",
+        "$x = x_0 + at$"
+      ],
+      "correct": 0
+    }
+  ]
+}
+\`\`\`
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| \`version\` | integer | **Yes** | Must be \`1\`. |
+| \`type\` | string | No | \`"quiz"\`. Default if omitted. |
+| \`title\` | string | **Yes** | Shown on the home screen card and at quiz start. |
+| \`questions\` | array | **Yes** | Must contain at least one question. |
+| \`questions[].id\` | string | **Yes** | Unique, stable per question (see §5). |
+| \`questions[].question\` | string | **Yes** | LaTeX via \`$...$\` / \`$$...$$\` supported. |
+| \`questions[].answers\` | array of strings | **Yes** | **Exactly 4** entries, no more, no fewer. |
+| \`questions[].correct\` | integer | **Yes** | Index into \`answers\`, so \`0\`–\`3\`. |
+| \`questions[].graph\` | object | No | Omit the key entirely if there's no graph — don't set it to \`null\`. |
+
+### Flashcard schema
+
+Flashcards don't need distractors, so they use \`front\` / \`back\` instead of \`question\` / \`answers\` / \`correct\`. Graphs aren't supported on flashcards.
+
+\`\`\`json
+{
+  "version": 1,
+  "type": "flashcard",
+  "title": "Physics Vocab",
+  "questions": [
+    { "id": "q1", "front": "Velocity", "back": "Speed in a given direction (a vector)" },
+    { "id": "q2", "front": "Kinetic Energy", "back": "$KE = \\\\frac{1}{2}mv^2$" }
+  ]
+}
+\`\`\`
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| \`version\` | integer | **Yes** | Must be \`1\`. |
+| \`type\` | string | **Yes** | Must be \`"flashcard"\`. |
+| \`title\` | string | **Yes** | Shown on the home screen card. |
+| \`questions\` | array | **Yes** | Must contain at least one card. |
+| \`questions[].id\` | string | **Yes** | Unique, stable per card (see §5). |
+| \`questions[].front\` | string | **Yes** | Shown on the card front. LaTeX supported. |
+| \`questions[].back\` | string | **Yes** | Shown on the card back. LaTeX supported. |
+
+### Graph object (quiz decks only, when present)
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| \`type\` | string | **Yes** | \`"points"\` or \`"equation"\`. |
+| \`data\` | array or string | **Yes** | Array of \`[x, y]\` pairs if \`points\`; a **JavaScript** expression string if \`equation\` (see §4). |
+| \`x_range\` | \`[min, max]\` | Required for \`equation\`, optional for \`points\` | Order doesn't matter — StudyDeck normalizes min/max automatically. Points auto-fit the axis if omitted. |
+| \`y_range\` | \`[min, max]\` | No | Pins the y-axis instead of auto-fitting. Use this if the data range would make an oddly zoomed-in or zoomed-out chart. |
+| \`x_label\` | string | **Yes** | Supports \`$...$\` LaTeX. |
+| \`y_label\` | string | **Yes** | Supports \`$...$\` LaTeX. |
+| \`title\` | string | **Yes** | Supports \`$...$\` LaTeX. |
+
+---
+
+## 2. LaTeX Conventions
+
+- Inline math: \`$...$\` — e.g. \`$x = 5$\`
+- Display (block) math: \`$$...$$\` — e.g. \`$$\\int_0^1 x^2\\,dx$$\`
+- Rendered with KaTeX. Standard LaTeX math commands work: \`\\frac{}{}\`, \`\\sqrt{}\`, \`^\`, \`_\`, \`\\sin\`, \`\\cos\`, \`\\ln\`, \`\\sum\`, \`\\int\`, \`\\pm\`, Greek letters (\`\\pi\`, \`\\theta\`), etc.
+- LaTeX is supported in \`question\`/\`answers\` (quiz) or \`front\`/\`back\` (flashcard), and in a graph's \`x_label\` / \`y_label\` / \`title\`.
+
+### ⚠️ JSON backslash-escaping (the #1 mistake)
+
+JSON strings use \`\\\` as an escape character, so every literal backslash in your LaTeX must be written as \`\\\\\` inside the JSON string. Writing a single backslash will either corrupt the LaTeX or produce invalid JSON outright.
+
+**Wrong** (invalid JSON — \`\\f\` is not a legal escape in this position):
+\`\`\`json
+"question": "Simplify $\\frac{1}{2}$"
+\`\`\`
+
+**Right** (double backslash):
+\`\`\`json
+"question": "Simplify $\\\\frac{1}{2}$"
+\`\`\`
+
+This applies to every LaTeX command: \`\\\\sin\`, \`\\\\sqrt\`, \`\\\\frac\`, \`\\\\theta\`, \`\\\\pm\`, \`\\\\dfrac\`, etc. Before finalizing your output, scan every string for single backslashes followed by a letter and double them.
+
+---
+
+## 3. Graph Equations Are JavaScript, Not LaTeX or Python
+
+For \`"type": "equation"\`, the \`data\` string is evaluated in the browser via \`new Function('x', 'return (' + data + ')')\`. That means it must be **valid JavaScript**, evaluated once per sample point across \`x_range\` (100 samples) — *not* LaTeX notation and *not* Python.
+
+| Math notation | ✅ Correct JS for \`data\` | ❌ Wrong |
+|---|---|---|
+| $x^2$ | \`x * x\` or \`Math.pow(x, 2)\` | \`x^2\` (JS \`^\` is XOR, not exponent) |
+| $\\sin(x)$ | \`Math.sin(x)\` | \`sin(x)\` |
+| $e^x$ | \`Math.exp(x)\` | \`e^x\` |
+| $\\sqrt{x}$ | \`Math.sqrt(x)\` | \`sqrt(x)\` |
+| $\\ln(x)$ | \`Math.log(x)\` | \`ln(x)\` |
+| $\\frac{1}{x}$ | \`1 / x\` | \`1/x\` is actually fine, just don't write a fraction-style string |
+
+Other rules for equation graphs:
+- The domain \`x_range\` must avoid producing \`NaN\` or \`Infinity\` anywhere in the sampled range — e.g. don't pass negative numbers to \`Math.sqrt\`, or \`0\` to \`1/x\`, within \`x_range\`. If evaluation produces a non-finite value anywhere, StudyDeck shows "Graph unavailable" instead of the chart.
+- \`x_range\` and \`y_range\` can be given in either order (\`[5, -5]\` works the same as \`[-5, 5]\`) — StudyDeck sorts them automatically.
+
+For \`"type": "points"\`, \`data\` is a plain array of \`[x, y]\` number pairs — no code evaluation involved.
+
+---
+
+## 4. Stable Question/Card IDs
+
+- Use short, sequential, unique ids: \`"q1"\`, \`"q2"\`, ... \`"q24"\`.
+- IDs are used internally for stats tracking and flashcard pile progress (Know It / Still Learning) — **they must stay the same** for a given question even if you reorder questions later.
+- If you edit an existing deck and add new questions, give the new ones new ids that don't collide with existing ones (don't renumber everything — that silently resets a returning student's progress on unrelated questions).
+
+---
+
+## 5. Best Practices for Question Quality
+
+**Quiz decks:**
+- Write **exactly one** clearly correct answer and **three plausible distractors** — avoid options that are obviously wrong filler, and avoid "All of the above" / "None of the above" (there's no room for them in a fixed 4-option format).
+- Double-check your own arithmetic. If a question references a graph, verify the equation or data points actually produce the numbers your answer choices claim — a wrong \`correct\` index or an answer that doesn't match the graph's actual values is the most common AI-generated error.
+- Prefer graphs as question *context* (e.g. "the graph below shows...") rather than putting a graph-dependent claim in the answer choices themselves.
+
+**Flashcard decks:**
+- Keep \`front\` short — a term, a formula, a single concept. The \`back\` is where the fuller answer goes.
+- One concept per card. Don't cram multiple facts onto a single front/back pair.
+
+**Both:**
+- Keep each card/question self-contained — a student shouldn't need information from a different one to answer it.
+- Match the notation and terminology used in the source material the student gave you, so the deck feels consistent with their class.
+
+---
+
+## 6. Validation Checklist
+
+StudyDeck rejects the entire file if any of these fail — it will *not* silently skip bad questions, so get this right before outputting:
+
+- [ ] Top-level \`version\` is present and equals \`1\`
+- [ ] Top-level \`title\` is a non-empty string
+- [ ] If present, top-level \`type\` is exactly \`"quiz"\` or \`"flashcard"\`
+- [ ] Top-level \`questions\` is a non-empty array
+- [ ] Every question/card has a non-empty \`id\`
+
+**If \`type\` is \`"quiz"\` (or omitted):**
+- [ ] Every question has a non-empty \`question\` string
+- [ ] Every question has an \`answers\` array with **exactly 4** entries
+- [ ] Every question's \`correct\` is an integer between \`0\` and \`3\` inclusive
+- [ ] If a question has a \`graph\` object: \`type\`, \`x_label\`, \`y_label\`, and \`title\` are all present
+- [ ] If \`graph.type\` is \`"equation"\`: \`x_range\` is present
+- [ ] If \`graph.x_range\` is present: it's an array of exactly 2 numbers
+- [ ] If \`graph.y_range\` is present: it's an array of exactly 2 numbers
+
+**If \`type\` is \`"flashcard"\`:**
+- [ ] Every card has a non-empty \`front\` string
+- [ ] Every card has a non-empty \`back\` string
+
+**Always:**
+- [ ] Every backslash inside a LaTeX string is doubled (\`\\\\\`) for valid JSON
+- [ ] The whole file is valid JSON (no trailing commas, no unescaped quotes)
+
+---
+
+## 7. Ready-to-Use Prompt Templates
+
+**Quiz:**
+\`\`\`
+Generate a StudyDeck .json quiz for [topic] with [N] questions based on the
+following materials: [paste your notes / textbook excerpt / slides here]
+
+Follow the StudyDeck format spec exactly:
+- version: 1, "type": "quiz", a descriptive title, and a "questions" array
+- Each question: a unique stable "id" (q1, q2, ...), "question" text,
+  exactly 4 "answers", and a "correct" index (0-3)
+- Use $...$ for inline LaTeX and $$...$$ for display LaTeX — remember to
+  escape every backslash as \\\\ since this is JSON (e.g. \\\\frac, \\\\sqrt)
+- Only add a "graph" object if the question genuinely needs one; if you do,
+  "data" for an equation graph must be valid JavaScript (e.g. Math.sin(x),
+  x * x), not LaTeX or Python syntax, and x_label/y_label/title are required
+- Double-check that "correct" actually matches the right answer, and that
+  any graph's equation or data actually produces the values you reference
+- Output ONLY the JSON, nothing else
+\`\`\`
+
+**Flashcards:**
+\`\`\`
+Generate a StudyDeck .json flashcard set for [topic] with [N] cards based on
+the following materials: [paste your notes / textbook excerpt / slides here]
+
+Follow the StudyDeck format spec exactly:
+- version: 1, "type": "flashcard", a descriptive title, and a "questions" array
+- Each card: a unique stable "id" (q1, q2, ...), a short "front", and a "back"
+- Use $...$ for inline LaTeX — remember to escape every backslash as \\\\ since
+  this is JSON (e.g. \\\\frac, \\\\sqrt)
+- One concept per card — keep "front" short
+- Output ONLY the JSON, nothing else
+\`\`\``;
+
+  // ── App state ───────────────────────────────────────────────────────────────
+  const App = {
+    currentFile: null,
+    selectedMode: 'practice',
+    randomOrder: false,
+
+    loadFile(entry) {
+      this.currentFile = entry;
+    }
+  };
+
+  // ── Storage ─────────────────────────────────────────────────────────────────
+  const Storage = {
+    get(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        console.warn('Storage.get failed for', key, e);
+        return null;
+      }
+    },
+
+    set(key, val) {
+      try {
+        localStorage.setItem(key, JSON.stringify(val));
+        return true;
+      } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+          const history = this.getHistory();
+          if (history.length > 0) {
+            const oldest = history[history.length - 1];
+            this.deleteFile(oldest.title);
+            showError('Storage full — oldest file removed to make room.');
+            try {
+              localStorage.setItem(key, JSON.stringify(val));
+              return true;
+            } catch (e2) {
+              console.error('Storage.set failed after eviction', e2);
+              return false;
+            }
+          }
+        }
+        console.error('Storage.set failed for', key, e);
+        return false;
+      }
+    },
+
+    getHistory() {
+      return this.get('studydeck_history') || [];
+    },
+
+    saveFile(entry) {
+      const history = this.getHistory();
+      const idx = history.findIndex(f => f.title === entry.title);
+      if (idx >= 0) {
+        history[idx] = entry;
+      } else {
+        history.unshift(entry);
+      }
+      return this.set('studydeck_history', history);
+    },
+
+    deleteFile(title) {
+      const history = this.getHistory().filter(f => f.title !== title);
+      this.set('studydeck_history', history);
+      try { localStorage.removeItem('studydeck_flash_' + title); } catch (_) {}
+    },
+
+    getFlashState(title) {
+      return this.get('studydeck_flash_' + title) || { known: [], learning: [] };
+    },
+
+    setFlashState(title, state) {
+      return this.set('studydeck_flash_' + title, state);
+    }
+  };
+
+  // ── Router ───────────────────────────────────────────────────────────────────
+  const Router = {
+    showScreen(id) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+      const target = document.getElementById(id);
+      if (target) target.classList.add('active');
+    }
+  };
+
+  // ── FileLoader ───────────────────────────────────────────────────────────────
+  const FileLoader = {
+    handleDrop(event) {
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        showError('Please drop a .json file.');
+        return;
+      }
+      this._readFile(file);
+    },
+
+    handlePicker(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      this._readFile(file);
+      event.target.value = '';
+    },
+
+    _readFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        let raw;
+        try {
+          raw = JSON.parse(e.target.result);
+        } catch (err) {
+          showError('Invalid JSON: ' + err.message);
+          return;
+        }
+        const errors = this.validateJSON(raw);
+        if (errors.length > 0) {
+          showError(errors.join('\n'));
+          return;
+        }
+        const entry = {
+          name: file.name,
+          title: raw.title,
+          count: raw.questions.length,
+          lastOpened: new Date().toLocaleDateString(),
+          data: raw
+        };
+        Storage.saveFile(entry);
+        App.loadFile(entry);
+        renderFileHistory();
+        openModeScreen();
+      };
+      reader.readAsText(file);
+    },
+
+    validateJSON(data) {
+      const errors = [];
+
+      if (data.version === undefined || data.version === null) {
+        errors.push("Missing top-level 'version' field.");
+      } else if (data.version !== 1) {
+        console.warn('StudyDeck: unknown version', data.version, '— proceeding anyway');
+      }
+
+      if (!data.title || typeof data.title !== 'string') {
+        errors.push("Missing or invalid top-level 'title' field.");
+      }
+
+      // 'type' is optional — quiz decks are the default so older files without
+      // it keep working. Anything other than the two recognized values is
+      // treated as a typo, not silently coerced, since it changes how every
+      // question below gets validated.
+      const deckType = data.type === undefined ? 'quiz' : data.type;
+      if (deckType !== 'quiz' && deckType !== 'flashcard') {
+        errors.push(`Top-level 'type' must be "quiz" or "flashcard", found "${data.type}".`);
+      }
+
+      if (!Array.isArray(data.questions)) {
+        errors.push("Missing top-level 'questions' array.");
+        return errors;
+      }
+
+      if (data.questions.length === 0) {
+        errors.push("'questions' array is empty.");
+        return errors;
+      }
+
+      data.questions.forEach((q, i) => {
+        const n = i + 1;
+        if (!q.id) errors.push(`Question ${n}: Missing 'id' field.`);
+
+        if (deckType === 'flashcard') {
+          if (!q.front) errors.push(`Question ${n}: Missing 'front' field.`);
+          if (!q.back) errors.push(`Question ${n}: Missing 'back' field.`);
+          return;
+        }
+
+        if (!q.question) errors.push(`Question ${n}: Missing 'question' field.`);
+
+        if (!Array.isArray(q.answers)) {
+          errors.push(`Question ${n}: Missing 'answers' array.`);
+        } else if (q.answers.length !== 4) {
+          errors.push(`Question ${n}: Expected exactly 4 answer choices, found ${q.answers.length}.`);
+        }
+
+        if (q.correct === undefined || q.correct === null) {
+          errors.push(`Question ${n}: Missing 'correct' field.`);
+        } else if (!Number.isInteger(q.correct) || q.correct < 0 || q.correct > 3) {
+          errors.push(`Question ${n}: 'correct' index ${q.correct} is out of range (0–3).`);
+        }
+
+        if (q.graph !== undefined && q.graph !== null) {
+          if (!q.graph.type) errors.push(`Question ${n}: Graph object is missing 'type'.`);
+          if (!q.graph.x_label) errors.push(`Question ${n}: Graph object is missing 'x_label'.`);
+          if (!q.graph.y_label) errors.push(`Question ${n}: Graph object is missing 'y_label'.`);
+          if (!q.graph.title) errors.push(`Question ${n}: Graph object is missing 'title'.`);
+          if (q.graph.type === 'equation' && !q.graph.x_range) {
+            errors.push(`Question ${n}: Equation graph requires 'x_range'.`);
+          }
+          if (q.graph.x_range !== undefined && (!Array.isArray(q.graph.x_range) || q.graph.x_range.length !== 2)) {
+            errors.push(`Question ${n}: Graph 'x_range' must be a [min, max] array.`);
+          }
+          if (q.graph.y_range !== undefined && (!Array.isArray(q.graph.y_range) || q.graph.y_range.length !== 2)) {
+            errors.push(`Question ${n}: Graph 'y_range' must be a [min, max] array.`);
+          }
+        }
+      });
+
+      return errors;
+    }
+  };
+
+  // ── QuizEngine ───────────────────────────────────────────────────────────────
+  const QuizEngine = {
+    questions: [],
+    mode: null,
+    order: [],
+    currentIdx: 0,
+    answerRecord: [],
+    sessionStart: 0,
+    questionStart: 0,
+    wasRandom: false,
+    _firstAttemptDone: false,
+
+    startQuiz(questions, mode, order, wasRandom) {
+      this.questions = questions;
+      this.mode = mode;
+      this.order = order;
+      this.wasRandom = !!wasRandom;
+      this.currentIdx = 0;
+      this.answerRecord = [];
+      this.sessionStart = Date.now();
+      this._firstAttemptDone = false;
+      renderQuizQuestion();
+    },
+
+    nextQuestion() {
+      this.currentIdx++;
+      if (this.currentIdx >= this.order.length) {
+        this._endSession();
+      } else {
+        this._firstAttemptDone = false;
+        renderQuizQuestion();
+      }
+    },
+
+    submitAnswer(chosenIndex) {
+      if (this._firstAttemptDone) return;
+      this._firstAttemptDone = true;
+      const q = this.questions[this.order[this.currentIdx]];
+      this.answerRecord.push({
+        id: q.id,
+        firstAttemptCorrect: chosenIndex === q.correct,
+        chosenIndex: chosenIndex,
+        correctIndex: q.correct,
+        timeSpent: this.mode === 'test'
+          ? Math.round((Date.now() - this.questionStart) / 1000)
+          : null
+      });
+    },
+
+    getAnswerRecord() {
+      return this.answerRecord;
+    },
+
+    _endSession() {
+      const duration = Math.round((Date.now() - this.sessionStart) / 1000);
+      const record = Stats.buildRecord(this.answerRecord, duration, this.mode);
+      Renderer.renderStats(record);
+      Router.showScreen('stats-screen');
+    }
+  };
+
+  // ── FlashEngine ──────────────────────────────────────────────────────────────
+  const FlashEngine = {
+    title: '',
+    allQuestions: [],
+    deck: [],
+    order: [],
+    currentIdx: 0,
+    known: new Set(),
+    learning: new Set(),
+    roundKnown: new Set(),
+    roundLearning: new Set(),
+    flipped: false,
+    drillMode: 'all',
+    randomOrder: false,
+
+    // A "round" is one pass through `order` — Know It and Still Learning both
+    // just advance currentIdx, nothing requeues mid-round (Quizlet-style flow).
+    // The round-complete screen then offers to start a new round limited to
+    // whatever got marked Still Learning this time.
+    startFlash(questions, options) {
+      this.title = App.currentFile.title;
+      this.allQuestions = questions;
+
+      const state = Storage.getFlashState(this.title);
+      this.known = new Set(state.known);
+      this.learning = new Set(state.learning);
+
+      this.drillMode = (options && options.drillMode) || 'all';
+      this.randomOrder = !!(options && options.randomOrder);
+
+      if (options && options.customDeck) {
+        this.deck = options.customDeck;
+      } else if (this.drillMode === 'learning') {
+        // "Still Learning" = not yet marked Know It — includes cards never seen before
+        this.deck = questions.filter(q => !this.known.has(q.id));
+      } else {
+        this.deck = questions;
+      }
+
+      let ids = this.deck.map(q => q.id);
+      if (this.randomOrder) ids = ids.sort(() => Math.random() - 0.5);
+
+      this.order = ids;
+      this.currentIdx = 0;
+      this.roundKnown = new Set();
+      this.roundLearning = new Set();
+      this.flipped = false;
+    },
+
+    currentCard() {
+      if (this.currentIdx >= this.order.length) return null;
+      return this.allQuestions.find(q => q.id === this.order[this.currentIdx]);
+    },
+
+    isComplete() {
+      return this.order.length > 0 && this.currentIdx >= this.order.length;
+    },
+
+    progress() {
+      const total = this.order.length;
+      const current = Math.min(this.currentIdx + 1, total);
+      return { current, total };
+    },
+
+    flip() {
+      this.flipped = !this.flipped;
+    },
+
+    // Organized so sortCard() is the only method a future spaced-repetition
+    // scheduler would need to replace — everything else just reacts to `order`.
+    sortCard(pile) {
+      const id = this.order[this.currentIdx];
+      if (pile === 'known') {
+        this.known.add(id);
+        this.learning.delete(id);
+        this.roundKnown.add(id);
+      } else {
+        this.learning.add(id);
+        this.known.delete(id);
+        this.roundLearning.add(id);
+      }
+      this._persist();
+      this.currentIdx++;
+      this.flipped = false;
+    },
+
+    // Starts a fresh round using only the cards marked Still Learning in the round
+    // that just finished — the "continue with what I missed" step of the flow.
+    continueWithRoundLearning() {
+      const cards = this.allQuestions.filter(q => this.roundLearning.has(q.id));
+      this.startFlash(this.allQuestions, { customDeck: cards, randomOrder: this.randomOrder });
+    },
+
+    drillPile(pile) {
+      this.startFlash(this.allQuestions, { drillMode: pile, randomOrder: this.randomOrder });
+    },
+
+    _persist() {
+      Storage.setFlashState(this.title, {
+        known: Array.from(this.known),
+        learning: Array.from(this.learning)
+      });
+    }
+  };
+
+  // ── Renderer ─────────────────────────────────────────────────────────────────
+  const Renderer = {
+    _chart: null,
+    _pieChart: null,
+
+    renderKaTeX(el) {
+      if (typeof renderMathInElement === 'undefined') return;
+      try {
+        renderMathInElement(el, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$',  right: '$',  display: false }
+          ],
+          throwOnError: false
+        });
+      } catch (_) {}
+    },
+
+    renderGraph(graphObj, canvas) {
+      if (this._chart) {
+        this._chart.destroy();
+        this._chart = null;
+      }
+
+      const area = canvas.closest('.graph-area');
+      const errorEl = area.querySelector('.graph-error');
+      const titleEl = area.querySelector('.graph-title');
+      const xLabelEl = area.querySelector('.graph-xlabel');
+      const yLabelEl = area.querySelector('.graph-ylabel');
+
+      canvas.style.display = 'block';
+      errorEl.style.display = 'none';
+      titleEl.style.display = 'block';
+      xLabelEl.style.display = 'block';
+      yLabelEl.style.display = 'block';
+
+      try {
+        if (!graphObj || !graphObj.type || !graphObj.x_label || !graphObj.y_label || !graphObj.title) {
+          throw new Error('missing required graph fields');
+        }
+
+        let points;
+
+        if (graphObj.type === 'points') {
+          if (!Array.isArray(graphObj.data) || graphObj.data.length === 0) {
+            throw new Error('invalid points data');
+          }
+          points = graphObj.data.map(([x, y]) => ({ x, y }));
+
+        } else if (graphObj.type === 'equation') {
+          if (!graphObj.x_range || !Array.isArray(graphObj.x_range) || graphObj.x_range.length < 2) {
+            throw new Error('equation graph requires x_range');
+          }
+          const xMin = Math.min(graphObj.x_range[0], graphObj.x_range[1]);
+          const xMax = Math.max(graphObj.x_range[0], graphObj.x_range[1]);
+          // eslint-disable-next-line no-new-func
+          const fn = new Function('x', 'return (' + graphObj.data + ')');
+          points = [];
+          for (let i = 0; i <= 100; i++) {
+            const x = xMin + (i / 100) * (xMax - xMin);
+            const y = fn(x);
+            if (!isFinite(y)) throw new Error('equation produced non-finite value');
+            points.push({ x, y });
+          }
+
+        } else {
+          throw new Error('unknown graph type: ' + graphObj.type);
+        }
+
+        // Chart.js draws plugin/axis titles as plain canvas text — it can't render
+        // LaTeX. Render the title and axis labels as real KaTeX-capable HTML overlays
+        // instead, and tell Chart.js to skip drawing its own (space stays reserved
+        // via CSS padding on #quiz-graph-area).
+        titleEl.textContent = graphObj.title;
+        xLabelEl.textContent = graphObj.x_label;
+        yLabelEl.textContent = graphObj.y_label;
+        this.renderKaTeX(titleEl);
+        this.renderKaTeX(xLabelEl);
+        this.renderKaTeX(yLabelEl);
+
+        const darkStyle = {
+          grid:  'rgba(255,255,255,0.06)',
+          tick:  'rgba(241,240,255,0.5)',
+          border:'rgba(255,255,255,0.12)'
+        };
+
+        const axisBase = () => ({
+          title: { display: false },
+          grid:  { color: darkStyle.grid },
+          ticks: { color: darkStyle.tick, font: { size: 11 } },
+          border:{ color: darkStyle.border }
+        });
+
+        const config = {
+          type: 'scatter',
+          data: {
+            datasets: [{
+              data: points,
+              showLine: true,
+              borderColor: '#a78bfa',
+              borderWidth: 2,
+              pointRadius: graphObj.type === 'equation' ? 0 : 3,
+              pointBackgroundColor: '#a78bfa',
+              fill: false,
+              tension: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 250 },
+            plugins: {
+              legend: { display: false },
+              title: { display: false }
+            },
+            scales: {
+              x: axisBase(),
+              y: axisBase()
+            }
+          }
+        };
+
+        if (graphObj.x_range) {
+          config.options.scales.x.min = Math.min(graphObj.x_range[0], graphObj.x_range[1]);
+          config.options.scales.x.max = Math.max(graphObj.x_range[0], graphObj.x_range[1]);
+        }
+        if (graphObj.y_range) {
+          config.options.scales.y.min = Math.min(graphObj.y_range[0], graphObj.y_range[1]);
+          config.options.scales.y.max = Math.max(graphObj.y_range[0], graphObj.y_range[1]);
+        }
+
+        this._chart = new Chart(canvas, config);
+        return true;
+
+      } catch (err) {
+        console.warn('Renderer.renderGraph failed:', err.message);
+        canvas.style.display = 'none';
+        errorEl.style.display = 'flex';
+        titleEl.style.display = 'none';
+        xLabelEl.style.display = 'none';
+        yLabelEl.style.display = 'none';
+        return false;
+      }
+    },
+
+    renderStats(record) {
+      document.getElementById('stats-score-pct').textContent = record.score + '%';
+      document.getElementById('stats-score-line').textContent =
+        `${record.correct} / ${record.total} correct`;
+      document.getElementById('stats-duration-line').textContent =
+        'Session time: ' + formatDuration(record.totalDuration);
+
+      if (this._pieChart) {
+        this._pieChart.destroy();
+        this._pieChart = null;
+      }
+      const pieData = Stats.buildPieData(record);
+      this._pieChart = new Chart(document.getElementById('stats-pie-canvas'), {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [pieData.correct, pieData.incorrect],
+            backgroundColor: ['#7c3aed', '#ef4444'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          animation: { duration: 600 },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        }
+      });
+
+      const breakdown = document.getElementById('stats-breakdown');
+      breakdown.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D'];
+
+      record.questions.forEach(ans => {
+        const q = QuizEngine.questions.find(qq => qq.id === ans.id);
+        if (!q) return;
+
+        const item = document.createElement('div');
+
+        if (ans.firstAttemptCorrect) {
+          item.className = 'breakdown-item correct glass-card';
+          item.innerHTML =
+            '<div class="breakdown-correct-top">' +
+              '<span class="breakdown-check">✓</span>' +
+              '<span class="breakdown-q-collapsed"></span>' +
+            '</div>' +
+            '<button class="btn-ghost copy-ai-btn">Copy explanation prompt</button>';
+          item.querySelector('.breakdown-q-collapsed').textContent = q.question;
+        } else {
+          item.className = 'breakdown-item wrong glass-card';
+          item.innerHTML =
+            '<div class="breakdown-q-text"></div>' +
+            '<div class="breakdown-answer-row wrong-row">Your answer: <span class="chosen-text"></span></div>' +
+            '<div class="breakdown-answer-row correct-row">Correct answer: <span class="correct-text"></span></div>' +
+            '<button class="btn-ghost copy-ai-btn">Copy explanation prompt</button>';
+          item.querySelector('.breakdown-q-text').textContent = q.question;
+          item.querySelector('.chosen-text').textContent =
+            letters[ans.chosenIndex] + ') ' + q.answers[ans.chosenIndex];
+          item.querySelector('.correct-text').textContent =
+            letters[ans.correctIndex] + ') ' + q.answers[ans.correctIndex];
+        }
+
+        const copyBtn = item.querySelector('.copy-ai-btn');
+        copyBtn.addEventListener('click', () => {
+          const prompt = Clipboard.buildPrompt(q, ans.chosenIndex);
+          navigator.clipboard.writeText(prompt).then(() => {
+            const original = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = original; }, 1500);
+          }).catch(err => console.warn('Clipboard write failed:', err));
+        });
+
+        this.renderKaTeX(item);
+        breakdown.appendChild(item);
+      });
+    }
+  };
+
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  const Stats = {
+    buildRecord(answerRecord, duration, mode) {
+      const total = answerRecord.length;
+      const correct = answerRecord.filter(a => a.firstAttemptCorrect).length;
+      return {
+        mode,
+        totalDuration: duration,
+        total,
+        correct,
+        score: total > 0 ? Math.round((correct / total) * 100) : 0,
+        questions: answerRecord
+      };
+    },
+
+    calcScore(record) {
+      return record.score;
+    },
+
+    buildPieData(record) {
+      return { correct: record.correct, incorrect: record.total - record.correct };
+    }
+  };
+
+  // ── Clipboard ────────────────────────────────────────────────────────────────
+  const Clipboard = {
+    // A pasted prompt has no access to the rendered chart, so describe the
+    // underlying data in text — an LLM can reason about coordinates/equations
+    // just as well as a picture, and this keeps the prompt copy-paste-able.
+    buildGraphDescription(graph) {
+      const lines = [`[Graph: "${graph.title}"]`, `X-axis: ${graph.x_label}`, `Y-axis: ${graph.y_label}`];
+      if (graph.type === 'points') {
+        lines.push('Data points: ' + graph.data.map(([x, y]) => `(${x}, ${y})`).join(', '));
+      } else if (graph.type === 'equation') {
+        lines.push(`Equation: y = ${graph.data}`);
+        if (graph.x_range) lines.push(`X range: [${graph.x_range[0]}, ${graph.x_range[1]}]`);
+      }
+      if (graph.y_range) lines.push(`Y range: [${graph.y_range[0]}, ${graph.y_range[1]}]`);
+      return lines.join('\n');
+    },
+
+    buildPrompt(question, chosenIndex) {
+      const letters = ['A', 'B', 'C', 'D'];
+      const lines = [
+        `Explain why "${question.answers[question.correct]}" is the correct answer for this question:`,
+        '',
+        question.question
+      ];
+      if (question.graph) {
+        lines.push('', this.buildGraphDescription(question.graph));
+      }
+      lines.push(
+        '',
+        'The options were:',
+        ...question.answers.map((a, i) => `${letters[i]}) ${a}`),
+        '',
+        `I chose: ${question.answers[chosenIndex]}`
+      );
+      return lines.join('\n');
+    }
+  };
+
+  // ── Quiz rendering ───────────────────────────────────────────────────────────
+  let _testSelectedIndex = -1;
+
+  function renderQuizQuestion() {
+    const q = QuizEngine.questions[QuizEngine.order[QuizEngine.currentIdx]];
+    const total = QuizEngine.order.length;
+    const current = QuizEngine.currentIdx + 1;
+
+    QuizEngine.questionStart = Date.now();
+    _testSelectedIndex = -1;
+
+    document.getElementById('quiz-progress-text').textContent = `${current} of ${total}`;
+    document.getElementById('quiz-progress-fill').style.width =
+      ((current - 1) / total * 100) + '%';
+
+    const qText = document.getElementById('quiz-question-text');
+    qText.textContent = q.question;
+    Renderer.renderKaTeX(qText);
+
+    const graphArea = document.getElementById('quiz-graph-area');
+    if (q.graph) {
+      graphArea.style.display = 'block';
+      Renderer.renderGraph(q.graph, document.getElementById('quiz-graph-canvas'));
+    } else {
+      graphArea.style.display = 'none';
+      if (Renderer._chart) { Renderer._chart.destroy(); Renderer._chart = null; }
+    }
+
+    document.querySelectorAll('.answer-btn').forEach((btn, i) => {
+      btn.disabled = false;
+      btn.className = 'answer-btn';
+      btn.style.opacity = '';
+      const textEl = btn.querySelector('.answer-text');
+      textEl.textContent = q.answers[i];
+      Renderer.renderKaTeX(textEl);
+    });
+
+    const feedback = document.getElementById('quiz-feedback');
+    feedback.style.visibility = 'hidden';
+    const msg = document.getElementById('quiz-feedback-msg');
+    msg.textContent = '';
+    msg.className = '';
+
+    document.getElementById('quiz-copy-btn').style.display = 'none';
+
+    const nextBtn = document.getElementById('quiz-next-btn');
+    nextBtn.style.display = 'none';
+    nextBtn.textContent = current === total ? 'See Results' : 'Next →';
+  }
+
+  function handlePracticeClick(chosenIndex) {
+    const q = QuizEngine.questions[QuizEngine.order[QuizEngine.currentIdx]];
+    const correct = chosenIndex === q.correct;
+
+    // Record first attempt (subsequent clicks on wrong answers are ignored for stats)
+    QuizEngine.submitAnswer(chosenIndex);
+
+    const btns = document.querySelectorAll('.answer-btn');
+
+    // Clear any previous wrong highlight so the user can see which one they just picked
+    btns.forEach(b => {
+      b.classList.remove('wrong-answer');
+      b.style.opacity = '';
+    });
+
+    const msg = document.getElementById('quiz-feedback-msg');
+    const feedback = document.getElementById('quiz-feedback');
+
+    if (correct) {
+      btns[chosenIndex].classList.add('correct-answer');
+      btns.forEach(b => { b.disabled = true; });
+      msg.textContent = 'Correct!';
+      msg.className = 'correct';
+    } else {
+      btns[chosenIndex].classList.add('wrong-answer');
+      // Leave all other buttons enabled — user keeps guessing
+      msg.textContent = 'Incorrect — try again';
+      msg.className = 'incorrect';
+    }
+    document.getElementById('quiz-next-btn').style.display = '';
+
+    const copyBtn = document.getElementById('quiz-copy-btn');
+    copyBtn.style.display = '';
+    copyBtn.onclick = () => {
+      const prompt = Clipboard.buildPrompt(q, chosenIndex);
+      navigator.clipboard.writeText(prompt).then(() => {
+        const original = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = original; }, 1500);
+      }).catch(err => console.warn('Clipboard write failed:', err));
+    };
+
+    feedback.style.visibility = 'visible';
+  }
+
+  function handleTestClick(chosenIndex) {
+    _testSelectedIndex = chosenIndex;
+    const btns = document.querySelectorAll('.answer-btn');
+    btns.forEach(b => b.classList.remove('selected-answer'));
+    btns[chosenIndex].classList.add('selected-answer');
+    document.getElementById('quiz-next-btn').style.display = '';
+    document.getElementById('quiz-feedback').style.visibility = 'visible';
+  }
+
+  function initQuizScreen() {
+    document.getElementById('quiz-abandon-btn').addEventListener('click', () => {
+      Router.showScreen('home-screen');
+    });
+
+    document.querySelectorAll('.answer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index, 10);
+        if (QuizEngine.mode === 'test') {
+          handleTestClick(idx);
+        } else {
+          handlePracticeClick(idx);
+        }
+      });
+    });
+
+    document.getElementById('quiz-next-btn').addEventListener('click', () => {
+      if (QuizEngine.mode === 'test' && _testSelectedIndex !== -1) {
+        QuizEngine.submitAnswer(_testSelectedIndex);
+      }
+      QuizEngine.nextQuestion();
+    });
+  }
+
+  // ── Stats screen ─────────────────────────────────────────────────────────────
+  function formatDuration(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  function initStatsScreen() {
+    document.getElementById('stats-home-btn').addEventListener('click', () => {
+      Router.showScreen('home-screen');
+    });
+
+    document.getElementById('stats-review-btn').addEventListener('click', () => {
+      openReviewScreen();
+    });
+
+    document.getElementById('stats-retake-btn').addEventListener('click', () => {
+      if (QuizEngine.wasRandom) {
+        document.getElementById('retake-modal').classList.add('visible');
+      } else {
+        QuizEngine.startQuiz(QuizEngine.questions, QuizEngine.mode, QuizEngine.order, false);
+        Router.showScreen('quiz-screen');
+      }
+    });
+
+    document.getElementById('retake-same-btn').addEventListener('click', () => {
+      document.getElementById('retake-modal').classList.remove('visible');
+      QuizEngine.startQuiz(QuizEngine.questions, QuizEngine.mode, QuizEngine.order, true);
+      Router.showScreen('quiz-screen');
+    });
+
+    document.getElementById('retake-random-btn').addEventListener('click', () => {
+      document.getElementById('retake-modal').classList.remove('visible');
+      const newOrder = QuizEngine.questions.map((_, i) => i).sort(() => Math.random() - 0.5);
+      QuizEngine.startQuiz(QuizEngine.questions, QuizEngine.mode, newOrder, true);
+      Router.showScreen('quiz-screen');
+    });
+  }
+
+  // ── Review screen ────────────────────────────────────────────────────────────
+  const ReviewScreen = {
+    questions: [],
+    order: [],
+    currentIdx: 0,
+    origin: 'stats-screen'
+  };
+
+  function openReviewScreen(questions, order, origin) {
+    ReviewScreen.questions = questions || QuizEngine.questions;
+    ReviewScreen.order = order || QuizEngine.order;
+    ReviewScreen.origin = origin || 'stats-screen';
+    ReviewScreen.currentIdx = 0;
+    renderReviewQuestion();
+    Router.showScreen('review-screen');
+  }
+
+  function renderReviewQuestion() {
+    const q = ReviewScreen.questions[ReviewScreen.order[ReviewScreen.currentIdx]];
+    const total = ReviewScreen.order.length;
+    const current = ReviewScreen.currentIdx + 1;
+
+    document.getElementById('review-progress-text').textContent = `${current} of ${total}`;
+
+    const qText = document.getElementById('review-question-text');
+    qText.textContent = q.question;
+    Renderer.renderKaTeX(qText);
+
+    const graphArea = document.getElementById('review-graph-area');
+    if (q.graph) {
+      graphArea.style.display = 'block';
+      Renderer.renderGraph(q.graph, document.getElementById('review-graph-canvas'));
+    } else {
+      graphArea.style.display = 'none';
+      if (Renderer._chart) { Renderer._chart.destroy(); Renderer._chart = null; }
+    }
+
+    document.querySelectorAll('#review-answer-list .answer-btn').forEach((btn, i) => {
+      btn.className = 'answer-btn';
+      if (i === q.correct) btn.classList.add('correct-answer');
+      const textEl = btn.querySelector('.answer-text');
+      textEl.textContent = q.answers[i];
+      Renderer.renderKaTeX(textEl);
+    });
+
+    document.getElementById('review-prev-btn').disabled = current === 1;
+    document.getElementById('review-next-btn').disabled = current === total;
+  }
+
+  function initReviewScreen() {
+    document.getElementById('review-back-btn').addEventListener('click', () => {
+      Router.showScreen(ReviewScreen.origin);
+    });
+
+    document.getElementById('review-prev-btn').addEventListener('click', () => {
+      if (ReviewScreen.currentIdx > 0) {
+        ReviewScreen.currentIdx--;
+        renderReviewQuestion();
+      }
+    });
+
+    document.getElementById('review-next-btn').addEventListener('click', () => {
+      if (ReviewScreen.currentIdx < ReviewScreen.order.length - 1) {
+        ReviewScreen.currentIdx++;
+        renderReviewQuestion();
+      }
+    });
+  }
+
+  // ── Flashcard screen ─────────────────────────────────────────────────────────
+  function renderFlashCard() {
+    const cardEl = document.getElementById('flash-card');
+    cardEl.classList.remove('flipped', 'sort-known', 'sort-learning');
+
+    // Nothing matched the filter from the start (e.g. "Drill Still Learning" right
+    // after a round where everything just got marked Know It) — distinct from
+    // actually finishing a non-empty round, so it gets its own message.
+    if (FlashEngine.deck.length === 0) {
+      document.getElementById('flash-active-area').style.display = 'none';
+      document.getElementById('flash-complete-area').style.display = 'block';
+      document.getElementById('flash-progress-text').textContent = '';
+      document.getElementById('flash-complete-title').textContent = 'All Caught Up!';
+      document.getElementById('flash-complete-summary').textContent =
+        'Every card in this deck is already marked Know It — nothing left to drill.';
+      document.getElementById('flash-drill-learning-btn').style.display = 'none';
+      return;
+    }
+
+    if (FlashEngine.isComplete()) {
+      document.getElementById('flash-active-area').style.display = 'none';
+      document.getElementById('flash-complete-area').style.display = 'block';
+      document.getElementById('flash-progress-text').textContent = '';
+      document.getElementById('flash-complete-title').textContent = 'Round Complete';
+
+      const total = FlashEngine.order.length;
+      const knownCount = FlashEngine.roundKnown.size;
+      const learningCount = FlashEngine.roundLearning.size;
+      document.getElementById('flash-complete-summary').textContent = learningCount > 0
+        ? `${knownCount} / ${total} known. ${learningCount} card(s) marked Still Learning this round.`
+        : `${knownCount} / ${total} known — nailed every card this round!`;
+
+      const continueBtn = document.getElementById('flash-drill-learning-btn');
+      continueBtn.style.display = learningCount > 0 ? '' : 'none';
+      return;
+    }
+
+    document.getElementById('flash-active-area').style.display = 'block';
+    document.getElementById('flash-complete-area').style.display = 'none';
+
+    const card = FlashEngine.currentCard();
+    const progress = FlashEngine.progress();
+    document.getElementById('flash-progress-text').textContent =
+      `Card ${progress.current} of ${progress.total}`;
+
+    const frontEl = document.getElementById('flash-front-text');
+    const backEl = document.getElementById('flash-back-text');
+    frontEl.textContent = card.front;
+    backEl.textContent = card.back;
+    Renderer.renderKaTeX(frontEl);
+    Renderer.renderKaTeX(backEl);
+  }
+
+  let _flashSorting = false;
+
+  function sortCurrentCard(pile) {
+    if (_flashSorting) return; // ignore extra clicks during the animation window
+    _flashSorting = true;
+
+    const cardEl = document.getElementById('flash-card');
+    document.getElementById('flash-known-btn').disabled = true;
+    document.getElementById('flash-learning-btn').disabled = true;
+    cardEl.classList.add(pile === 'known' ? 'sort-known' : 'sort-learning');
+
+    setTimeout(() => {
+      FlashEngine.sortCard(pile);
+      renderFlashCard();
+      document.getElementById('flash-known-btn').disabled = false;
+      document.getElementById('flash-learning-btn').disabled = false;
+      _flashSorting = false;
+    }, 350);
+  }
+
+  function initFlashcardScreen() {
+    document.getElementById('flash-back-btn').addEventListener('click', () => {
+      Router.showScreen('home-screen');
+    });
+
+    document.getElementById('flash-card').addEventListener('click', () => {
+      if (FlashEngine.isComplete() || _flashSorting) return;
+      FlashEngine.flip();
+      document.getElementById('flash-card').classList.toggle('flipped', FlashEngine.flipped);
+    });
+
+    document.getElementById('flash-known-btn').addEventListener('click', () => sortCurrentCard('known'));
+    document.getElementById('flash-learning-btn').addEventListener('click', () => sortCurrentCard('learning'));
+
+    document.getElementById('flash-drill-toggle').addEventListener('change', (e) => {
+      FlashEngine.startFlash(FlashEngine.allQuestions, {
+        drillMode: e.target.checked ? 'learning' : 'all',
+        randomOrder: FlashEngine.randomOrder
+      });
+      renderFlashCard();
+    });
+
+    document.getElementById('flash-random-toggle').addEventListener('change', (e) => {
+      FlashEngine.startFlash(FlashEngine.allQuestions, {
+        drillMode: FlashEngine.drillMode,
+        randomOrder: e.target.checked
+      });
+      renderFlashCard();
+    });
+
+    document.getElementById('flash-restart-btn').addEventListener('click', () => {
+      document.getElementById('flash-drill-toggle').checked = false;
+      FlashEngine.startFlash(FlashEngine.allQuestions, { drillMode: 'all', randomOrder: FlashEngine.randomOrder });
+      renderFlashCard();
+    });
+
+    document.getElementById('flash-drill-learning-btn').addEventListener('click', () => {
+      document.getElementById('flash-drill-toggle').checked = false;
+      FlashEngine.continueWithRoundLearning();
+      renderFlashCard();
+    });
+  }
+
+  // ── Error toast ──────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const toast = document.getElementById('error-toast');
+    document.getElementById('error-toast-msg').textContent = msg;
+    toast.classList.add('visible');
+  }
+
+  // ── File history grid ────────────────────────────────────────────────────────
+  function renderFileHistory() {
+    const grid = document.getElementById('file-history-grid');
+    const emptyState = document.getElementById('empty-state');
+    const history = Storage.getHistory();
+
+    grid.innerHTML = '';
+
+    if (history.length === 0) {
+      emptyState.style.display = 'block';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    history.forEach(file => {
+      const card = document.createElement('div');
+      card.className = 'file-card glass-card';
+      card.innerHTML =
+        '<button class="delete-btn" title="Remove from history">&times;</button>' +
+        '<h3></h3>' +
+        '<div class="meta"></div>';
+      card.querySelector('h3').textContent = file.title;
+      card.querySelector('.meta').textContent =
+        file.count + ' questions · ' + file.lastOpened;
+
+      card.querySelector('.delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        Storage.deleteFile(file.title);
+        renderFileHistory();
+      });
+
+      card.addEventListener('click', () => {
+        // Update lastOpened, re-save, then load
+        const updated = Object.assign({}, file, {
+          lastOpened: new Date().toLocaleDateString()
+        });
+        Storage.saveFile(updated);
+        App.loadFile(updated);
+        renderFileHistory();
+        openModeScreen();
+      });
+
+      grid.appendChild(card);
+    });
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  function initDropZone() {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-picker-input');
+
+    document.getElementById('load-file-btn').addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      FileLoader.handleDrop(e);
+    });
+
+    fileInput.addEventListener('change', (e) => FileLoader.handlePicker(e));
+  }
+
+  function initGenerateSection() {
+    const copyBtn = document.getElementById('copy-spec-btn');
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(FORMAT_SPEC_MD).then(() => {
+        const original = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = original; }, 1500);
+      }).catch(err => console.warn('Clipboard write failed:', err));
+    });
+  }
+
+  function openModeScreen() {
+    const file = App.currentFile;
+    document.getElementById('mode-title').textContent = file.title;
+    document.getElementById('mode-deck-count').textContent = file.count + ' questions';
+
+    // Quiz decks (question/answers/correct) and flashcard decks (front/back)
+    // are structurally different — only offer the mode(s) the loaded file
+    // actually supports instead of letting a mismatched mode get picked.
+    const deckType = file.data.type === 'flashcard' ? 'flashcard' : 'quiz';
+    const defaultMode = deckType === 'flashcard' ? 'flashcard' : 'practice';
+
+    document.querySelector('[data-mode="practice"]').style.display = deckType === 'quiz' ? '' : 'none';
+    document.querySelector('[data-mode="test"]').style.display = deckType === 'quiz' ? '' : 'none';
+    document.querySelector('[data-mode="review"]').style.display = deckType === 'quiz' ? '' : 'none';
+    document.querySelector('[data-mode="flashcard"]').style.display = deckType === 'flashcard' ? '' : 'none';
+
+    // Reset to defaults each time
+    App.selectedMode = defaultMode;
+    App.randomOrder = false;
+    document.getElementById('random-order-toggle').checked = false;
+    document.querySelectorAll('.mode-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.mode === defaultMode);
+    });
+    document.getElementById('random-toggle-label').style.visibility = defaultMode === 'flashcard' ? 'hidden' : 'visible';
+
+    Router.showScreen('mode-screen');
+  }
+
+  function initModeScreen() {
+    document.getElementById('mode-back-btn').addEventListener('click', () => {
+      Router.showScreen('home-screen');
+    });
+
+    // Mode card selection
+    document.querySelectorAll('.mode-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        App.selectedMode = card.dataset.mode;
+        // Hide random toggle for flashcard — it has its own toggle inside the flashcard screen
+        document.getElementById('random-toggle-label').style.visibility =
+          App.selectedMode === 'flashcard' ? 'hidden' : 'visible';
+      });
+    });
+
+    // Random order toggle
+    document.getElementById('random-order-toggle').addEventListener('change', (e) => {
+      App.randomOrder = e.target.checked;
+    });
+
+    // Start button
+    document.getElementById('mode-start-btn').addEventListener('click', () => {
+      if (!App.currentFile) return;
+      const questions = App.currentFile.data.questions;
+      const order = App.randomOrder
+        ? questions.map((_, i) => i).sort(() => Math.random() - 0.5)
+        : questions.map((_, i) => i);
+
+      if (App.selectedMode === 'flashcard') {
+        document.getElementById('flash-drill-toggle').checked = false;
+        document.getElementById('flash-random-toggle').checked = App.randomOrder;
+        FlashEngine.startFlash(questions, { drillMode: 'all', randomOrder: App.randomOrder });
+        renderFlashCard();
+        Router.showScreen('flashcard-screen');
+      } else if (App.selectedMode === 'review') {
+        openReviewScreen(questions, order, 'mode-screen');
+      } else {
+        QuizEngine.startQuiz(questions, App.selectedMode, order, App.randomOrder);
+        Router.showScreen('quiz-screen');
+      }
+    });
+  }
+
+  function initErrorToast() {
+    document.getElementById('error-toast-close').addEventListener('click', () => {
+      document.getElementById('error-toast').classList.remove('visible');
+    });
+  }
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────────
+  function initKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      const activeScreen = document.querySelector('.screen.active');
+      if (!activeScreen) return;
+
+      if (activeScreen.id === 'quiz-screen') {
+        if (['1', '2', '3', '4'].includes(e.key)) {
+          const btn = document.querySelectorAll('.answer-btn')[parseInt(e.key, 10) - 1];
+          if (btn && !btn.disabled) btn.click();
+        } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
+          const nextBtn = document.getElementById('quiz-next-btn');
+          if (nextBtn && nextBtn.style.display !== 'none') {
+            e.preventDefault();
+            nextBtn.click();
+          }
+        }
+      } else if (activeScreen.id === 'review-screen') {
+        if (e.key === 'ArrowLeft') {
+          const btn = document.getElementById('review-prev-btn');
+          if (btn && !btn.disabled) btn.click();
+        } else if (e.key === 'ArrowRight') {
+          const btn = document.getElementById('review-next-btn');
+          if (btn && !btn.disabled) btn.click();
+        }
+      } else if (activeScreen.id === 'flashcard-screen') {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          const cardEl = document.getElementById('flash-card');
+          if (cardEl) cardEl.click();
+        }
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initDropZone();
+    initModeScreen();
+    initQuizScreen();
+    initStatsScreen();
+    initReviewScreen();
+    initFlashcardScreen();
+    initErrorToast();
+    initKeyboardShortcuts();
+    initGenerateSection();
+    renderFileHistory();
+    Router.showScreen('home-screen');
+  });
+
+})();
+</script>
+
+</body>
+</html>

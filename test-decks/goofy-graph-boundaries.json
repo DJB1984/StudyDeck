@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Goofy Graph Boundaries",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "$y = \\sin(x)$ plotted across a huge $x$ range. Many tight oscillations expected.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "equation",
+        "data": "Math.sin(x)",
+        "x_range": [
+          -1000,
+          1000
+        ],
+        "x_label": "x",
+        "y_label": "sin(x)",
+        "title": "Huge x_range: [-1000, 1000]"
+      }
+    },
+    {
+      "id": "q2",
+      "question": "Tiny-scale data points — values in the thousandths.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "points",
+        "data": [
+          [
+            0,
+            0
+          ],
+          [
+            0.001,
+            0.0004
+          ],
+          [
+            0.002,
+            0.0016
+          ],
+          [
+            0.003,
+            0.0036
+          ]
+        ],
+        "x_label": "x (thousandths)",
+        "y_label": "y (thousandths)",
+        "title": "Tiny scale, auto-fit"
+      }
+    },
+    {
+      "id": "q3",
+      "question": "A straight line $y = x$ forced into a wildly oversized y-axis — should look almost flat.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "equation",
+        "data": "x",
+        "x_range": [
+          -5,
+          5
+        ],
+        "y_range": [
+          -10000,
+          10000
+        ],
+        "x_label": "x",
+        "y_label": "y",
+        "title": "y = x, y_range pinned to [-10000, 10000]"
+      }
+    },
+    {
+      "id": "q4",
+      "question": "All-negative quadrant — both axes pinned below zero.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "points",
+        "data": [
+          [
+            -50,
+            -100
+          ],
+          [
+            -40,
+            -90
+          ],
+          [
+            -30,
+            -80
+          ],
+          [
+            -20,
+            -70
+          ],
+          [
+            -10,
+            -60
+          ]
+        ],
+        "x_range": [
+          -50,
+          -10
+        ],
+        "y_range": [
+          -100,
+          -50
+        ],
+        "x_label": "x (negative)",
+        "y_label": "y (negative)",
+        "title": "All-negative bounds"
+      }
+    },
+    {
+      "id": "q5",
+      "question": "$y = x^2$ with the y-axis deliberately clipped to $[0, 2]$ — the curve should run off the top of the chart.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "equation",
+        "data": "x * x",
+        "x_range": [
+          -3,
+          3
+        ],
+        "y_range": [
+          0,
+          2
+        ],
+        "x_label": "x",
+        "y_label": "y (clipped)",
+        "title": "y = x², y_range clipped to [0, 2]"
+      }
+    },
+    {
+      "id": "q6",
+      "question": "Reversed x_range — min and max swapped on purpose to see how the chart handles it.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "equation",
+        "data": "x",
+        "x_range": [
+          10,
+          -10
+        ],
+        "x_label": "x",
+        "y_label": "y",
+        "title": "Reversed x_range: [10, -10]"
+      }
+    },
+    {
+      "id": "q7",
+      "question": "Single data point — degenerate case with nothing to draw a line between.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "points",
+        "data": [
+          [
+            5,
+            5
+          ]
+        ],
+        "x_label": "x",
+        "y_label": "y",
+        "title": "Single point"
+      }
+    },
+    {
+      "id": "q8",
+      "question": "$y = \\sqrt{x}$ plotted over a range that dips negative — undefined for $x < 0$, should fall back to 'Graph unavailable'.",
+      "answers": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "equation",
+        "data": "Math.sqrt(x)",
+        "x_range": [
+          -5,
+          5
+        ],
+        "x_label": "x",
+        "y_label": "y",
+        "title": "y = sqrt(x), domain error expected"
+      }
+    }
+  ]
+}

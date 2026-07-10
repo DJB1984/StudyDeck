@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Complex Formulas",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Evaluate $\\sin(x)$ across two full periods. What is $\\sin(0)$?",
+      "answers": [
+        "$0$",
+        "$1$",
+        "$-1$",
+        "$\\frac{1}{2}$"
+      ],
+      "correct": 0,
+      "graph": {
+        "type": "equation",
+        "data": "Math.sin(x)",
+        "x_range": [
+          -6.283185,
+          6.283185
+        ],
+        "x_label": "$x$ (radians)",
+        "y_label": "$\\sin(x)$",
+        "title": "$y = \\sin(x)$"
+      }
+    },
+    {
+      "id": "q2",
+      "question": "Given $f(x) = e^x$, what is $f(0)$?",
+      "answers": [
+        "$0$",
+        "$1$",
+        "$e$",
+        "$\\infty$"
+      ],
+      "correct": 1,
+      "graph": {
+        "type": "equation",
+        "data": "Math.exp(x)",
+        "x_range": [
+          -2,
+          2
+        ],
+        "x_label": "$x$",
+        "y_label": "$e^x$",
+        "title": "$y = e^x$"
+      }
+    },
+    {
+      "id": "q3",
+      "question": "The hyperbola $y = \\frac{1}{x}$ for $x \\in [1, 10]$. As $x$ increases, $y$:",
+      "answers": [
+        "Increases",
+        "Decreases toward 0",
+        "Stays constant",
+        "Oscillates"
+      ],
+      "correct": 1,
+      "graph": {
+        "type": "equation",
+        "data": "1 / x",
+        "x_range": [
+          1,
+          10
+        ],
+        "x_label": "$x$",
+        "y_label": "$\\frac{1}{x}$",
+        "title": "$y = \\frac{1}{x}$"
+      }
+    },
+    {
+      "id": "q4",
+      "question": "Cubic with roots: $y = x^3 - 3x + 1$. Roughly how many times does it cross the x-axis on $[-3,3]$?",
+      "answers": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "correct": 3,
+      "graph": {
+        "type": "equation",
+        "data": "Math.pow(x, 3) - 3 * x + 1",
+        "x_range": [
+          -3,
+          3
+        ],
+        "x_label": "$x$",
+        "y_label": "$y$",
+        "title": "$y = x^3 - 3x + 1$"
+      }
+    },
+    {
+      "id": "q5",
+      "question": "Product of two trig functions: $y = \\sin(x)\\cos(2x)$. The graph is:",
+      "answers": [
+        "A straight line",
+        "Periodic with multiple humps",
+        "Monotonically increasing",
+        "Undefined"
+      ],
+      "correct": 1,
+      "graph": {
+        "type": "equation",
+        "data": "Math.sin(x) * Math.cos(2 * x)",
+        "x_range": [
+          -6.283185,
+          6.283185
+        ],
+        "x_label": "$x$ (radians)",
+        "y_label": "$\\sin(x)\\cos(2x)$",
+        "title": "$y = \\sin(x)\\cos(2x)$"
+      }
+    },
+    {
+      "id": "q6",
+      "question": "Natural log: $y = \\ln(x)$ for $x \\in (0, 10]$. What happens as $x \\to 0^+$?",
+      "answers": [
+        "$y \\to \\infty$",
+        "$y \\to -\\infty$",
+        "$y \\to 0$",
+        "$y \\to 1$"
+      ],
+      "correct": 1,
+      "graph": {
+        "type": "equation",
+        "data": "Math.log(x)",
+        "x_range": [
+          0.1,
+          10
+        ],
+        "x_label": "$x$",
+        "y_label": "$\\ln(x)$",
+        "title": "$y = \\ln(x)$"
+      }
+    },
+    {
+      "id": "q7",
+      "question": "Quadratic formula: for $ax^2 + bx + c = 0$, the roots are $x = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$. If $a=1, b=-5, c=6$, the roots are:",
+      "answers": [
+        "$2, 3$",
+        "$1, 6$",
+        "$-2, -3$",
+        "$2, -3$"
+      ],
+      "correct": 0
+    },
+    {
+      "id": "q8",
+      "question": "Simplify: $\\displaystyle\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$. What is $\\displaystyle\\sum_{i=1}^{10} i$?",
+      "answers": [
+        "$45$",
+        "$50$",
+        "$55$",
+        "$60$"
+      ],
+      "correct": 2
+    },
+    {
+      "id": "q9",
+      "question": "Which expression is equivalent to $\\dfrac{x^2 - 9}{x - 3}$ for $x \\neq 3$?",
+      "answers": [
+        "$x - 3$",
+        "$x + 3$",
+        "$x^2$",
+        "$\\frac{x}{3}$"
+      ],
+      "correct": 1
+    },
+    {
+      "id": "q10",
+      "question": "Euler's identity: $e^{i\\pi} + 1 = 0$. This relates which five constants?",
+      "answers": [
+        "$e, i, \\pi, 0, 1$",
+        "$e, \\pi, \\phi, 0, 1$",
+        "$\\pi, i, 0, 1, \\infty$",
+        "$e, i, 0, 1, \\infty$"
+      ],
+      "correct": 0
+    }
+  ]
+}

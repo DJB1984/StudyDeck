@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "type": "flashcard",
+  "title": "Flashcard Test — Physics Vocab",
+  "questions": [
+    {
+      "id": "q1",
+      "front": "Velocity",
+      "back": "Speed in a given direction (a vector)"
+    },
+    {
+      "id": "q2",
+      "front": "Acceleration",
+      "back": "Rate of change of velocity over time"
+    },
+    {
+      "id": "q3",
+      "front": "What does $F = ma$ represent?",
+      "back": "Newton's Second Law"
+    },
+    {
+      "id": "q4",
+      "front": "Kinetic Energy",
+      "back": "$KE = \\frac{1}{2}mv^2$"
+    },
+    {
+      "id": "q5",
+      "front": "Potential Energy (gravitational)",
+      "back": "$PE = mgh$"
+    },
+    {
+      "id": "q6",
+      "front": "Newton's First Law",
+      "back": "An object in motion stays in motion unless acted on by a net force"
+    },
+    {
+      "id": "q7",
+      "front": "Newton's Third Law",
+      "back": "For every action, there is an equal and opposite reaction"
+    },
+    {
+      "id": "q8",
+      "front": "Momentum",
+      "back": "$p = mv$, mass times velocity"
+    },
+    {
+      "id": "q9",
+      "front": "Units of Force",
+      "back": "Newtons (N)"
+    },
+    {
+      "id": "q10",
+      "front": "Units of Energy",
+      "back": "Joules (J)"
+    },
+    {
+      "id": "q11",
+      "front": "Gravitational acceleration on Earth (approx.)",
+      "back": "$9.8 \\text{ m/s}^2$"
+    },
+    {
+      "id": "q12",
+      "front": "Conservation of Energy",
+      "back": "Energy cannot be created or destroyed, only transformed"
+    }
+  ]
+}
