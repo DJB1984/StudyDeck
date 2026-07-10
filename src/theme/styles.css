@@ -208,15 +208,23 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--accent-light);
 }
 
-/* Compact "need a new set" row shown to returning users */
-#new-set-row {
+/* Home header: title/tagline left, "Need a new set?" corner right (R22).
+   Wraps on narrow viewports so the corner never collides with the title. */
+#home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+#new-set-corner {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
-  margin-top: 24px;
   color: var(--text-secondary);
   font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 8px;
 }
 
 /* Error toast */

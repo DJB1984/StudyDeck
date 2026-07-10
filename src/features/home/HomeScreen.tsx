@@ -14,7 +14,7 @@ import { stripCodeFences } from '../../lib/deckText';
 import { RotatingWord } from './RotatingWord';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
-const AI_NAMES = ['ChatGPT', 'Claude', 'Gemini', 'Grok'];
+const AI_NAMES = ['ChatGPT', 'Claude', 'Gemini', 'Grok', 'Copilot', 'Perplexity'];
 const OUTPUTS = ['flashcards', 'quizzes', 'tests'];
 
 function today(): string {
@@ -220,14 +220,28 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
 
   return (
     <section className="screen">
-      <h1>StudyDeck</h1>
-      {/* R14/R15: two rotating slots, staggered so they can never flip together.
-          gcd(3600, 2400) = 1200; the 600ms offset keeps every pair of flips
-          ≥600ms apart forever — more than the 250ms roll, so no overlap. */}
-      <p className="subtitle tagline">
-        Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to turn your
-        notes into <RotatingWord words={OUTPUTS} intervalMs={2400} />.
-      </p>
+      {/* One header for both branches (R11/R22): title + tagline on the left,
+          and — only once at least one deck exists — the prominent "Need a new
+          set?" corner on the right. Empty state keeps the corner out so the
+          GetStartedCard hero stays the single first-run path. */}
+      <div id="home-header">
+        <div className="home-header-left">
+          <h1>StudyDeck</h1>
+          {/* R14/R15: two rotating slots, staggered so they can never flip together.
+              gcd(3600, 2400) = 1200; the 600ms offset keeps every pair of flips
+              ≥600ms apart forever — more than the 250ms roll, so no overlap. */}
+          <p className="subtitle tagline">
+            Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to turn
+            your notes into <RotatingWord words={OUTPUTS} intervalMs={2400} />.
+          </p>
+        </div>
+        {!isEmpty && (
+          <div id="new-set-corner">
+            <span>Need a new set?</span>
+            <CopyPromptButton />
+          </div>
+        )}
+      </div>
 
       {isEmpty ? (
         // R11: the get-started card IS the empty state, rendered as the hero.
@@ -236,7 +250,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
           {addDeckSurface}
         </>
       ) : (
-        // R22: returning users see their decks first; helper shrinks to one row.
+        // R22: returning users see their decks first, then the add-deck surface.
         <>
           <div id="file-history-grid">
             {history.map((file) => (
@@ -260,10 +274,6 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
             ))}
           </div>
           {addDeckSurface}
-          <div id="new-set-row">
-            <span>Need a new set?</span>
-            <CopyPromptButton className="btn-ghost" />
-          </div>
         </>
       )}
     </section>
