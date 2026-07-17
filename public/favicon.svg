@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Two stacked study cards in the app's accent purples; transparent
+       background so it reads cleanly on both light and dark tab bars. -->
+  <rect x="13" y="11" width="30" height="42" rx="7" fill="#a78bfa" opacity="0.55" transform="rotate(-8 28 32)"/>
+  <rect x="21" y="12" width="30" height="42" rx="7" fill="#7c3aed" transform="rotate(5 36 33)"/>
+  <text x="36" y="41" text-anchor="middle" font-family="'Segoe UI', -apple-system, sans-serif" font-size="24" font-weight="700" fill="#f1f0ff" transform="rotate(5 36 33)">S</text>
+</svg>

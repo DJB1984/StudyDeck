@@ -6,6 +6,9 @@ dist/
 dist-ssr/
 *.tsbuildinfo
 
+# Deploy target credentials/config (per deploy-hostgator skill — not repo business)
+deploy.config.json
+
 # Local env / editor
 *.local
 .DS_Store
