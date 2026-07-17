@@ -73,6 +73,15 @@ The agent is auto-discovered from `.claude/agents/requirements-writer.md` (proje
 
 Dark liquid-glass aesthetic. Color tokens live in `src/theme/tokens.css` (isolated so a shared cross-project theme can swap in later); component styles in `src/theme/styles.css`. Use the existing `--bg`/`--surface`/`--accent`/etc. tokens rather than introducing new colors.
 
+## Deployment (live site)
+
+The app is LIVE at **https://studydeck.brookslanding.com** (HostGator shared hosting; the subdomain's document root on the server is `~/studydeck`, a sibling of `public_html` — not inside it).
+
+- **Redeploy:** `bash ~/.claude/skills/deploy-hostgator/scripts/deploy.sh` from the repo root (Davis's root-level `deploy-hostgator` skill: builds, uploads over SSH with a tar fallback, then attempts a cache purge).
+- **Config:** project-specific fields live in `deploy.config.json` at the repo root (gitignored — never commit it). Account details (host/port/username/keyPath) come from `~/.claude/deploy-hostgator.defaults.json`; the skill's SKILL.md documents how to update either.
+- **Deploys are manual.** Pushing to GitHub does NOT update the live site — run the deploy script when a change should go live.
+- **Caching:** HostGator's server-side cache can serve the previous deploy for up to ~2h. The script auto-sends an HTTP `PURGE` when `siteUrl` is set (a 501 response means that endpoint doesn't support purging — the cache just expires on its own). Browsers cache favicons extra-aggressively.
+
 ## Key constraints to preserve
 
 - No backend — the app stays a static client-side bundle.
