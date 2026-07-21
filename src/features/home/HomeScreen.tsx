@@ -12,6 +12,7 @@ import { FORMAT_SPEC_MD } from '../../lib/formatSpec';
 import { copyWithFeedback } from '../../lib/clipboard';
 import { stripCodeFences } from '../../lib/deckText';
 import { RotatingWord } from './RotatingWord';
+import { AuthButton } from '../auth/AuthButton';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
 const AI_NAMES = ['ChatGPT', 'Claude', 'Gemini', 'Grok', 'Copilot', 'Perplexity'];
@@ -74,6 +75,14 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   useEffect(() => {
     if (pasteOpen) pasteBoxRef.current?.focus();
   }, [pasteOpen]);
+
+  // Auth.spec.md R15: re-read history after a login-time hydration/migration
+  // bulk-overwrites the local cache — without this, the write succeeds but
+  // an already-mounted Home screen never learns to show it.
+  useEffect(() => {
+    return Storage.subscribe(refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function refresh() {
     setHistory(Storage.getHistory());
@@ -248,12 +257,20 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
             your notes into <RotatingWord words={OUTPUTS} intervalMs={2400} />.
           </p>
         </div>
-        {!isEmpty && (
-          <div id="new-set-corner">
-            <span>Need a new set?</span>
-            <CopyPromptButton />
-          </div>
-        )}
+        {/* Home.spec.md R23: AuthButton is always visible, independent of
+            isEmpty — it does NOT reuse the Copy Prompt corner's gate. It's
+            placed AFTER new-set-corner so it's always the rightmost element —
+            pinned in the same spot whether or not a "Need a new set?" corner
+            is showing, instead of shifting position with isEmpty. */}
+        <div className="home-header-right">
+          {!isEmpty && (
+            <div id="new-set-corner">
+              <span>Need a new set?</span>
+              <CopyPromptButton />
+            </div>
+          )}
+          <AuthButton />
+        </div>
       </div>
 
       {isEmpty ? (

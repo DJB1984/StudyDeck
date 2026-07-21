@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
     "chart.js": "^4.4.4",
     "katex": "^0.16.9",
     "react": "^18.3.1",

@@ -224,8 +224,237 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-secondary);
   font-size: 0.9rem;
   flex-shrink: 0;
+}
+/* margin-top lives here, not on #new-set-corner, so it shifts the WHOLE
+   right-hand group down uniformly (matching the original wrap-breathing-room
+   intent) instead of only one of its two flex children — that mismatch was
+   what made the avatar look 4px off from the Copy Prompt button. */
+.home-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
   margin-top: 8px;
 }
+
+/* Auth */
+.auth-login-btn { flex-shrink: 0; }
+
+/* Fixed-size placeholder so the header row never shifts — the actual panel
+   below is absolutely positioned over this, anchored top-right, and grows
+   OUTSIDE these bounds when expanded without disturbing sibling layout.
+   40px matches .btn's rendered height (Copy Prompt) so the collapsed circle
+   lines up with it exactly. */
+.auth-avatar-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+/* The whole logged-in control is ONE element that IS the avatar circle —
+   there's no separate circular badge sitting inside it. It's a liquid-glass
+   surface (var(--surface)/var(--surface-hover) + backdrop-filter) in BOTH
+   collapsed and expanded states, matching the app's other glass cards —
+   deliberately NOT a solid per-email color, so growing from circle to panel
+   never has to morph between two different visual materials. Anchored to
+   its top-right corner (fixed screen position), so it only ever grows to
+   the left and downward — never disturbing where the Copy Prompt button
+   sits. */
+.auth-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  max-height: 40px;
+  overflow: hidden;
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 260ms ease;
+}
+/* width is NOT set here — it's driven by an inline style in AuthButton.tsx,
+   measured from the actual email text so the panel is exactly as wide as its
+   content (that's what keeps the email looking centered instead of leaving
+   lopsided empty space). Only max-height/background stay class-driven. */
+.auth-panel.expanded {
+  max-height: 150px;
+  background-color: var(--surface-hover);
+}
+.auth-panel.expanded .auth-person-icon {
+  right: 13px;
+}
+
+/* Header row: the person icon is ABSOLUTELY positioned, not a flex child —
+   at the 40px collapsed width, the icon (20px) plus the flex-shrink:0 email
+   span (needed so its measured width isn't compressed, see AuthButton.tsx)
+   don't fit the padded content box and overflow gets clipped asymmetrically
+   by row-reverse packing, which is what made the icon look off-center. Fixed
+   positioning (top/right, centered via translateY) keeps it dead-center in
+   the circle and exactly 13px from the right edge regardless of container
+   width or what the email span is doing. */
+.auth-panel-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+.auth-person-icon {
+  position: absolute;
+  top: 50%;
+  /* (40px collapsed circle - 20px icon) / 2 = 10px — true center. The
+     expanded state overrides this to 13px, matching the email's left-side
+     margin for a balanced look in the wider panel; these are genuinely
+     different values for different container widths, not a typo. */
+  right: 10px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  fill: var(--text-secondary);
+  transition: right 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-email-slide {
+  display: inline-block;
+  flex-shrink: 0;
+  /* Reserve the icon's footprint (13px right padding + 20px icon + 12px
+     gap) on the right so the sliding-in text never renders under it. */
+  margin-left: 13px;
+  margin-right: 45px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 200ms ease, transform 220ms ease;
+}
+.auth-panel.expanded .auth-email-slide {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 90ms;
+}
+
+/* Body row(s) — currently just Log out, laid out so more rows (account
+   info, etc.) can be added below it later without restructuring. Hidden via
+   opacity+visibility (not conditional rendering) so it can fade in/out
+   smoothly, and can't be focused or clicked while visually collapsed. A
+   small downward slide (translateY) makes it read as "sliding out" from
+   under the header, not just fading in place. */
+.auth-panel-body {
+  padding: 2px 14px 14px;
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 180ms ease, transform 200ms ease, visibility 0s linear 200ms;
+}
+.auth-panel.expanded .auth-panel-body {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 180ms ease 110ms, transform 200ms ease 110ms, visibility 0s linear 0s;
+}
+/* A clearly clickable, defined button — not plain ghost text — centered in
+   the body row. */
+.auth-logout-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 7px 24px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.auth-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+.login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.login-modal-card {
+  position: relative;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+}
+.login-modal-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* R4/Phase 6: keeps the "Sending…" state reading as working, not stuck, for
+   the several seconds a paused free-tier Supabase project takes to wake. */
+.login-modal-card .btn:disabled {
+  animation: btn-pulse 1.4s ease-in-out infinite;
+  cursor: default;
+}
+@keyframes btn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.login-modal-desc {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.9rem;
+}
+.login-modal-error {
+  color: var(--incorrect);
+  font-size: 0.85rem;
+  margin: 0;
+}
+.login-email-input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+.login-email-input:focus {
+  outline: none;
+  border-color: var(--accent-light);
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px;
+}
+.modal-close:hover { color: var(--text-primary); }
 
 /* Error toast */
 #error-toast {

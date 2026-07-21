@@ -6,6 +6,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { Deck, FlashCard } from '../../types';
 import { Katex } from '../../components/Math/Katex';
+import { Storage } from '../../lib/Storage';
 import { createFlashEngine, type FlashEngine } from './flashEngine';
 
 interface FlashcardScreenProps {
@@ -82,6 +83,16 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auth.spec.md R15: re-read this deck's pile state after a login-time
+  // hydration/migration bulk-overwrites the local cache.
+  useEffect(() => {
+    return Storage.subscribe(() => {
+      eng.start({ drillMode: eng.drillMode, randomOrder: eng.randomOrder });
+      force();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

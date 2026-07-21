@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+// Supabase project config (see .env.example) — undefined in guest-only setups.
+interface ImportMetaEnv {
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_ANON_KEY?: string;
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 // Raw markdown imports (e.g. the format spec embedded for the Copy button).
 declare module '*.md?raw' {
   const content: string;

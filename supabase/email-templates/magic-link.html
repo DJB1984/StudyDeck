@@ -1,0 +1,62 @@
+<!--
+  StudyDeck branded magic-link email (spec: Auth.spec.md R19).
+  Paste this whole file into the Supabase dashboard:
+    Authentication → Emails → Templates → Magic Link
+  {{ .ConfirmationURL }} is a Supabase template variable — leave it as-is,
+  it's substituted with the real one-time login link at send time.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log in to StudyDeck</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f7;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background-color:#0a0a0f; border-radius:20px;">
+          <tr>
+            <td align="center" style="padding:40px 32px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 26px;">
+                    <span style="font-size:26px; font-weight:700; color:#f1f0ff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">StudyDeck</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom: 14px;">
+                    <span style="font-size:22px; font-weight:700; color:#f1f0ff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">Log in to StudyDeck</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom: 28px;">
+                    <span style="font-size:15px; line-height:1.5; color:rgba(241,240,255,0.6); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                      Click below to finish logging in. This link works once<br/>and expires in 15 minutes.
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom: 26px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block; background-color:#7c3aed; color:#ffffff; font-size:16px; font-weight:600; text-decoration:none; padding:14px 34px; border-radius:12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                      Log in to StudyDeck
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <span style="font-size:13px; color:rgba(241,240,255,0.4); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                      Or paste this link: <a href="{{ .ConfirmationURL }}" style="color:rgba(241,240,255,0.4); text-decoration:none; display:inline-block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom;">{{ .ConfirmationURL }}</a>
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
