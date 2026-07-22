@@ -1,7 +1,11 @@
-// The AI-facing format spec, imported verbatim from the canonical markdown file
-// at build time (?raw). This guarantees the "Copy Format Spec" button always
-// matches studydeck-format-spec.md — no hand-maintained copy to drift out of
-// sync (Home spec R12) — and needs no runtime fetch, so it works offline.
-import formatSpec from '../../studydeck-format-spec.md?raw';
+// The AI-facing prompts, composed at build time (?raw) from one shared schema
+// contract plus a per-variant "how to respond" intro. This guarantees the
+// schema (and the question-quality bar) can never drift between Quick and
+// Guided — there's exactly one copy, referenced by both — and needs no
+// runtime fetch, so it works offline.
+import schemaContract from '../../studydeck-format-spec.md?raw';
+import quickIntro from '../../studydeck-quick-intro.md?raw';
+import guidedIntro from '../../studydeck-guided-intro.md?raw';
 
-export const FORMAT_SPEC_MD: string = formatSpec;
+export const QUICK_PROMPT_MD: string = quickIntro + '\n\n---\n\n' + schemaContract;
+export const GUIDED_PROMPT_MD: string = guidedIntro + '\n\n---\n\n' + schemaContract;

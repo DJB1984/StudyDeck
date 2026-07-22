@@ -3,7 +3,7 @@
 // LaTeX degrades to its raw source string instead of crashing the host component.
 
 import { createElement, useLayoutEffect, useRef } from 'react';
-import type { ElementType } from 'react';
+import type { ElementType, MouseEvent } from 'react';
 import renderMathInElement from 'katex/contrib/auto-render';
 
 // R1: $$ (display) must be matched before $ (inline) so a block isn't parsed as
@@ -27,6 +27,9 @@ interface KatexProps {
   /** Element tag to render into (default span). */
   as?: ElementType;
   className?: string;
+  /** Passthrough hover handlers (e.g. a custom tooltip keyed off the rendered element). */
+  onMouseEnter?: (e: MouseEvent<HTMLElement>) => void;
+  onMouseLeave?: (e: MouseEvent<HTMLElement>) => void;
 }
 
 /**
@@ -34,7 +37,7 @@ interface KatexProps {
  * approach as the legacy app, which keeps KaTeX's DOM mutations from fighting
  * React reconciliation.
  */
-export function Katex({ text, as = 'span', className }: KatexProps) {
+export function Katex({ text, as = 'span', className, onMouseEnter, onMouseLeave }: KatexProps) {
   const ref = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -44,5 +47,5 @@ export function Katex({ text, as = 'span', className }: KatexProps) {
     renderMath(el);
   }, [text]);
 
-  return createElement(as, { ref, className });
+  return createElement(as, { ref, className, onMouseEnter, onMouseLeave });
 }

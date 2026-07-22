@@ -2,7 +2,7 @@
 -- Paste this whole file into the Supabase dashboard's SQL Editor and run it
 -- once. Safe to re-run (uses IF NOT EXISTS / DROP POLICY IF EXISTS guards).
 --
--- Source of truth: design-doc-auth.md "Data Model". Do not hand-edit the
+-- Source of truth: docs/auth/design-doc.md "Data Model". Do not hand-edit the
 -- table shapes without updating that doc too.
 
 create table if not exists decks (
@@ -31,7 +31,7 @@ alter table flash_state enable row level security;
 
 -- RLS is the ONLY thing stopping the browser's public anon key from reading
 -- or writing every user's rows. This is the single most important part of
--- this file — see design-doc-auth.md "Row Level Security is not optional."
+-- this file — see docs/auth/design-doc.md "Row Level Security is not optional."
 
 drop policy if exists "decks_select_own" on decks;
 create policy "decks_select_own" on decks

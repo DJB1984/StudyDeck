@@ -4,11 +4,12 @@
 // decks exist, and paste-to-import removes the save-as-.json hurdle entirely.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Deck, HistoryEntry } from '../../types';
 import { Storage } from '../../lib/Storage';
 import { validateDeck } from '../../lib/DeckValidation';
 import { showError } from '../../lib/toast';
-import { FORMAT_SPEC_MD } from '../../lib/formatSpec';
+import { QUICK_PROMPT_MD, GUIDED_PROMPT_MD } from '../../lib/formatSpec';
 import { copyWithFeedback } from '../../lib/clipboard';
 import { stripCodeFences } from '../../lib/deckText';
 import { RotatingWord } from './RotatingWord';
@@ -22,16 +23,72 @@ function today(): string {
   return new Date().toLocaleDateString();
 }
 
-// R12: label says "Copy Prompt" but the payload is still the full format spec.
+// R12: label says "Copy Prompt" but the payload is a full composed prompt
+// (intro + shared schema contract). Clicking opens a full-screen Quick/Guided
+// choice modal (matching LoginModal's overlay pattern) instead of copying
+// immediately.
 function CopyPromptButton({ className = 'btn' }: { className?: string }) {
   const [label, setLabel] = useState('Copy Prompt');
+  const [modalOpen, setModalOpen] = useState(false);
+
+  function pick(text: string) {
+    setModalOpen(false);
+    copyWithFeedback(text, setLabel, 'Copy Prompt');
+  }
+
   return (
-    <button
-      className={className}
-      onClick={() => copyWithFeedback(FORMAT_SPEC_MD, setLabel, 'Copy Prompt')}
+    <>
+      <button className={className} onClick={() => setModalOpen(true)}>
+        {label}
+      </button>
+      {modalOpen && <CopyPromptModal onPick={pick} onClose={() => setModalOpen(false)} />}
+    </>
+  );
+}
+
+function CopyPromptModal({
+  onPick,
+  onClose,
+}: {
+  onPick: (text: string) => void;
+  onClose: () => void;
+}) {
+  // Portaled to document.body: CopyPromptButton renders inside .glass-card
+  // in one call site (GetStartedCard), and `backdrop-filter` on an ancestor
+  // creates a new containing block for `position: fixed` descendants — so
+  // without a portal this overlay gets trapped inside the card's box
+  // instead of covering the viewport. LoginModal doesn't need this only
+  // because its own ancestor chain happens not to use backdrop-filter.
+  return createPortal(
+    <div
+      className="copy-prompt-modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      {label}
-    </button>
+      <div className="copy-prompt-modal-card glass-card">
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          &times;
+        </button>
+        <h3>Copy a prompt</h3>
+        <p className="copy-prompt-modal-desc">Pick how you want the AI to build your set.</p>
+        <div className="copy-prompt-modal-grid">
+          <button className="copy-prompt-modal-option" onClick={() => onPick(QUICK_PROMPT_MD)}>
+            <div className="copy-prompt-modal-option-title">Quick</div>
+            <div className="copy-prompt-modal-option-desc">
+              Paste your notes and go — fast, no questions asked.
+            </div>
+          </button>
+          <button className="copy-prompt-modal-option" onClick={() => onPick(GUIDED_PROMPT_MD)}>
+            <div className="copy-prompt-modal-option-title">Guided</div>
+            <div className="copy-prompt-modal-option-desc">
+              A few quick questions first, so the set is tailored to what you actually need.
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -254,7 +311,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
               ≥600ms apart forever — more than the 250ms roll, so no overlap. */}
           <p className="subtitle tagline">
             Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to turn
-            your notes into <RotatingWord words={OUTPUTS} intervalMs={2400} />.
+            your notes into interactive <RotatingWord words={OUTPUTS} intervalMs={2400} />.
           </p>
         </div>
         {/* Home.spec.md R23: AuthButton is always visible, independent of

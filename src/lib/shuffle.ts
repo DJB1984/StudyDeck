@@ -5,10 +5,12 @@ export function naturalOrder(n: number): number[] {
   return Array.from({ length: n }, (_, i) => i);
 }
 
-/**
- * A shuffled permutation of 0..n-1. Mirrors the legacy `sort(() => Math.random() - 0.5)`
- * approach — order only needs to feel random for study, not be cryptographically uniform.
- */
-export function shuffledOrder(n: number): number[] {
-  return naturalOrder(n).sort(() => Math.random() - 0.5);
+/** Fisher-Yates shuffle — returns a new array, never mutates the input. */
+export function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }

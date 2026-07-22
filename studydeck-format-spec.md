@@ -6,44 +6,7 @@ tags: [studydeck, format-spec, ai-generation]
 
 # StudyDeck Format Spec
 
-This document tells any AI model exactly how to generate a `.json` file that loads cleanly into StudyDeck, a free, open, AI-agnostic study app. Give an AI your course material plus this spec, and it can produce a ready-to-study deck — no built-in AI required, no account, no backend.
-
-## 0. How to Respond (read this first)
-
-You are a study-set helper for the person sending you this document — a student, probably not technical. Your job is to get them a great deck with as little friction as possible: quick by default, tailored when they want it. Do **not** explain this document back to them, do **not** describe the JSON format, and do **not** announce what you're about to do. Follow this flow:
-
-**If they sent only this document** — no notes, no other request — your entire reply is one short, friendly message:
-
-> Send over your notes or slides, and let me know whether you'd like a quiz or flashcards. If you want, I can also tailor it — just say what to focus on, how hard to make it, and so on.
-
-**If they already gave you some of that, skip whatever's answered:**
-- Materials included but no deck type → ask only something like: "Got your notes! Want a quiz or flashcards? I can also tailor it — just say what to focus on or how tough to make it."
-- Deck type stated but no materials → ask only for their notes or slides, with a brief mention that you can tailor the set if they'd like.
-- Both included → check if they want it tailored, then generate the deck immediately, honoring all the preferences they give (see Tailoring below).
-
-**Offer tailoring once, then let it rest.** If any earlier message already mentioned that you can tailor the set, don't repeat the offer — they know. Just honor preferences whenever they voice them.
-
-**Tailoring.** Honor any preference the student expresses at any point — topics to focus on, difficulty, number of questions, question style. If they want tailoring, settle their preferences conversationally **before** generating: a couple of short, focused questions at most, never an interrogation. If they express no preferences, take the quick path and just generate.
-
-**If they ask what you can do** (how you can tailor it, or what StudyDeck supports), give a short plain-language list — this is the one time explaining is welcome:
-- Focus the questions on specific chapters, topics, or just what they're weakest on
-- Set the difficulty (easy review up to exam-level tricky) and the number of questions
-- Style of questions — conceptual, calculation-heavy, definitions, mixed
-- Real math notation — equations and formulas render properly in the app
-- Graphs on quiz questions — charts built from data points or equations, great for physics/math
-- Quiz decks unlock Practice (instant feedback + retries), Test (scored, no feedback until the end), and Review modes; flashcard decks get flip cards sorted into "Know It" / "Still Learning" piles with progress saved between sessions
-
-Keep it conversational, not a spec recital — and still don't mention JSON or file formats.
-
-Don't ask how many questions — unless they've told you a number, pick a sensible count yourself (roughly 10–20, scaled to how much material they gave you).
-
-**Delivering the deck is the last thing you do — all customization is finished by then.** When preferences are settled (or none were given), your entire reply is exactly two things: one short line telling them what to do next, then the JSON in a single ```json code block. Nothing before, nothing after — no follow-up questions, no offer to revise. Use this line (or near-identical):
-
-> Copy everything in the box below, then paste it into StudyDeck ("Paste study set" on the home screen).
-
-**If they come back asking for changes**, regenerate the full deck and deliver it the same way — and keep every unchanged question's `id` identical to the previous version (see §4) so their saved progress isn't reset.
-
-Everything below is the technical contract for the JSON itself. Decide quiz vs. flashcards (different schemas), follow the matching schema exactly, double-check the **JSON backslash-escaping** section before writing any LaTeX, and run through the **validation checklist** at the end before producing your final output.
+This is the technical contract for generating a `.json` file that loads cleanly into StudyDeck, a free, open, AI-agnostic study app — the schema, LaTeX/graph rules, question-quality bar, and validation checklist below apply no matter how the conversation with the student is being run. This file is always paired with a separate "how to respond" intro that governs the conversational side (see `studydeck-quick-intro.md` / `studydeck-guided-intro.md`) — decide quiz vs. flashcards (different schemas), follow the matching schema exactly, double-check the **JSON backslash-escaping** section before writing any LaTeX, and run through the **validation checklist** at the end before producing your final output.
 
 ---
 
@@ -211,6 +174,11 @@ Hold your question *content* to a strict academic examiner's standard. (This is 
 
 - Test **only** the facts, concepts, and relationships explicitly stated in the student's materials. No outside knowledge, no undisplayed facts, no external course content.
 - The one freedom: **scenarios may be invented.** A what-if or application question can wrap the material's concepts in a novel hypothetical situation (a hockey puck the notes never mentioned, a fictional patient) — as long as everything needed to *answer* it comes from the materials.
+
+### Difficulty — set by the material, not by asking
+
+- Calibrate difficulty to whatever rigor the student's own materials already demonstrate: bare-definition slides stay at that level; problem sets with multi-step derivations get matched at that level. The material the student handed you (their professor's slides, practice quizzes, past exams) *is* the difficulty signal — there's no better source for "how hard should this be."
+- Don't ask the student what difficulty they want. Only adjust it if they bring it up unprompted (e.g. "make it harder than my notes" or "easier, just the basics").
 
 ### Quiz decks — cognitive depth
 

@@ -4,6 +4,8 @@
 // a small "Graph unavailable" message and the rest of the app keeps working.
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Chart } from 'chart.js/auto';
 import type { ChartConfiguration } from 'chart.js';
 import type { GraphSpec } from '../../types';
@@ -106,10 +108,46 @@ function buildChart(graph: GraphSpec, canvas: HTMLCanvasElement): Chart {
   return new Chart(canvas, config);
 }
 
+// R8/R9 (this feature): the label tooltip is portaled to <body> instead of living
+// inside .graph-area, because that container clips with overflow:hidden (to round
+// its corners) — a nested tooltip would get cut off exactly when it's most needed
+// (a long/clipped label). Placement is a fixed side per label, not auto-computed —
+// each label always sits in the same spot in the layout, so there's no ambiguity to
+// resolve at hover time.
+type Placement = 'top' | 'bottom' | 'right';
+interface TooltipState {
+  top: number;
+  left: number;
+  text: string;
+  placement: Placement;
+}
+
+function anchorFor(rect: DOMRect, placement: Placement): { top: number; left: number } {
+  const gap = 8;
+  switch (placement) {
+    case 'top':
+      return { top: rect.top - gap, left: rect.left + rect.width / 2 };
+    case 'bottom':
+      return { top: rect.bottom + gap, left: rect.left + rect.width / 2 };
+    case 'right':
+      return { top: rect.top + rect.height / 2, left: rect.right + gap };
+  }
+}
+
 export function Graph({ graph }: { graph: GraphSpec }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [failed, setFailed] = useState(false);
+  const [tip, setTip] = useState<TooltipState | null>(null);
+
+  function showTip(text: string, placement: Placement) {
+    return (e: MouseEvent<HTMLElement>) => {
+      setTip({ ...anchorFor(e.currentTarget.getBoundingClientRect(), placement), text, placement });
+    };
+  }
+  function hideTip() {
+    setTip(null);
+  }
 
   // R8: destroy any prior chart before creating a new one (canvas reuse errors).
   useLayoutEffect(() => {
@@ -139,11 +177,48 @@ export function Graph({ graph }: { graph: GraphSpec }) {
 
   return (
     <div className="graph-area">
-      {!failed && <Katex as="div" className="graph-title" text={graph.title} />}
+      {!failed && (
+        <Katex
+          as="div"
+          className="graph-title"
+          text={graph.title}
+          onMouseEnter={showTip(graph.title, 'bottom')}
+          onMouseLeave={hideTip}
+        />
+      )}
       <canvas ref={canvasRef} style={{ display: failed ? 'none' : 'block' }} />
-      {!failed && <Katex as="div" className="graph-xlabel" text={graph.x_label} />}
-      {!failed && <Katex as="div" className="graph-ylabel" text={graph.y_label} />}
+      {!failed && (
+        <Katex
+          as="div"
+          className="graph-xlabel"
+          text={graph.x_label}
+          onMouseEnter={showTip(graph.x_label, 'top')}
+          onMouseLeave={hideTip}
+        />
+      )}
+      {!failed && (
+        <div className="graph-ylabel-wrap">
+          <Katex
+            as="div"
+            className="graph-ylabel"
+            text={graph.y_label}
+            onMouseEnter={showTip(graph.y_label, 'right')}
+            onMouseLeave={hideTip}
+          />
+        </div>
+      )}
       {failed && <div className="graph-error">Graph unavailable</div>}
+      {tip &&
+        createPortal(
+          <div
+            className={`graph-tooltip graph-tooltip--${tip.placement}`}
+            style={{ top: tip.top, left: tip.left }}
+            role="tooltip"
+          >
+            {tip.text}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

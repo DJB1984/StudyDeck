@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import type { HistoryEntry, QuizMode, QuizQuestion } from '../../types';
-import { naturalOrder, shuffledOrder } from '../../lib/shuffle';
+import { naturalOrder } from '../../lib/shuffle';
 
 type Mode = QuizMode | 'review';
 
@@ -40,21 +40,20 @@ const QUIZ_MODES: ModeDef[] = [
 interface ModeSelectProps {
   file: HistoryEntry;
   onBack: () => void;
-  onStartQuiz: (mode: QuizMode, order: number[], wasRandom: boolean) => void;
+  onStartQuiz: (mode: QuizMode, order: number[]) => void;
   onStartReview: (order: number[]) => void;
 }
 
 export function ModeSelectScreen({ file, onBack, onStartQuiz, onStartReview }: ModeSelectProps) {
-  // R4: selection + random reset on every entry (fresh component per mount).
+  // R4: selection resets on every entry (fresh component per mount).
   const [selected, setSelected] = useState<Mode>('practice');
-  const [random, setRandom] = useState(false);
 
   function start() {
     const questions = file.data.questions as QuizQuestion[];
-    const order = random ? shuffledOrder(questions.length) : naturalOrder(questions.length);
+    const order = naturalOrder(questions.length);
 
     if (selected === 'review') onStartReview(order);
-    else onStartQuiz(selected, order, random);
+    else onStartQuiz(selected, order);
   }
 
   return (
@@ -79,15 +78,6 @@ export function ModeSelectScreen({ file, onBack, onStartQuiz, onStartReview }: M
             <div className="mode-desc">{m.desc}</div>
           </div>
         ))}
-      </div>
-
-      <div className="mode-options">
-        {/* R6: always visible — every mode here supports random order. */}
-        <label className="toggle-label">
-          <input type="checkbox" checked={random} onChange={(e) => setRandom(e.target.checked)} />
-          <span className="toggle-track"></span>
-          Random order
-        </label>
       </div>
 
       <button id="mode-start-btn" className="btn" onClick={start}>

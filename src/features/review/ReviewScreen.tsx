@@ -4,10 +4,8 @@
 
 import { useEffect, useState } from 'react';
 import type { QuizQuestion } from '../../types';
-import { Katex } from '../../components/Math/Katex';
-import { Graph } from '../../components/Graph/Graph';
-
-const LETTERS = ['A', 'B', 'C', 'D'];
+import { ProgressHeader, QuestionBody, AnswerList } from '../../components/QuizUI';
+import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
 
 interface ReviewScreenProps {
   questions: QuizQuestion[];
@@ -17,6 +15,7 @@ interface ReviewScreenProps {
 
 export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
   const [idx, setIdx] = useState(0);
+  const [copyLabel, setCopyLabel] = useState('Copy explanation prompt');
   const total = order.length;
   const current = idx + 1;
   const q = questions[order[idx]];
@@ -27,6 +26,16 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
   // R4: clamp at both ends (no wrap).
   const prev = () => setIdx((i) => Math.max(0, i - 1));
   const nextQ = () => setIdx((i) => Math.min(total - 1, i + 1));
+
+  useEffect(() => {
+    setCopyLabel('Copy explanation prompt');
+  }, [idx]);
+
+  // Review has no "chosen" answer (it's read-only), so the prompt just asks
+  // to explain the correct one — always available, unlike Quiz's Practice mode.
+  function handleCopy() {
+    copyWithFeedback(buildPrompt(q), setCopyLabel, 'Copy explanation prompt');
+  }
 
   // R5: keyboard ←/→, respecting the disabled ends.
   useEffect(() => {
@@ -40,40 +49,25 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
 
   return (
     <section id="review-screen" className="screen">
-      <div className="screen-header">
-        <button className="btn-ghost" onClick={onBack}>
-          ← Back
-        </button>
-        <h2>Review</h2>
-        <span className="review-progress-text">
-          {current} of {total}
-        </span>
-      </div>
+      <ProgressHeader current={current} total={total} onAbandon={onBack} abandonTitle="Quit review" />
 
-      {q.graph && <Graph key={q.id} graph={q.graph} />}
+      <QuestionBody question={q} />
 
-      <div id="review-question-text">
-        <Katex key={q.id + '-q'} text={q.question} />
-      </div>
-
-      <div id="review-answer-list">
-        {q.answers.map((ans, i) => (
-          <button
-            key={i}
-            className={'answer-btn' + (i === q.correct ? ' correct-answer' : '')}
-            disabled
-          >
-            <span className="answer-label">{LETTERS[i]}</span>
-            <Katex className="answer-text" text={ans} />
-          </button>
-        ))}
-      </div>
+      <AnswerList
+        answers={q.answers}
+        getClassName={(i) => 'answer-btn' + (i === q.correct ? ' correct-answer' : '')}
+        isDisabled={() => true}
+        onSelect={() => {}}
+      />
 
       <div className="review-nav">
-        <button className="btn-ghost" onClick={prev} disabled={atStart}>
+        <button className="btn-ghost review-nav-prev" onClick={prev} disabled={atStart}>
           ← Prev
         </button>
-        <button className="btn-ghost" onClick={nextQ} disabled={atEnd}>
+        <button className="btn-ghost review-nav-mid" onClick={handleCopy}>
+          {copyLabel}
+        </button>
+        <button className="btn-ghost review-nav-next" onClick={nextQ} disabled={atEnd}>
           Next →
         </button>
       </div>

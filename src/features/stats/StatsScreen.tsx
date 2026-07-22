@@ -1,16 +1,13 @@
 // Stats screen — score summary, doughnut chart, and per-question breakdown
-// (spec: src/features/stats/Stats.spec.md). Retake reuses the same order, or
-// prompts same/new-random only when the finished run was randomized.
+// (spec: src/features/stats/Stats.spec.md). Retake reuses the same question order.
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Chart } from 'chart.js/auto';
 import type { AnswerRecord, QuizQuestion, QuizSession, SessionRecord } from '../../types';
 import { Katex } from '../../components/Math/Katex';
+import { LETTERS } from '../../components/QuizUI';
 import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
-import { shuffledOrder } from '../../lib/shuffle';
 import { buildPieData, formatDuration } from './stats';
-
-const LETTERS = ['A', 'B', 'C', 'D'];
 
 interface StatsScreenProps {
   record: SessionRecord;
@@ -61,6 +58,9 @@ function StatsPie({ record }: { record: SessionRecord }) {
 
 function BreakdownItem({ ans, q }: { ans: AnswerRecord; q: QuizQuestion }) {
   const [label, setLabel] = useState('Copy explanation prompt');
+  // -1 means the question was left unanswered (skipped via Back/Next) — scored
+  // wrong, but there's no chosen answer to build an explanation prompt from.
+  const wasAnswered = ans.chosenIndex !== -1;
   const copy = () =>
     copyWithFeedback(buildPrompt(q, ans.chosenIndex), setLabel, 'Copy explanation prompt');
 
@@ -82,27 +82,30 @@ function BreakdownItem({ ans, q }: { ans: AnswerRecord; q: QuizQuestion }) {
     <div className="breakdown-item wrong glass-card">
       <Katex as="div" className="breakdown-q-text" text={q.question} />
       <div className="breakdown-answer-row wrong-row">
-        Your answer:{' '}
-        <Katex text={`${LETTERS[ans.chosenIndex]}) ${q.answers[ans.chosenIndex]}`} />
+        {wasAnswered ? (
+          <>
+            Your answer: <Katex text={`${LETTERS[ans.chosenIndex]}) ${q.answers[ans.chosenIndex]}`} />
+          </>
+        ) : (
+          "You didn't answer this one"
+        )}
       </div>
       <div className="breakdown-answer-row correct-row">
         Correct answer:{' '}
         <Katex text={`${LETTERS[ans.correctIndex]}) ${q.answers[ans.correctIndex]}`} />
       </div>
-      <button className="btn-ghost copy-ai-btn" onClick={copy}>
-        {label}
-      </button>
+      {wasAnswered && (
+        <button className="btn-ghost copy-ai-btn" onClick={copy}>
+          {label}
+        </button>
+      )}
     </div>
   );
 }
 
 export function StatsScreen({ record, session, onHome, onReview, onRetake }: StatsScreenProps) {
-  const [showModal, setShowModal] = useState(false);
-
   function retake() {
-    // R8: only prompt for order when the original run was random.
-    if (session.wasRandom) setShowModal(true);
-    else onRetake(session.order);
+    onRetake(session.order);
   }
 
   return (
@@ -145,32 +148,6 @@ export function StatsScreen({ record, session, onHome, onReview, onRetake }: Sta
           Retake
         </button>
       </div>
-
-      {showModal && (
-        <div id="retake-modal">
-          <div className="retake-modal-card glass-card">
-            <p>Retake with...</p>
-            <button
-              className="btn"
-              onClick={() => {
-                setShowModal(false);
-                onRetake(session.order);
-              }}
-            >
-              Same Order
-            </button>
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                setShowModal(false);
-                onRetake(shuffledOrder(session.questions.length));
-              }}
-            >
-              New Random Order
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

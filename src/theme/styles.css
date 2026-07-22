@@ -183,6 +183,69 @@ button { font-family: inherit; cursor: pointer; }
   line-height: 1.5;
 }
 
+/* Copy Prompt modal: clicking the button opens a full-screen Quick/Guided
+   choice (HomeScreen.tsx's CopyPromptButton/CopyPromptModal) instead of
+   copying immediately. Overlay/card/close-button structure mirrors
+   LoginModal's .login-modal-overlay/.modal-close — kept as its own
+   Home-scoped classes rather than reusing the auth-named ones. Option cards
+   borrow the ModeSelect .mode-card look (see .mode-card below). */
+.copy-prompt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.copy-prompt-modal-card {
+  position: relative;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+}
+.copy-prompt-modal-desc {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.9rem;
+}
+.copy-prompt-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.copy-prompt-modal-option {
+  padding: 18px 16px;
+  cursor: pointer;
+  text-align: left;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-radius: var(--radius);
+  transition: border-color 150ms, background 150ms;
+  color: inherit;
+  font: inherit;
+}
+.copy-prompt-modal-option:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-light);
+}
+.copy-prompt-modal-option-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  margin-bottom: 6px;
+}
+.copy-prompt-modal-option-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
 /* Add-deck surface: paste box + action buttons */
 .add-deck-actions {
   display: flex;
@@ -492,14 +555,17 @@ button { font-family: inherit; cursor: pointer; }
   cursor: pointer;
 }
 
-/* Quiz screen */
-#quiz-header {
+/* Quiz + Review screens — shared header so all three modes (Practice, Test,
+   Review) render an identical ✕ / progress-text / progress-bar row. */
+.progress-header {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 28px;
 }
-#quiz-abandon-btn {
+/* Shared "quit to Mode Select" icon — used by Quiz (Practice/Test) and Review
+   so the exit control looks and behaves the same across all three modes. */
+.abandon-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -507,21 +573,21 @@ button { font-family: inherit; cursor: pointer; }
   padding: 4px 8px;
   flex-shrink: 0;
 }
-#quiz-abandon-btn:hover { color: var(--text-primary); }
-#quiz-progress-text {
+.abandon-btn:hover { color: var(--text-primary); }
+.progress-text {
   font-size: 0.88rem;
   color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
-#quiz-progress-bar {
+.progress-bar {
   flex: 1;
   height: 4px;
   background: var(--surface-hover);
   border-radius: 2px;
   overflow: hidden;
 }
-#quiz-progress-fill {
+.progress-fill {
   height: 100%;
   background: var(--accent);
   border-radius: 2px;
@@ -548,7 +614,6 @@ button { font-family: inherit; cursor: pointer; }
   text-align: center;
   font-size: 0.8rem;
   color: rgba(241,240,255,0.85);
-  pointer-events: none;
 }
 .graph-xlabel {
   position: absolute;
@@ -556,21 +621,59 @@ button { font-family: inherit; cursor: pointer; }
   text-align: center;
   font-size: 0.78rem;
   color: rgba(241,240,255,0.6);
-  pointer-events: none;
+}
+.graph-ylabel-wrap {
+  position: absolute;
+  left: 0; top: 0;
+  width: 42px; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Rotating a flex-centered box around its own (default) center keeps the
+     text centered post-rotation — anchoring to "left center" instead pivots
+     the text so its unrotated edge becomes the rotated top/bottom, not its middle. */
+  transform: rotate(-90deg);
 }
 .graph-ylabel {
-  position: absolute;
-  left: 20px; top: 50%;
-  transform: translateY(-50%) rotate(-90deg);
-  transform-origin: left center;
+  /* Left tightly wrapping the text (not stretched to fill the wrap's flex
+     track) so its hover rect — the tooltip anchor — hugs the visible glyphs. */
   font-size: 0.78rem;
   color: rgba(241,240,255,0.6);
   white-space: nowrap;
-  pointer-events: none;
 }
 /* KaTeX renders at its own font size by default — shrink it to match the small axis/title text */
 .graph-title .katex, .graph-xlabel .katex, .graph-ylabel .katex {
   font-size: 1em;
+}
+
+/* Custom hover tooltip for graph labels, portaled to <body> — it needs to
+   escape .graph-area's overflow:hidden (used to round the canvas corners),
+   since the whole point is staying readable when the label itself is clipped. */
+.graph-tooltip {
+  position: fixed;
+  z-index: 300;
+  max-width: 200px;
+  padding: 5px 9px;
+  background: rgba(18, 16, 28, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  animation: graph-tooltip-in 100ms ease-out;
+}
+.graph-tooltip--top    { transform: translate(-50%, -100%); }
+.graph-tooltip--bottom { transform: translate(-50%, 0); }
+.graph-tooltip--right  { transform: translate(0, -50%); }
+
+@keyframes graph-tooltip-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .graph-error {
   position: absolute;
@@ -584,8 +687,7 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-#quiz-question-text,
-#review-question-text {
+.question-text {
   font-size: 1.2rem;
   line-height: 1.7;
   margin-bottom: 28px;
@@ -630,16 +732,43 @@ button { font-family: inherit; cursor: pointer; }
   width: 18px;
 }
 .answer-text { flex: 1; }
+/* Sized to exactly one line of text now that the copy button that used to
+   share this row lives in .quiz-nav-row's middle slot instead — it used to
+   reserve min-height:44px for that button, leaving a big empty gap above the
+   nav row once the button moved out. */
 #quiz-feedback {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-  min-height: 44px;
+  margin-top: 16px;
+  min-height: 22px;
 }
-#quiz-feedback-msg { flex: 1; font-size: 0.9rem; }
+#quiz-feedback-msg { font-size: 0.9rem; }
 #quiz-feedback-msg.correct { color: var(--correct); }
 #quiz-feedback-msg.incorrect { color: var(--incorrect); }
+.quiz-nav-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-top: 24px;
+}
+/* Practice mode: the feedback row above already provides spacing, so don't
+   stack a second margin on top of it — keeps the answer-list → nav-row gap
+   close to Review's (which has no feedback row at all). */
+#quiz-feedback + .quiz-nav-row {
+  margin-top: 8px;
+}
+.quiz-nav-row button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* Explicit column assignment (rather than source order) so Back/Next always
+   land in the outer columns whether or not the middle slot is rendered. */
+.quiz-nav-back { grid-column: 1; justify-self: start; }
+.quiz-nav-mid  { grid-column: 2; justify-self: center; }
+.quiz-nav-next { grid-column: 3; justify-self: end; }
+#quiz-timer {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
 
 .screen-header {
   display: flex;
@@ -693,14 +822,6 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.82rem;
   color: var(--text-secondary);
   line-height: 1.5;
-}
-
-.mode-options {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-  min-height: 36px;
 }
 
 .toggle-label {
@@ -830,46 +951,27 @@ button { font-family: inherit; cursor: pointer; }
   margin-top: 24px;
 }
 
-#retake-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-.retake-modal-card {
-  padding: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 260px;
-  text-align: center;
-}
-.retake-modal-card p {
-  margin: 0 0 8px;
-  color: var(--text-secondary);
-}
-
 /* Review screen */
 .review-progress-text {
   color: var(--text-secondary);
   font-size: 0.88rem;
   margin-left: auto;
 }
-#review-answer-list .answer-btn {
-  cursor: default;
-}
 .review-nav {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   margin-top: 24px;
 }
 .review-nav button:disabled {
   opacity: 0.35;
   cursor: default;
 }
+/* Explicit column assignment so Prev/Next stay in the outer columns regardless
+   of the middle copy button's width. */
+.review-nav-prev { grid-column: 1; justify-self: start; }
+.review-nav-mid  { grid-column: 2; justify-self: center; }
+.review-nav-next { grid-column: 3; justify-self: end; }
 
 /* Flashcard screen */
 .flash-options {

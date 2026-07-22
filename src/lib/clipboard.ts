@@ -19,7 +19,10 @@ function buildGraphDescription(graph: GraphSpec): string {
   return lines.join('\n');
 }
 
-export function buildPrompt(question: QuizQuestion, chosenIndex: number): string {
+// `chosenIndex` is omitted entirely (Review has no chosen answer to report) or
+// left out when a Practice question hasn't been answered yet — either way the
+// prompt still explains the correct answer, just without an "I chose" line.
+export function buildPrompt(question: QuizQuestion, chosenIndex?: number): string {
   const lines: string[] = [
     `Explain why "${question.answers[question.correct]}" is the correct answer for this question:`,
     '',
@@ -28,13 +31,10 @@ export function buildPrompt(question: QuizQuestion, chosenIndex: number): string
   if (question.graph) {
     lines.push('', buildGraphDescription(question.graph));
   }
-  lines.push(
-    '',
-    'The options were:',
-    ...question.answers.map((a, i) => `${LETTERS[i]}) ${a}`),
-    '',
-    `I chose: ${question.answers[chosenIndex]}`,
-  );
+  lines.push('', 'The options were:', ...question.answers.map((a, i) => `${LETTERS[i]}) ${a}`));
+  if (chosenIndex !== undefined && chosenIndex >= 0) {
+    lines.push('', `I chose: ${question.answers[chosenIndex]}`);
+  }
   return lines.join('\n');
 }
 

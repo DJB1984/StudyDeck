@@ -1,7 +1,7 @@
 /*
  * StudyDeck design tokens — the dark liquid-glass palette.
  * Isolated in its own file so a shared cross-project theme can swap in here
- * later without touching component styles. Kept 1:1 with docs/design-doc.md.
+ * later without touching component styles. Kept 1:1 with docs/core/design-doc.md.
  */
 :root {
   --bg: #0a0a0f;                        /* near-black base */

@@ -23,23 +23,22 @@ import { FlashcardScreen } from './features/flashcard/FlashcardScreen';
 type Route =
   | { name: 'home' }
   | { name: 'mode'; file: HistoryEntry }
-  | { name: 'quiz'; session: QuizSession }
-  | { name: 'stats'; record: SessionRecord; session: QuizSession }
+  | { name: 'quiz'; session: QuizSession; file: HistoryEntry }
+  | { name: 'stats'; record: SessionRecord; session: QuizSession; file: HistoryEntry }
   | { name: 'review'; questions: QuizQuestion[]; order: number[]; origin: Route }
   | { name: 'flashcard'; deck: Deck };
 
 export function App() {
   const [route, setRoute] = useState<Route>({ name: 'home' });
 
-  function startQuiz(file: HistoryEntry, mode: QuizMode, order: number[], wasRandom: boolean) {
+  function startQuiz(file: HistoryEntry, mode: QuizMode, order: number[]) {
     const session: QuizSession = {
       deck: file.data,
       questions: file.data.questions as QuizQuestion[],
       mode,
       order,
-      wasRandom,
     };
-    setRoute({ name: 'quiz', session });
+    setRoute({ name: 'quiz', session, file });
   }
 
   function renderScreen() {
@@ -65,7 +64,7 @@ export function App() {
           <ModeSelectScreen
             file={route.file}
             onBack={() => setRoute({ name: 'home' })}
-            onStartQuiz={(mode, order, wasRandom) => startQuiz(route.file, mode, order, wasRandom)}
+            onStartQuiz={(mode, order) => startQuiz(route.file, mode, order)}
             onStartReview={(order) =>
               setRoute({
                 name: 'review',
@@ -81,8 +80,12 @@ export function App() {
         return (
           <QuizScreen
             session={route.session}
-            onFinish={(record) => setRoute({ name: 'stats', record, session: route.session })}
-            onAbandon={() => setRoute({ name: 'home' })}
+            onFinish={(record) =>
+              setRoute({ name: 'stats', record, session: route.session, file: route.file })
+            }
+            // Quiz is only ever entered from Mode Select — quitting returns there
+            // (the "Practice/Test/Review" screen), not all the way to Home.
+            onAbandon={() => setRoute({ name: 'mode', file: route.file })}
           />
         );
 
@@ -101,7 +104,7 @@ export function App() {
               })
             }
             onRetake={(order) =>
-              setRoute({ name: 'quiz', session: { ...route.session, order } })
+              setRoute({ name: 'quiz', session: { ...route.session, order }, file: route.file })
             }
           />
         );

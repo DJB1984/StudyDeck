@@ -127,7 +127,7 @@ src/
                         (each with its co-located {Feature}.spec.md)
 ```
 
-`src/lib/SupabaseClient.ts` (see `design-doc-auth.md`) is the only module that imports `@supabase/supabase-js`, mirroring how `Storage.ts` is the only module that touches `localStorage`. `src/features/auth/` (`AuthButton.tsx`, `LoginModal.tsx`, `migration.ts`) is the optional email-magic-link login UI, wired into the Home screen header only.
+`src/lib/SupabaseClient.ts` (see `docs/auth/design-doc.md`) is the only module that imports `@supabase/supabase-js`, mirroring how `Storage.ts` is the only module that touches `localStorage`. `src/features/auth/` (`AuthButton.tsx`, `LoginModal.tsx`, `migration.ts`) is the optional email-magic-link login UI, wired into the Home screen header only.
 
 Behavioral contracts per module (co-located `*.spec.md` files are the authoritative, verifiable version of these):
 
@@ -193,11 +193,11 @@ Home → Mode Select → Quiz/Flashcard → Stats → Home
 
 **Home screen:** Grid of file cards (title, question count, last opened date). Drag-drop zone at top. "Load file" button. Clicking a card goes to Mode Select.
 
-**Mode select screen:** Three buttons — Practice, Test, Flashcard. Toggle for random order (quiz modes only). Start button.
+**Mode select screen:** Mode cards — Practice, Test, Review, Flashcard decks skip straight to Flashcard. Start button. (No random-order toggle — it existed early on and was removed as unhelpful; question order is always the deck's natural `0..n-1`.)
 
-**Quiz screen:** Progress indicator (Q 3 of 20). Question text (KaTeX rendered). Graph if present (Chart.js). Four answer buttons (A/B/C/D). Practice mode: buttons go green/red on select, retry button appears on wrong. Test mode: no color feedback, just advances.
+**Quiz screen:** Progress indicator (Q 3 of 20). Question text (KaTeX rendered). Graph if present (Chart.js). Four answer buttons (A/B/C/D). Practice mode: buttons go green/red on select, retry allowed on wrong (locks once correct); a "Copy explanation prompt" button is always visible, not gated on answering. Test mode: no color feedback, answers are freely changeable, no copy button — instead a live session clock ticks in the middle of the Back/Next row. Both modes: Back/Next are always visible and enabled (Back disabled only on Q1) — neither requires answering the current question, so the student can skip through freely or use ←/→. A question still unanswered when the session ends is scored wrong, not omitted. The ✕ abandon control returns to Mode Select, not Home (Quiz is only ever entered from there).
 
-**Stats screen:** Pie chart (correct/incorrect, purple/dark). Score text. Session duration displayed. Scrollable question list — correct ones collapsed to a single line, wrong ones expanded showing chosen answer vs correct answer + copy-to-AI button. Two buttons: Retake / Review. Retake prompts: "Same Order" or "New Random Order" (if random was enabled). Same Order reuses the exact previous sequence; New Random Order reshuffles.
+**Stats screen:** Pie chart (correct/incorrect, purple/dark). Score text. Session duration displayed. Scrollable question list — correct ones collapsed to a single line, wrong ones expanded showing chosen answer (or "You didn't answer this one") vs correct answer + copy-to-AI button. Two buttons: Retake / Review. Retake restarts immediately in the same question order.
 
 **Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Bottom controls: Know It / Still Learning buttons. Progress counter. Toggle: drill Still Learning only or all cards. Random toggle.
 
@@ -288,7 +288,7 @@ Piles use question `id` fields (not array indices) so state survives question re
 
 **Quota safety:** All `localStorage.setItem()` calls are wrapped in try/catch. On `QuotaExceededError`, surface a user-facing warning ("Storage full — oldest file removed") and remove the oldest history entry before retrying.
 
-**Supabase mirror (optional, see `PRD-auth.md`/`design-doc-auth.md`):** `localStorage` remains the source of truth for every synchronous read in the app, logged in or not — `Storage`'s public surface never becomes `Promise`-based. When a session is active, `Storage.saveFile`/`deleteFile`/`setFlashState` additionally fire a best-effort, non-blocking async mirror of the same write to two Supabase tables (`decks`, `flash_state`, both RLS-scoped to `auth.uid()`) via `src/lib/SupabaseClient.ts`, the only module that imports `@supabase/supabase-js`. On login, `src/features/auth/migration.ts` uploads any existing local decks to a brand-new (empty) account, or downloads an existing account's cloud data back into the local cache — never both directions for the same login, to avoid an incomplete upload clobbering local-only data on retry. A `Storage.subscribe()` listener bus (modeled on `toast.ts`) notifies mounted screens after such a bulk local-cache overwrite. See `src/lib/Storage.spec.md` and `src/features/auth/Auth.spec.md` for the full requirement set.
+**Supabase mirror (optional, see `docs/auth/PRD.md`/`docs/auth/design-doc.md`):** `localStorage` remains the source of truth for every synchronous read in the app, logged in or not — `Storage`'s public surface never becomes `Promise`-based. When a session is active, `Storage.saveFile`/`deleteFile`/`setFlashState` additionally fire a best-effort, non-blocking async mirror of the same write to two Supabase tables (`decks`, `flash_state`, both RLS-scoped to `auth.uid()`) via `src/lib/SupabaseClient.ts`, the only module that imports `@supabase/supabase-js`. On login, `src/features/auth/migration.ts` uploads any existing local decks to a brand-new (empty) account, or downloads an existing account's cloud data back into the local cache — never both directions for the same login, to avoid an incomplete upload clobbering local-only data on retry. A `Storage.subscribe()` listener bus (modeled on `toast.ts`) notifies mounted screens after such a bulk local-cache overwrite. See `src/lib/Storage.spec.md` and `src/features/auth/Auth.spec.md` for the full requirement set.
 
 ## Graph Rendering Notes
 
@@ -320,8 +320,9 @@ All graph logic is isolated inside `Renderer.renderGraph()`. It returns `false` 
 }
 ```
 
-- `firstAttemptCorrect` is set on the first submission. Retries do not update it.
-- `timeSpent` is tracked per-question in test mode (timer starts when question renders, stops on submission). Null in practice mode.
+- `firstAttemptCorrect` means different things per mode: in Practice it's set on the first submission and retries never update it; in Test there's no "first attempt" concept (no feedback shown, so Back-and-change isn't a retry) — it reflects whichever answer was chosen when the session ended.
+- `chosenIndex` is `-1` for a question left unanswered when the session ends (skipped via Back/Next navigation) — it's scored wrong (`firstAttemptCorrect: false`), not omitted from the record.
+- `timeSpent` is tracked per-question in test mode, accumulated across every visit to that question (revisiting via Back doesn't reset the clock). Null in practice mode.
 - `totalDuration` tracks wall time from quiz start to stats screen.
 
 ## KaTeX Rendering Notes

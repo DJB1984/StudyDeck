@@ -6,7 +6,7 @@ status: active
 tags: [studydeck, claude-code, implementation, auth, supabase]
 ---
 
-Hand this file to [[Claude Code]] along with `PRD-auth.md` and `design-doc-auth.md`. Also keep the base `PRD.md` and `design-doc.md` open, this feature extends that app, doesn't replace it. Work phase by phase, verify in a real browser (and with a second test account where noted) before moving on.
+Hand this file to [[Claude Code]] along with `PRD.md` and `design-doc.md` (this folder). Also keep the base `docs/core/PRD.md` and `docs/core/design-doc.md` open, this feature extends that app, doesn't replace it. Work phase by phase, verify in a real browser (and with a second test account where noted) before moving on.
 
 ---
 
@@ -26,8 +26,8 @@ Hand this file to [[Claude Code]] along with `PRD-auth.md` and `design-doc-auth.
 
 **Goal:** `decks` and `flash_state` tables exist in Supabase, RLS enabled and correct.
 
-- [ ] Create `decks` table per `design-doc-auth.md` schema
-- [ ] Create `flash_state` table per `design-doc-auth.md` schema
+- [ ] Create `decks` table per `design-doc.md` schema
+- [ ] Create `flash_state` table per `design-doc.md` schema
 - [ ] Enable Row Level Security on both tables
 - [ ] Add policy on both tables: users can only `select`/`insert`/`update`/`delete` rows where `user_id = auth.uid()`
 - [ ] **Verify with two separate test accounts**: log in as account A, insert a deck, log in as account B, confirm account B cannot see or query account A's row through the client. This is a hard gate, do not proceed to Phase 4 until this passes.

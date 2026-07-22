@@ -6,13 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 StudyDeck is a **React + TypeScript (Vite)** single-page app. It was migrated from an original single-file vanilla-JS HTML implementation, which is preserved unchanged at `legacy/studydeck.html` as a reference. Planning docs live in `docs/`:
 
-- `docs/PRD.md` — product requirements (problem, users, modes, features, non-goals). Still current.
-- `docs/design-doc.md` — technical design (schema, screens, visual design, storage, rendering). **Source of truth for behavior**; its "Tech Stack" and "App Architecture" sections describe the React app, and the JSON schema / localStorage / screens / graph / KaTeX sections are unchanged and still authoritative. Keep it in sync with any schema/architecture change.
-- `docs/task-list.md` — the original phased plan for the single-file app (historical reference only).
+- `docs/core/PRD.md` — product requirements (problem, users, modes, features, non-goals). Still current.
+- `docs/core/design-doc.md` — technical design (schema, screens, visual design, storage, rendering). **Source of truth for behavior**; its "Tech Stack" and "App Architecture" sections describe the React app, and the JSON schema / localStorage / screens / graph / KaTeX sections are unchanged and still authoritative. Keep it in sync with any schema/architecture change.
+- `docs/core/task-list.md` — the original phased plan for the single-file app (historical reference only).
+- `docs/question-types/` — PRD, design doc, and task list for a batch of new interactive question/answer formats (numeric free-response, graph click-to-answer, select-all-that-apply, drag-to-order, data tables, code-execution questions, type-the-answer flashcards, command-line matching). Drafted, not yet built.
+- `docs/auth/` — PRD, design doc, and task list for the optional Supabase auth/cloud-sync feature (already shipped).
 
-`test-decks/` has working example decks (quiz and flashcard) to test against. `studydeck-format-spec.md` is the AI-facing doc for generating new decks — it is imported verbatim into the app (`src/lib/formatSpec.ts` via `?raw`) so the "Copy Format Spec" button never drifts. Update it alongside `design-doc.md` whenever the schema changes.
+`test-decks/` has working example decks (quiz and flashcard) to test against. `studydeck-format-spec.md` is the shared, AI-facing schema contract for generating new decks (deck types, LaTeX/graph rules, question-quality bar, validation checklist) — it holds no conversational behavior. The Home screen's "Copy Prompt" button offers two variants, composed at build time in `src/lib/formatSpec.ts` (`?raw` imports, so nothing drifts): `QUICK_PROMPT_MD` = `studydeck-quick-intro.md` + the shared contract, `GUIDED_PROMPT_MD` = `studydeck-guided-intro.md` + the shared contract. Quick is today's fast, low-friction flow; Guided always confirms purpose/scope/deck-type before generating (capped at one follow-up round) so the resulting questions are better-targeted. Update the shared contract alongside `design-doc.md` whenever the schema changes; update the intro files when conversational behavior changes.
 
-**Read `docs/design-doc.md` before changing the JSON schema, module boundaries, localStorage shape, or CSS tokens.**
+**Read `docs/core/design-doc.md` before changing the JSON schema, module boundaries, localStorage shape, or CSS tokens.**
 
 ## What StudyDeck Is
 
@@ -41,9 +43,10 @@ The original vanilla-JS module objects map onto React modules. **Each module sti
 - **`src/lib/DeckValidation.ts`** — `validateDeck()` returns field-level, actionable error strings; the deck is rejected as a whole on any error.
 - **`src/lib/clipboard.ts`** — builds the copy-to-AI explanation prompt (and shared "Copied!" feedback helper).
 - **`src/lib/toast.ts`** — tiny bus so non-React modules (Storage) can surface errors through `<Toast>`.
-- **`src/lib/formatSpec.ts` / `shuffle.ts`** — format-spec text (`?raw` import) and order helpers.
+- **`src/lib/formatSpec.ts` / `shuffle.ts`** — composes the `QUICK_PROMPT_MD` / `GUIDED_PROMPT_MD` prompt text (`?raw` imports, see "Project Status" above) and order helpers.
 - **`src/components/Math/Katex.tsx`** — renders `$...$`/`$$...$$` via KaTeX auto-render; `throwOnError:false` so bad LaTeX falls back to raw text, never crashes.
 - **`src/components/Graph/Graph.tsx`** — Chart.js v4 rendering. `renderGraph` logic MUST never throw out to the app — every failure catches and shows "Graph unavailable". LaTeX axis labels are KaTeX HTML overlays (Chart.js can't render LaTeX on canvas). Chart destroyed/recreated per question.
+- **`src/components/QuizUI.tsx`** — the presentational shell shared by Quiz and Review (`ProgressHeader`, `QuestionBody`, `AnswerList`, plus the `LETTERS` constant). Deliberately shell-only: Quiz's scoring/retry-locking state and Review's static correct-highlight stay in their own screens, passed in as per-button className/disabled/onSelect callbacks. Don't grow this into a merged Quiz+Review component — the two modes' logic is genuinely different, only the markup isn't.
 - **`src/features/quiz/`** — `QuizScreen.tsx` runs practice + test. Tracks `firstAttemptCorrect` per question; retries never overwrite the first-attempt record. Owns the session timer.
 - **`src/features/flashcard/`** — `flashEngine.ts` holds pile state (`known`/`learning`) keyed by question `id` (never index), persisted via Storage. `sortCard()` is the isolated seam for a future spaced-repetition scheduler.
 - **`src/features/stats/`** — `stats.ts` builds the session record + score/pie data, kept separate from Quiz so scoring can evolve. `StatsScreen.tsx` renders the doughnut + breakdown.
@@ -61,7 +64,7 @@ Existing `{Feature}.spec.md` files (e.g. `src/features/quiz/Quiz.spec.md`, `src/
 - Quiz questions: stable string `id`, `question` (LaTeX via `$...$`/`$$...$$`), exactly 4 `answers`, integer `correct` (0–3), optional `graph` (`points` or `equation`).
 - Flashcards: stable string `id`, `front`, `back` (no `answers`/`correct`/`graph`). Mode Select reads `type` to show only matching mode(s).
 - `version` must currently equal `1`; unknown versions warn, not hard-fail.
-- localStorage keys: `studydeck_history` and `studydeck_flash_{title}` (keyed by question `id`). Full shapes in `docs/design-doc.md` under "localStorage Schema".
+- localStorage keys: `studydeck_history` and `studydeck_flash_{title}` (keyed by question `id`). Full shapes in `docs/core/design-doc.md` under "localStorage Schema".
 
 ### Screens
 
