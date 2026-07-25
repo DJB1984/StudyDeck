@@ -9,9 +9,51 @@ import { naturalOrder } from '../../lib/shuffle';
 
 type Mode = QuizMode | 'review';
 
+// Line-icon set replacing the old full-color emoji (DESIGN.md's Signal Rule
+// keeps color reserved for the accent/mark — mode icons draw in currentColor
+// so they inherit the muted/selected states .mode-icon already defines).
+const ICON_PROPS = {
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+};
+
+function PencilIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M4 20l1-5L15.5 4.5l3.5 3.5L9 18.5 4 20z" />
+      <path d="M14 6.5l3.5 3.5" />
+    </svg>
+  );
+}
+
+function StopwatchIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <circle cx="12" cy="13.5" r="7.5" />
+      <path d="M9 2.5h6" />
+      <path d="M12 5.5v2.5" />
+      <path d="M12 13.5l3-3" />
+    </svg>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M3 5l9 2 9-2v14l-9 2-9-2V5z" />
+      <path d="M12 7v14" />
+    </svg>
+  );
+}
+
 interface ModeDef {
   mode: Mode;
-  icon: string;
+  icon: () => React.JSX.Element;
   name: string;
   desc: string;
 }
@@ -19,19 +61,19 @@ interface ModeDef {
 const QUIZ_MODES: ModeDef[] = [
   {
     mode: 'practice',
-    icon: '📝',
+    icon: PencilIcon,
     name: 'Practice',
     desc: 'Immediate right/wrong feedback. Retry wrong answers without affecting your score.',
   },
   {
     mode: 'test',
-    icon: '🧪',
+    icon: StopwatchIcon,
     name: 'Test',
     desc: 'No feedback until the end. See your score and review what you missed.',
   },
   {
     mode: 'review',
-    icon: '📖',
+    icon: BookIcon,
     name: 'Review',
     desc: 'Browse every question with the correct answer shown. No scoring, no quiz.',
   },
@@ -73,7 +115,9 @@ export function ModeSelectScreen({ file, onBack, onStartQuiz, onStartReview }: M
             className={'mode-card' + (selected === m.mode ? ' selected' : '')}
             onClick={() => setSelected(m.mode)}
           >
-            <div className="mode-icon">{m.icon}</div>
+            <div className="mode-icon">
+              <m.icon />
+            </div>
             <div className="mode-name">{m.name}</div>
             <div className="mode-desc">{m.desc}</div>
           </div>

@@ -4,7 +4,15 @@
 
 import { useEffect, useState } from 'react';
 import type { QuizQuestion } from '../../types';
-import { ProgressHeader, QuestionBody, AnswerList } from '../../components/QuizUI';
+import {
+  ProgressHeader,
+  QuestionBody,
+  AnswerList,
+  MultiSelectAnswerList,
+  OrderList,
+  NumericInput,
+} from '../../components/QuizUI';
+import { CodeEditor } from '../../components/Code/CodeEditor';
 import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
 
 interface ReviewScreenProps {
@@ -19,6 +27,7 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
   const total = order.length;
   const current = idx + 1;
   const q = questions[order[idx]];
+  const format = q.answerFormat ?? 'mcq';
 
   const atStart = current === 1;
   const atEnd = current === total;
@@ -33,6 +42,7 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
 
   // Review has no "chosen" answer (it's read-only), so the prompt just asks
   // to explain the correct one — always available, unlike Quiz's Practice mode.
+  // mcq only: buildPrompt assumes a single `answers`/`correct` shape.
   function handleCopy() {
     copyWithFeedback(buildPrompt(q), setCopyLabel, 'Copy explanation prompt');
   }
@@ -53,20 +63,90 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
 
       <QuestionBody question={q} />
 
-      <AnswerList
-        answers={q.answers}
-        getClassName={(i) => 'answer-btn' + (i === q.correct ? ' correct-answer' : '')}
-        isDisabled={() => true}
-        onSelect={() => {}}
-      />
+      {format === 'mcq' && (
+        <AnswerList
+          answers={q.answers}
+          getClassName={(i) => 'answer-btn' + (i === q.correct ? ' correct-answer' : '')}
+          isDisabled={() => true}
+          onSelect={() => {}}
+        />
+      )}
+
+      {format === 'multiSelect' && (
+        <MultiSelectAnswerList
+          answers={q.answers}
+          isSelected={(i) => q.correctIndices?.includes(i) ?? false}
+          getClassName={(i) => 'answer-btn multi-select-btn' + (q.correctIndices?.includes(i) ? ' correct-answer' : '')}
+          isDisabled={() => true}
+          onToggle={() => {}}
+        />
+      )}
+
+      {format === 'order' && (
+        <OrderList
+          items={(q.correctOrder ?? []).map((id) => q.items?.find((it) => it.id === id)).filter((it): it is NonNullable<typeof it> => !!it)}
+          onReorder={() => {}}
+          disabled={true}
+        />
+      )}
+
+      {format === 'numeric' && (
+        <NumericInput
+          value={String(q.correctValue ?? '')}
+          onChange={() => {}}
+          onEnter={() => {}}
+          disabled={true}
+          inputWidget={q.inputWidget ?? 'text'}
+          sliderMin={q.sliderMin}
+          sliderMax={q.sliderMax}
+          sliderStep={q.sliderStep}
+          className="correct-answer"
+        />
+      )}
+
+      {format === 'code' && (
+        <>
+          <CodeEditor
+            key={q.id}
+            value={q.starterCode ?? ''}
+            onChange={() => {}}
+            language={q.language ?? 'javascript'}
+            readOnly
+          />
+          {(q.checks?.structure?.requiredNames?.length || q.checks?.tests?.length) && (
+            <div className="code-review-checks glass-card">
+              {q.checks?.structure?.requiredNames?.length ? (
+                <div className="code-check-row">Must define: {q.checks.structure.requiredNames.join(', ')}</div>
+              ) : null}
+              {q.checks?.tests?.map((t, i) => (
+                <div key={i} className="code-check-row">
+                  <code>{t.call}</code> → <code>{t.expect}</code>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {format !== 'mcq' &&
+        format !== 'multiSelect' &&
+        format !== 'order' &&
+        format !== 'numeric' &&
+        format !== 'code' && (
+          <div className="format-unsupported glass-card">
+            This question type isn't supported yet in this build.
+          </div>
+        )}
 
       <div className="review-nav">
         <button className="btn-ghost review-nav-prev" onClick={prev} disabled={atStart}>
           ← Prev
         </button>
-        <button className="btn-ghost review-nav-mid" onClick={handleCopy}>
-          {copyLabel}
-        </button>
+        {format === 'mcq' && (
+          <button className="btn-ghost review-nav-mid" onClick={handleCopy}>
+            {copyLabel}
+          </button>
+        )}
         <button className="btn-ghost review-nav-next" onClick={nextQ} disabled={atEnd}>
           Next →
         </button>

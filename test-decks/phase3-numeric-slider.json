@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Phase 3 Test — Numeric Free-Response & Slider",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Sanity check: this is a normal multiple-choice question. What is $2 + 2$?",
+      "answers": ["3", "4", "5", "22"],
+      "correct": 1
+    },
+    {
+      "id": "q2",
+      "answerFormat": "numeric",
+      "question": "An object accelerates from rest at $a = 9.8\\text{ m/s}^2$. What is its velocity after $t = 3$ s? (in m/s)",
+      "inputWidget": "text",
+      "correctValue": 29.4,
+      "tolerance": 0.1
+    },
+    {
+      "id": "q3",
+      "answerFormat": "numeric",
+      "question": "Use the slider to estimate: what percentage of a triangle's area does one of its medians divide it into (each half)?",
+      "inputWidget": "slider",
+      "sliderMin": 0,
+      "sliderMax": 100,
+      "sliderStep": 1,
+      "correctValue": 50,
+      "tolerance": 2
+    },
+    {
+      "id": "q4",
+      "answerFormat": "numeric",
+      "question": "Simplify: $-8 + 3 \\times 2$",
+      "inputWidget": "text",
+      "correctValue": -2,
+      "tolerance": 0
+    },
+    {
+      "id": "q5",
+      "answerFormat": "numeric",
+      "question": "Use the slider to set the value of $\\pi$ rounded to one decimal place.",
+      "inputWidget": "slider",
+      "sliderMin": 2.5,
+      "sliderMax": 3.5,
+      "sliderStep": 0.1,
+      "correctValue": 3.1,
+      "tolerance": 0.05
+    }
+  ]
+}

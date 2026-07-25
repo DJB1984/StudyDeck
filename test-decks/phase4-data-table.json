@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Phase 4 Test — Data Tables",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Sanity check: this is a normal multiple-choice question, no table. What is $3 \\times 4$?",
+      "answers": ["7", "12", "34", "1"],
+      "correct": 1
+    },
+    {
+      "id": "q2",
+      "question": "Based on the income statement below, what was Company X's net income (Revenue − Expenses) for 2024?",
+      "table": {
+        "title": "Company X — Income Summary",
+        "headers": ["Year", "Revenue", "Expenses"],
+        "rows": [
+          ["2022", "$98,000", "$81,000"],
+          ["2023", "$120,000", "$95,000"],
+          ["2024", "$150,000", "$110,000"]
+        ]
+      },
+      "answers": ["$25,000", "$40,000", "$150,000", "$260,000"],
+      "correct": 1
+    },
+    {
+      "id": "q3",
+      "answerFormat": "numeric",
+      "question": "One line item below is a loss, shown in accounting parentheses. What is that value as a plain negative number?",
+      "table": {
+        "title": "Quarterly Net Change ($ thousands)",
+        "headers": ["Q1", "Q2", "Q3", "Q4"],
+        "rows": [
+          ["12", "(8)", "21", "5"]
+        ]
+      },
+      "correctValue": -8,
+      "tolerance": 0
+    },
+    {
+      "id": "q4",
+      "question": "Widen your browser or scroll the table below — which region had the highest Q4 revenue?",
+      "table": {
+        "title": "Regional Revenue by Quarter ($ millions)",
+        "headers": ["Region", "Q1", "Q2", "Q3", "Q4", "Full Year", "YoY Growth"],
+        "rows": [
+          ["Northeast", "$4.2", "$4.8", "$5.1", "$6.0", "$20.1", "8%"],
+          ["Southeast", "$3.1", "$3.4", "$3.9", "$4.4", "$14.8", "12%"],
+          ["Midwest", "$2.8", "$2.9", "$3.0", "$3.2", "$11.9", "4%"],
+          ["West", "$5.0", "$5.6", "$6.2", "$7.1", "$23.9", "15%"]
+        ]
+      },
+      "answers": ["Northeast", "Southeast", "Midwest", "West"],
+      "correct": 3
+    },
+    {
+      "id": "q5",
+      "question": "The table gives values for a right triangle. Using $c = \\sqrt{a^2 + b^2}$, what is the hypotenuse for the row where $a=3, b=4$?",
+      "table": {
+        "title": "Right Triangle Legs",
+        "headers": ["$a$", "$b$", "$a^2 + b^2$"],
+        "rows": [
+          ["3", "4", "25"],
+          ["6", "8", "100"],
+          ["5", "12", "169"]
+        ]
+      },
+      "answers": ["$5$", "$7$", "$25$", "$\\sqrt{7}$"],
+      "correct": 0
+    },
+    {
+      "id": "q6",
+      "question": "This question shows both a graph and a table as context — click the vertex's y-value on the graph description, then check against the table.",
+      "graph": {
+        "type": "equation",
+        "data": "-(x-2)*(x-2)+4",
+        "x_range": [-2, 6],
+        "x_label": "$x$",
+        "y_label": "$y$",
+        "title": "$y = -(x-2)^2 + 4$"
+      },
+      "table": {
+        "title": "Key Points",
+        "headers": ["Point", "x", "y"],
+        "rows": [
+          ["Vertex", "2", "4"],
+          ["Left root", "0", "0"],
+          ["Right root", "4", "0"]
+        ]
+      },
+      "answers": ["2", "4", "0", "-2"],
+      "correct": 1
+    }
+  ]
+}

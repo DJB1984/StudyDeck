@@ -41,7 +41,13 @@ export function Toast() {
   }
 
   return (
-    <div id="error-toast" className={visible ? 'visible' : ''}>
+    <div
+      id="error-toast"
+      className={visible ? 'visible' : ''}
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
       <button className="toast-close" onClick={dismiss} aria-label="Dismiss">
         &times;
       </button>

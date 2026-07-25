@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Phase 7 Test — JavaScript Code Questions",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Sanity check: this is a normal multiple-choice question, no code editor. What is $2^{5}$?",
+      "answers": ["10", "16", "32", "25"],
+      "correct": 2
+    },
+    {
+      "id": "q2",
+      "answerFormat": "code",
+      "question": "Write a function `reverseString(s)` that returns the input string reversed.",
+      "language": "javascript",
+      "starterCode": "function reverseString(s) {\n  \n}",
+      "checks": {
+        "syntax": true,
+        "structure": { "requiredNames": ["reverseString"] },
+        "tests": [
+          { "call": "reverseString(\"abc\")", "expect": "\"cba\"" },
+          { "call": "reverseString(\"\")", "expect": "\"\"" },
+          { "call": "reverseString(\"a\")", "expect": "\"a\"" }
+        ]
+      }
+    },
+    {
+      "id": "q3",
+      "answerFormat": "code",
+      "question": "Write a function `sumEvens(nums)` that returns the sum of only the even numbers in the array `nums`.",
+      "language": "javascript",
+      "starterCode": "function sumEvens(nums) {\n  \n}",
+      "checks": {
+        "syntax": true,
+        "tests": [
+          { "call": "sumEvens([1,2,3,4,5,6])", "expect": "12" },
+          { "call": "sumEvens([1,3,5])", "expect": "0" },
+          { "call": "sumEvens([])", "expect": "0" }
+        ]
+      }
+    },
+    {
+      "id": "q4",
+      "answerFormat": "code",
+      "question": "Write a class `Counter` with a constructor that takes a starting value, an `increment()` method, and a `value` property reflecting the current count. No test cases here — this one is graded purely on shape.",
+      "language": "javascript",
+      "starterCode": "class Counter {\n  constructor(start) {\n    \n  }\n\n  increment() {\n    \n  }\n}",
+      "checks": {
+        "syntax": true,
+        "structure": { "requiredNames": ["Counter"] }
+      }
+    },
+    {
+      "id": "q5",
+      "answerFormat": "code",
+      "question": "Write a function `isPalindrome(s)` that returns `true` if `s` reads the same forwards and backwards, `false` otherwise (case-sensitive, no need to strip spaces/punctuation).",
+      "language": "javascript",
+      "starterCode": "function isPalindrome(s) {\n  \n}",
+      "checks": {
+        "syntax": true,
+        "structure": { "requiredNames": ["isPalindrome"] },
+        "tests": [
+          { "call": "isPalindrome(\"racecar\")", "expect": "true" },
+          { "call": "isPalindrome(\"hello\")", "expect": "false" },
+          { "call": "isPalindrome(\"a\")", "expect": "true" }
+        ]
+      }
+    }
+  ]
+}

@@ -1,19 +1,44 @@
 /*
- * StudyDeck design tokens — the dark liquid-glass palette.
+ * StudyDeck design tokens — the "Starfield" deep-space palette.
  * Isolated in its own file so a shared cross-project theme can swap in here
- * later without touching component styles. Kept 1:1 with docs/core/design-doc.md.
+ * later without touching component styles. Kept 1:1 with DESIGN.md.
+ * Hex values are the sRGB resolution of the system's authored OKLCH scale
+ * (documented in DESIGN.md alongside the hex) — plain hex/rgba here so every
+ * consumer (CSS, Chart.js canvas fills, computed-style reads) can parse them
+ * without relying on browser oklch() support.
  */
 :root {
-  --bg: #0a0a0f;                        /* near-black base */
-  --surface: rgba(255, 255, 255, 0.06); /* glass card background */
-  --surface-hover: rgba(255, 255, 255, 0.10);
-  --border: rgba(255, 255, 255, 0.12);  /* subtle glass edge */
-  --blur: blur(20px);                   /* backdrop-filter */
-  --accent: #7c3aed;                    /* purple-600 */
-  --accent-light: #a78bfa;              /* purple-400 — text on dark */
-  --text-primary: #f1f0ff;
-  --text-secondary: rgba(241, 240, 255, 0.6);
-  --correct: #22c55e;
-  --incorrect: #ef4444;
+  --bg: #080d16;                        /* void — near-black deep-space navy */
+  --surface: #11161f;                   /* solid panel fill (no blur/glass) */
+  --surface-hover: #1a2029;             /* surface, raised/hover */
+  --border: rgba(255, 255, 255, 0.08);  /* hairline edge */
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --accent: #3093ec;                    /* starlight blue — the one everyday accent */
+  --accent-light: #63b3ff;              /* hover/focus/text-on-dark */
+  --accent-deep: #0267c7;               /* gradient base for filled buttons */
+
+  /* Nebula — reserved exclusively for the brand mark and Home's hero moment,
+     never for ordinary interactive chrome (see DESIGN.md's Signal Rule). */
+  --nebula-ember: #ef852e;
+  --nebula-pink: #c841a5;
+  --nebula-gradient: conic-gradient(from 200deg, var(--nebula-ember), var(--nebula-pink), var(--accent), var(--nebula-ember));
+  --hero-glow: #1a2941;
+  --hero-ember-glow: rgba(81, 26, 0, 0.5);
+  --hero-pink-glow: rgba(81, 8, 64, 0.4);
+
+  --text-primary: #e1e5eb;
+  --text-secondary: #79818d;
+  --text-hero-end: #abbfdf;             /* gradient-text stop for the hero wordmark */
+
+  --correct: #5dc879;
+  --incorrect: #f75d59;
+
   --radius: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-heading: 'Space Grotesk', var(--font-body);
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 }

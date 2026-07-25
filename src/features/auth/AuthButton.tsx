@@ -1,7 +1,7 @@
 // AuthButton — Home screen header element (spec: Auth.spec.md R1, R8-R10).
-// Logged out: ghost "Log in" button. Logged in: a glass circular avatar
-// (generic person icon, matching the app's liquid-glass surfaces rather than
-// a solid per-email color) that smoothly grows into a panel showing the
+// Logged out: ghost "Log in" button. Logged in: a circular avatar (generic
+// person icon, matching the app's solid panel surfaces rather than a solid
+// per-email color) that smoothly grows into a panel showing the
 // email and a "Log out" button (see styles.css .auth-panel for the
 // animation). Also owns the two pieces of app-startup auth wiring that
 // belong nowhere else: detecting an expired/used magic link in the URL (R6),
@@ -142,16 +142,16 @@ export function AuthButton() {
   // closing. Conditionally rendering would unmount the panel the instant
   // menuOpen flips false, skipping the close transition entirely.
   //
-  // The panel is a liquid-glass surface (var(--surface)/var(--surface-hover)
-  // + backdrop-filter) in BOTH collapsed and expanded states — matching the
-  // app's existing glass cards, and avoiding a jarring solid-color-to-glass
-  // transition. The person icon stays a fixed-size, fixed-position badge;
+  // The panel is a solid surface (var(--surface)/var(--surface-hover)) in
+  // BOTH collapsed and expanded states — matching the app's other panels,
+  // and avoiding a jarring material change mid-transition. The person icon
+  // stays a fixed-size, fixed-position badge;
   // the email and Log out button slide/fade in next to and below it.
   return (
     <div className="auth-avatar-wrap">
       <div
         className={'auth-panel' + (menuOpen ? ' expanded' : '')}
-        style={{ width: menuOpen ? expandedWidth : PANEL_COLLAPSED_SIZE }}
+        style={{ width: expandedWidth }}
       >
         <button
           className="auth-panel-header"

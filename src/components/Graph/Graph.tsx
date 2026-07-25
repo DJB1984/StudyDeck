@@ -13,7 +13,7 @@ import { Katex } from '../Math/Katex';
 
 const DARK = {
   grid: 'rgba(255,255,255,0.06)',
-  tick: 'rgba(241,240,255,0.5)',
+  tick: 'rgba(225,229,235,0.5)',
   border: 'rgba(255,255,255,0.12)',
 };
 
@@ -66,10 +66,10 @@ function buildChart(graph: GraphSpec, canvas: HTMLCanvasElement): Chart {
         {
           data: points,
           showLine: true,
-          borderColor: '#a78bfa',
+          borderColor: '#63b3ff',
           borderWidth: 2,
           pointRadius: graph.type === 'equation' ? 0 : 3,
-          pointBackgroundColor: '#a78bfa',
+          pointBackgroundColor: '#63b3ff',
           fill: false,
           tension: 0,
         },

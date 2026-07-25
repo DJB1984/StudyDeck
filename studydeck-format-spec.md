@@ -72,6 +72,135 @@ Pick whichever matches what was asked for. If someone wants to drill vocab/terms
 | `questions[].correct` | integer | **Yes** | Index into `answers`, so `0`–`3`. |
 | `questions[].graph` | object | No | Omit the key entirely if there's no graph — don't set it to `null`. |
 
+### Answer formats (quiz decks)
+
+Every quiz question supports an optional `"answerFormat"` field. Omit it (or set `"mcq"`) for the classic 4-answer multiple choice shown above. StudyDeck also supports these formats today — use whichever genuinely fits the material, don't force everything into mcq:
+
+| `answerFormat` | Best for |
+|---|---|
+| `"mcq"` (default) | Standard 4-option multiple choice |
+| `"multiSelect"` | "Select all that apply" — any number of options, any number correct |
+| `"numeric"` | A typed or slider-dragged numeric answer instead of picking from options |
+| `"order"` | Drag a shuffled list of steps/items into the correct sequence |
+| `"code"` | Write real code (JavaScript or Python) and get it graded on syntax/structure/behavior |
+
+Each is detailed below. A question can also carry a `"table"` object (see its own section) as context alongside any of these formats, the same way `"graph"` already works.
+
+#### `"multiSelect"` — select all that apply
+
+```json
+{
+  "id": "q3",
+  "answerFormat": "multiSelect",
+  "question": "Which of the following are signs of hypoglycemia? Select all that apply.",
+  "answers": ["Sweating", "Confusion", "Fever", "Shakiness"],
+  "correctIndices": [0, 1, 3]
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `answers` | array of strings | **Yes** | **Not** locked to 4 — real "select all" questions commonly have 5-8 options. |
+| `correctIndices` | array of integers | **Yes** | Indices into `answers`, one per correct option. Every index must be in range and none repeated. Grading is all-or-nothing (the exact correct set), no partial credit. |
+
+#### `"numeric"` — typed or slider numeric answer
+
+```json
+{
+  "id": "q4",
+  "answerFormat": "numeric",
+  "question": "An object accelerates from rest at $a = 9.8\\text{ m/s}^2$. What is its velocity after $t=3$ s?",
+  "correctValue": 29.4,
+  "tolerance": 0.1
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `correctValue` | number | **Yes** | The correct numeric answer. |
+| `tolerance` | number | **Yes** | How far off still counts as correct. Pick something sensible for the problem — `0` for an exact integer answer, a small decimal for a rounded physical quantity. |
+| `inputWidget` | string | No | `"text"` (default) or `"slider"`. |
+| `sliderMin` / `sliderMax` / `sliderStep` | number | **Required if `inputWidget` is `"slider"`** | The draggable range and step size. `sliderMin` must be less than `sliderMax`. |
+
+Don't include `answers` or `correct` on a `numeric` question — they're ignored.
+
+#### `"order"` — drag-to-order
+
+```json
+{
+  "id": "q5",
+  "answerFormat": "order",
+  "question": "Order these steps of the nursing process.",
+  "items": [
+    { "id": "a", "text": "Assessment" },
+    { "id": "b", "text": "Diagnosis" },
+    { "id": "c", "text": "Planning" },
+    { "id": "d", "text": "Implementation" },
+    { "id": "e", "text": "Evaluation" }
+  ],
+  "correctOrder": ["a", "b", "c", "d", "e"]
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `items` | array of `{id, text}` | **Yes** | At least 2 entries. Each `id` just needs to be unique within the question (short letters/numbers are fine); StudyDeck shuffles `items` for display, so the order you list them in doesn't matter and isn't a spoiler. |
+| `correctOrder` | array of strings | **Yes** | The `id`s from `items`, in the correct sequence — must contain exactly the same ids as `items`, each exactly once. |
+
+Grading is exact-sequence match, all-or-nothing.
+
+#### `"code"` — write real code
+
+```json
+{
+  "id": "q6",
+  "answerFormat": "code",
+  "question": "Write a function `reverse_string(s)` that returns the input string reversed.",
+  "language": "python",
+  "starterCode": "def reverse_string(s):\n    pass\n",
+  "checks": {
+    "syntax": true,
+    "structure": { "requiredNames": ["reverse_string"] },
+    "tests": [
+      { "call": "reverse_string('abc')", "expect": "'cba'" },
+      { "call": "reverse_string('')", "expect": "''" }
+    ]
+  }
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `language` | string | **Yes** | `"javascript"` or `"python"` **only** — Java is not supported yet, don't generate `language: "java"` questions. |
+| `starterCode` | string | No | Pre-filled editor content — usually the function/class signature with an empty body, so the student fills in the logic. |
+| `checks.syntax` | boolean | No | `true` gates the rest of grading on the code actually parsing. |
+| `checks.structure` | object | No | `{ "requiredNames": [...] }` — names (function/class/variable) that must be declared somewhere in the submission. Good for "write a class with this shape" questions that don't need behavioral tests. |
+| `checks.tests` | array of `{call, expect}` | No | Each `call` and `expect` must be a valid expression **in the question's own `language`** (e.g. Python syntax for a `"python"` question, JavaScript syntax for `"javascript"`) — not JSON, not pseudocode. `expect` is evaluated the same way `call` is, so it can be any literal: `"5"`, `"'cba'"`, `"[1, 2, 3]"`, `"True"` (Python) / `"true"` (JavaScript). |
+| Don't include | — | — | `answers`/`correct` are not used for `code` questions. |
+
+At least one of `checks.syntax` / `checks.structure` / `checks.tests` must be present — a pure structure-only question (no `tests`) is fine when the point is "did you write a valid shape," not behavior.
+
+### Table object (any quiz question, when present)
+
+A `"table"` renders a small data table above the question — the same context role `"graph"` plays. Works alongside any `answerFormat` above.
+
+```json
+"table": {
+  "title": "Company X — Income Summary",
+  "headers": ["Year", "Revenue", "Expenses"],
+  "rows": [
+    ["2023", "$120,000", "$95,000"],
+    ["2024", "$150,000", "$110,000"]
+  ]
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `title` | string | **Yes** | Supports `$...$` LaTeX. |
+| `headers` | array of strings | **Yes** | Non-empty. Supports `$...$` LaTeX per cell. |
+| `rows` | array of arrays of strings | **Yes** | Non-empty. Every row must have exactly as many entries as `headers`. Supports `$...$` LaTeX per cell. |
+
 ### Flashcard schema
 
 Flashcards don't need distractors, so they use `front` / `back` instead of `question` / `answers` / `correct`. Graphs aren't supported on flashcards.
@@ -216,12 +345,16 @@ StudyDeck rejects the entire file if any of these fail — it will *not* silentl
 
 **If `type` is `"quiz"` (or omitted):**
 - [ ] Every question has a non-empty `question` string
-- [ ] Every question has an `answers` array with **exactly 4** entries
-- [ ] Every question's `correct` is an integer between `0` and `3` inclusive
+- [ ] If `answerFormat` is omitted or `"mcq"`: `answers` has **exactly 4** entries, and `correct` is an integer `0`–`3`
+- [ ] If `answerFormat` is `"multiSelect"`: `answers` is non-empty, `correctIndices` is a non-empty array of in-range, non-duplicate indices
+- [ ] If `answerFormat` is `"numeric"`: `correctValue` and `tolerance` are both numbers; if `inputWidget` is `"slider"`, `sliderMin`/`sliderMax`/`sliderStep` are all present and `sliderMin < sliderMax`
+- [ ] If `answerFormat` is `"order"`: `items` has at least 2 entries, and `correctOrder` contains exactly the same ids as `items`, each once
+- [ ] If `answerFormat` is `"code"`: `language` is `"javascript"` or `"python"` (never `"java"`), and `checks` has at least one of `syntax`/`structure`/`tests`
 - [ ] If a question has a `graph` object: `type`, `x_label`, `y_label`, and `title` are all present
 - [ ] If `graph.type` is `"equation"`: `x_range` is present
 - [ ] If `graph.x_range` is present: it's an array of exactly 2 numbers
 - [ ] If `graph.y_range` is present: it's an array of exactly 2 numbers
+- [ ] If a question has a `table` object: `title` is present, `headers` is non-empty, and every `rows` entry has the same length as `headers`
 
 **If `type` is `"flashcard"`:**
 - [ ] Every card has a non-empty `front` string

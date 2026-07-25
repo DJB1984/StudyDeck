@@ -18,10 +18,22 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnswerRecord, OrderItem, QuizQuestion, QuizSession, SessionRecord } from '../../types';
-import { ProgressHeader, QuestionBody, AnswerList, MultiSelectAnswerList, OrderList } from '../../components/QuizUI';
+import {
+  ProgressHeader,
+  QuestionBody,
+  AnswerList,
+  MultiSelectAnswerList,
+  OrderList,
+  NumericInput,
+  CodeResultsPanel,
+} from '../../components/QuizUI';
+import { CodeEditor } from '../../components/Code/CodeEditor';
 import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
 import { buildRecord, formatDuration } from '../stats/stats';
 import { shuffleArray } from '../../lib/shuffle';
+import { matchNumeric } from '../../lib/answerMatching';
+import { runCodeChecks } from '../../lib/codeRunners';
+import type { CodeCheckResult } from '../../lib/codeRunners';
 
 interface SavedAnswer {
   chosenIndex: number;
@@ -31,7 +43,13 @@ interface SavedAnswer {
   chosenIndices?: number[];
   /** order only — item ids in the current/submitted order. */
   chosenOrder?: string[];
-  /** multiSelect/order only: has "Check answer" been pressed in Practice mode. */
+  /** numeric only — raw text/slider value as typed, graded via answerMatching.matchNumeric. */
+  numericValue?: string;
+  /** code only — current editor text, graded via lib/codeRunners. */
+  codeValue?: string;
+  /** code only — result of the last "Run Tests" click in Practice mode. */
+  codeResult?: CodeCheckResult;
+  /** multiSelect/order/numeric/code only: has "Check answer" been pressed in Practice mode. */
   submitted?: boolean;
 }
 
@@ -62,6 +80,8 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, SavedAnswer>>({});
   const [copyLabel, setCopyLabel] = useState('Copy explanation prompt');
+  const [codeRunning, setCodeRunning] = useState(false);
+  const [codeRunningLabel, setCodeRunningLabel] = useState('Running…');
 
   const sessionStartRef = useRef<number>(Date.now());
   const questionEnteredAtRef = useRef<number>(Date.now());
@@ -91,8 +111,14 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
       : format === 'multiSelect'
         ? !!saved?.chosenIndices && saved.chosenIndices.length > 0
         : format === 'order'
-          ? !!saved?.chosenOrder
-          : false;
+          ? true // an order question always has a full current sequence to submit, touched or not
+          : format === 'numeric'
+            ? q.inputWidget === 'slider'
+              ? true // a slider always has a value, touched or not — same reasoning as order
+              : !!saved?.numericValue && saved.numericValue.trim() !== ''
+            : format === 'code'
+              ? (saved?.codeValue ?? q.starterCode ?? '').trim() !== ''
+              : false;
 
   // Practice-mode "locked" (correct, no more retries) is format-aware; Test never locks.
   const isCurrentlyCorrect =
@@ -102,7 +128,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         ? !!saved?.submitted && isCorrectMulti(q, saved?.chosenIndices)
         : format === 'order'
           ? !!saved?.submitted && isCorrectOrder(q, saved?.chosenOrder)
-          : false;
+          : format === 'numeric'
+            ? !!saved?.submitted && matchNumeric(saved?.numericValue ?? '', q.correctValue ?? 0, q.tolerance ?? 0)
+            : format === 'code'
+              ? !!saved?.submitted && !!saved?.codeResult?.overallPass
+              : false;
   const locked = mode === 'practice' && isCurrentlyCorrect;
 
   // 'order' display order: restores the saved order if the student already
@@ -122,6 +152,7 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
   useEffect(() => {
     questionEnteredAtRef.current = Date.now();
     setCopyLabel('Copy explanation prompt');
+    setCodeRunning(false);
   }, [idx]);
 
   function handlePracticeClick(i: number) {
@@ -191,10 +222,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     let cls = 'answer-btn multi-select-btn';
     const isSelected = saved?.chosenIndices?.includes(i) ?? false;
     if (mode === 'practice' && saved?.submitted) {
+      // Only reflects what the student actually picked — a correct option they
+      // DIDN'T pick is never highlighted, that would give the answer away.
       const shouldBeSelected = q.correctIndices?.includes(i) ?? false;
       if (isSelected && shouldBeSelected) cls += ' correct-answer';
       else if (isSelected && !shouldBeSelected) cls += ' wrong-answer';
-      else if (!isSelected && shouldBeSelected) cls += ' missed-answer';
     } else if (isSelected) {
       cls += ' selected-answer';
     }
@@ -235,6 +267,75 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     return item && q.correctOrder[i] === item.id ? 'correct-answer' : 'wrong-answer';
   }
 
+  // --- numeric/slider handlers ---
+  function handleNumericChange(v: string) {
+    if (locked) return;
+    setAnswers((prev) => {
+      const existing = prev[q.id];
+      return {
+        ...prev,
+        [q.id]: {
+          chosenIndex: -1,
+          numericValue: v,
+          firstAttemptCorrect: existing?.firstAttemptCorrect ?? null,
+          submitted: mode === 'practice' ? false : true,
+        },
+      };
+    });
+  }
+
+  function handleNumericSubmit() {
+    if (mode !== 'practice' || locked) return;
+    setAnswers((prev) => {
+      const existing = prev[q.id];
+      const numericValue = existing?.numericValue ?? '';
+      const correct = matchNumeric(numericValue, q.correctValue ?? 0, q.tolerance ?? 0);
+      const firstAttemptCorrect = existing?.firstAttemptCorrect ?? correct;
+      return { ...prev, [q.id]: { chosenIndex: -1, numericValue, firstAttemptCorrect, submitted: true } };
+    });
+  }
+
+  function numericInputClass(): string {
+    if (mode !== 'practice' || !saved?.submitted) return '';
+    return isCurrentlyCorrect ? 'correct-answer' : 'wrong-answer';
+  }
+
+  // --- code handlers ---
+  function handleCodeChange(v: string) {
+    if (locked) return;
+    setAnswers((prev) => {
+      const existing = prev[q.id];
+      return {
+        ...prev,
+        [q.id]: {
+          chosenIndex: -1,
+          codeValue: v,
+          codeResult: existing?.codeResult,
+          firstAttemptCorrect: existing?.firstAttemptCorrect ?? null,
+          submitted: mode === 'practice' ? false : true,
+        },
+      };
+    });
+  }
+
+  async function handleCodeSubmit() {
+    if (mode !== 'practice' || locked) return;
+    const code = saved?.codeValue ?? q.starterCode ?? '';
+    const questionId = q.id; // captured so a slow run lands on the right question even after navigation
+    setCodeRunningLabel('Running…');
+    setCodeRunning(true);
+    const result = await runCodeChecks(q.language, code, q.checks ?? {}, setCodeRunningLabel);
+    setCodeRunning(false);
+    setAnswers((prev) => {
+      const existing = prev[questionId];
+      const firstAttemptCorrect = existing?.firstAttemptCorrect ?? result.overallPass;
+      return {
+        ...prev,
+        [questionId]: { chosenIndex: -1, codeValue: code, codeResult: result, firstAttemptCorrect, submitted: true },
+      };
+    });
+  }
+
   // Accumulates time on the question being left, keyed by id so revisits sum
   // rather than overwrite. Called from every place idx is about to change or
   // the session is about to end.
@@ -253,10 +354,10 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     if (idx > 0) goTo(idx - 1);
   }
 
-  function buildAnswerRecords(): AnswerRecord[] {
+  async function buildAnswerRecords(): Promise<AnswerRecord[]> {
     // R12: one record per question in `order`, not just the ones actually
     // answered — a skipped question is scored wrong rather than omitted.
-    return order.map((qi) => {
+    return Promise.all(order.map(async (qi) => {
       const question = questions[qi];
       const qFormat = question.answerFormat ?? 'mcq';
       const a = answers[question.id];
@@ -294,6 +395,47 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         };
       }
 
+      if (qFormat === 'numeric') {
+        const numericValue = a?.numericValue ?? '';
+        const hasValue = numericValue.trim() !== '';
+        const correct = matchNumeric(numericValue, question.correctValue ?? 0, question.tolerance ?? 0);
+        const firstAttemptCorrect = !hasValue ? false : mode === 'practice' ? (a!.firstAttemptCorrect ?? false) : correct;
+        return {
+          id: question.id,
+          firstAttemptCorrect,
+          chosenIndex: -1,
+          correctIndex: -1,
+          numericInput: hasValue ? numericValue : undefined,
+          timeSpent,
+        };
+      }
+
+      if (qFormat === 'code') {
+        const codeValue = a?.codeValue ?? question.starterCode ?? '';
+        const hasCode = codeValue.trim() !== '';
+        // Practice already recorded firstAttemptCorrect from the first "Run
+        // Tests" click — re-running here would let later retries silently
+        // change it, breaking the retry-doesn't-inflate-score invariant. Test
+        // mode never showed a Run button, so grading against the final code
+        // only happens here, once. Unlike the other formats above, `hasCode`
+        // can be true even when `a` itself is undefined (starterCode alone is
+        // non-empty and the student never touched this question at all), so
+        // this reads `a?.` rather than asserting `a!` exists.
+        const firstAttemptCorrect = !hasCode
+          ? false
+          : mode === 'practice'
+            ? (a?.firstAttemptCorrect ?? false)
+            : (await runCodeChecks(question.language, codeValue, question.checks ?? {})).overallPass;
+        return {
+          id: question.id,
+          firstAttemptCorrect,
+          chosenIndex: -1,
+          correctIndex: -1,
+          codeInput: hasCode ? codeValue : undefined,
+          timeSpent,
+        };
+      }
+
       // mcq (default) — unchanged from the original single-format implementation.
       const chosen = a?.chosenIndex ?? -1;
       const firstAttemptCorrect =
@@ -309,13 +451,14 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         correctIndex: question.correct,
         timeSpent,
       };
-    });
+    }));
   }
 
-  function finish() {
+  async function finish() {
     flushTime();
     const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
-    onFinish(buildRecord(buildAnswerRecords(), duration, mode));
+    const records = await buildAnswerRecords();
+    onFinish(buildRecord(records, duration, mode));
   }
 
   function next() {
@@ -333,9 +476,18 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
 
   // Keyboard: 1–4 select enabled mcq answers only (other formats have no
   // single-key-per-option mapping); ←/→ freely move between questions (no
-  // answer required); Enter also advances/finishes.
+  // answer required); Enter also advances/finishes. Skipped entirely while a
+  // form control (numeric text input, slider, code editor) is focused —
+  // otherwise Enter would silently advance instead of submitting/inserting a
+  // newline, and ←/→ would fight the slider's native nudging or the code
+  // editor's own cursor movement instead of moving between questions.
   useEffect(() => {
+    function isFormField(el: HTMLElement | null): boolean {
+      if (!el) return false;
+      return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || !!el.closest('.code-editor');
+    }
     function onKey(e: KeyboardEvent) {
+      if (isFormField(e.target as HTMLElement)) return;
       if (format === 'mcq' && ['1', '2', '3', '4'].includes(e.key)) {
         const i = parseInt(e.key, 10) - 1;
         if (i < q.answers.length && !isDisabled(i)) handleAnswerClick(i);
@@ -355,7 +507,7 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
   }, [idx, answers]);
 
   const feedbackMsg =
-    mode !== 'practice' || !answered
+    mode !== 'practice' || !answered || format === 'code' // code's detailed pass/fail lives in CodeResultsPanel instead
       ? ''
       : format === 'mcq'
         ? chosenIndex === q.correct
@@ -364,14 +516,28 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         : saved?.submitted
           ? isCurrentlyCorrect
             ? 'Correct!'
-            : 'Incorrect — try again'
+            : format === 'multiSelect'
+              ? 'Incorrect — recheck your selections' // no more/fewer hint, that leaks info
+              : 'Incorrect — try again'
           : '';
   const feedbackClass =
-    !answered || (format !== 'mcq' && !saved?.submitted) ? '' : isCurrentlyCorrect ? 'correct' : 'incorrect';
+    !answered || format === 'code' || (format !== 'mcq' && !saved?.submitted)
+      ? ''
+      : isCurrentlyCorrect
+        ? 'correct'
+        : 'incorrect';
+
+  // Test mode has no retries and no feedback until Stats — quitting mid-session
+  // throws that progress away for good, so it's the one mode worth a confirm.
+  // Practice has nothing at stake (retries don't count) and stays a single click.
+  function handleAbandon() {
+    if (mode === 'test' && !window.confirm("Quit this test? Your progress won't be saved.")) return;
+    onAbandon();
+  }
 
   return (
     <section id="quiz-screen" className="screen">
-      <ProgressHeader current={current} total={total} onAbandon={onAbandon} abandonTitle="Quit quiz" />
+      <ProgressHeader current={current} total={total} onAbandon={handleAbandon} abandonTitle="Quit quiz" />
 
       <QuestionBody question={q} />
 
@@ -403,21 +569,63 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         />
       )}
 
-      {format !== 'mcq' && format !== 'multiSelect' && format !== 'order' && (
-        <div className="format-unsupported glass-card">
-          This question type isn't supported yet in this build.
-        </div>
+      {format === 'numeric' && (
+        <NumericInput
+          value={saved?.numericValue ?? ''}
+          onChange={handleNumericChange}
+          onEnter={handleNumericSubmit}
+          disabled={locked}
+          inputWidget={q.inputWidget ?? 'text'}
+          sliderMin={q.sliderMin}
+          sliderMax={q.sliderMax}
+          sliderStep={q.sliderStep}
+          className={numericInputClass()}
+        />
       )}
 
-      {mode === 'practice' && (format === 'multiSelect' || format === 'order') && !locked && (
-        <button
-          className="btn quiz-check-btn"
-          onClick={format === 'multiSelect' ? handleMultiSubmit : handleOrderSubmit}
-          disabled={!answered}
-        >
-          Check answer
-        </button>
+      {format === 'code' && (
+        <CodeEditor
+          key={q.id}
+          value={saved?.codeValue ?? q.starterCode ?? ''}
+          onChange={handleCodeChange}
+          language={q.language ?? 'javascript'}
+          readOnly={locked}
+        />
       )}
+
+      {format === 'code' && mode === 'practice' && (codeRunning || (saved?.submitted && saved?.codeResult)) && (
+        <CodeResultsPanel result={saved?.codeResult ?? null} running={codeRunning} runningLabel={codeRunningLabel} />
+      )}
+
+      {format !== 'mcq' &&
+        format !== 'multiSelect' &&
+        format !== 'order' &&
+        format !== 'numeric' &&
+        format !== 'code' && (
+          <div className="format-unsupported glass-card">
+            This question type isn't supported yet in this build.
+          </div>
+        )}
+
+      {mode === 'practice' &&
+        (format === 'multiSelect' || format === 'order' || format === 'numeric' || format === 'code') &&
+        !locked && (
+          <button
+            className="btn quiz-check-btn"
+            onClick={
+              format === 'multiSelect'
+                ? handleMultiSubmit
+                : format === 'order'
+                  ? handleOrderSubmit
+                  : format === 'code'
+                    ? handleCodeSubmit
+                    : handleNumericSubmit
+            }
+            disabled={!answered || (format === 'code' && codeRunning)}
+          >
+            {format === 'code' ? (codeRunning ? 'Running…' : 'Run Tests') : 'Check answer'}
+          </button>
+        )}
 
       {mode === 'practice' && (
         <div id="quiz-feedback">

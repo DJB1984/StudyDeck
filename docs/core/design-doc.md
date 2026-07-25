@@ -82,6 +82,16 @@ Quiz decks and flashcard decks are structurally different — a top-level `type`
   - `x_label`: string, required. Supports LaTeX via `$...$` (e.g. `"$e^x$"`) — rendered with KaTeX as an HTML overlay on top of the chart, since Chart.js itself can only draw plain canvas text.
   - `y_label`: string, required. Same LaTeX support as `x_label`.
   - `title`: string, required. Same LaTeX support as `x_label`.
+- `table` — optional object (omit entirely if no table), sibling to `graph` (a question may have either, both, or neither). Rendered by `src/components/Table/Table.tsx`, context-only (never itself an answer surface).
+  - `title`, `headers` (non-empty string array), `rows` (array of string arrays, each matching `headers`' length) all required. `$...$` KaTeX supported per cell.
+- `answerFormat` — optional string discriminator, defaults to `"mcq"` (the shape above). One new field group per non-default value, all additive/optional so existing decks are unaffected:
+  - `"multiSelect"` — `answers` is no longer locked to 4 entries; `correctIndices: number[]` (indices into `answers`, all in range, no duplicates) replaces `correct`. Graded all-or-nothing. Rendered as checkboxes (`MultiSelectAnswerList` in `src/components/QuizUI.tsx`).
+  - `"numeric"` — `correctValue: number` and `tolerance: number` required; optional `inputWidget: "text" | "slider"` (default `"text"`), with `sliderMin`/`sliderMax`/`sliderStep` required together when `inputWidget` is `"slider"`. Graded via `src/lib/answerMatching.ts`'s `matchNumeric`. Rendered by `NumericInput` in `QuizUI.tsx`.
+  - `"order"` — `items: {id, text}[]` (≥2 entries, shuffled for display) and `correctOrder: string[]` (the `items` ids in correct sequence — must be exactly the same set as `items`, each once). Graded as an exact-sequence match. Rendered by a custom pointer-based drag list (`OrderList` in `QuizUI.tsx`).
+  - `"code"` — `language: "javascript" | "python" | "java"` (schema allows all three; **only `"javascript"` and `"python"` are actually runnable** — see below), optional `starterCode: string`, and `checks: { syntax?: boolean, structure?: { requiredNames?: string[] }, tests?: { call: string, expect: string }[] }` (at least one of the three required). Rendered via a CodeMirror 6 editor (`src/components/Code/CodeEditor.tsx`) in place of the answer buttons.
+    - Grading dispatches by `language` through `src/lib/codeRunners/index.ts`'s `runCodeChecks`. JavaScript executes via `new Function(...)` (same pattern as `Graph.tsx`'s equation evaluation) with structure checks via an Acorn parse (`javascript.ts`); test-case execution runs in a dedicated Worker (`jsWorker.ts`) with a timeout so a student's infinite loop can only hang that worker, never the quiz screen. Python runs on a real CPython-via-WebAssembly build (Pyodide), loaded lazily (dynamic `import()`, never part of the main bundle) inside its own Worker (`pyWorker.ts`) with the same timeout/never-hang contract; structure checks use Python's own `ast` module. Pyodide's runtime assets (`pyodide.asm.wasm`, `python_stdlib.zip`, `pyodide-lock.json`, ~13MB) are bundled locally under `public/pyodide/`, not loaded from a CDN, matching this app's no-CDN posture.
+    - **Java is not implemented.** CheerpJ (a WASM JVM) can technically compile and run raw student-typed source — `javac` is itself a Java program, so CheerpJ's JVM-in-WASM can run it — but its free Community License requires loading the runtime from Leaning Technologies' own CDN; self-hosting requires a paid Commercial License. That conflicts with this app's bundle-everything-locally convention, so Java support is on hold pending a licensing decision. A `language: "java"` question currently renders a graceful "isn't available in this build yet" message rather than crashing (see `src/lib/codeRunners/index.ts`'s default case).
+  - `"graphClick"` and `"command"` are reserved in the type system (`src/types.ts`) and validated by `DeckValidation.ts`, but have **no UI implementation yet** — a question using either renders a "not supported yet" placeholder in `QuizScreen`/`ReviewScreen`. Don't generate decks using them.
 
 ### Flashcard deck (`"type": "flashcard"`)
 
@@ -203,34 +213,36 @@ Home → Mode Select → Quiz/Flashcard → Stats → Home
 
 ## Visual Design
 
-**Design language:** Dark liquid glass. Apple-clean. Purple accent. Distinct — not a Quizlet clone.
+**Design language:** "Starfield" — a deep-space navy system. Solid, tonal-layered panels (no `backdrop-filter`/glass). One restrained accent (Starlight Blue) for everyday interactive/selected state; a reserved multi-hue "Nebula" gradient held back for exactly the brand mark and Home's hero. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
 
 **Color tokens:**
 ```css
---bg: #0a0a0f;                        /* near-black base */
---surface: rgba(255,255,255,0.06);    /* glass card background */
---surface-hover: rgba(255,255,255,0.10);
---border: rgba(255,255,255,0.12);     /* subtle glass edge */
---blur: blur(20px);                   /* backdrop-filter */
---accent: #7c3aed;                    /* purple-600 */
---accent-light: #a78bfa;              /* purple-400 — text on dark */
---text-primary: #f1f0ff;
---text-secondary: rgba(241,240,255,0.6);
---correct: #22c55e;
---incorrect: #ef4444;
+--bg: #080d16;                        /* void navy base */
+--surface: #11161f;                   /* solid panel fill */
+--surface-hover: #1a2029;             /* panel raised/hover */
+--border: rgba(255, 255, 255, 0.08);  /* hairline edge */
+--accent: #3093ec;                    /* starlight blue */
+--accent-light: #63b3ff;              /* hover/focus/text-on-dark */
+--accent-deep: #0267c7;               /* button gradient base */
+--nebula-gradient: conic-gradient(from 200deg, #ef852e, #c841a5, #3093ec, #ef852e); /* mark + Home hero only */
+--text-primary: #e1e5eb;
+--text-secondary: #79818d;
+--correct: #5dc879;
+--incorrect: #f75d59;
 --radius: 16px;
+--font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+--font-heading: 'Space Grotesk', var(--font-body);
+--font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 ```
 
-**Glass card pattern:**
+**Panel pattern (replaces the old glass-card recipe — no blur):**
 ```css
 background: var(--surface);
-backdrop-filter: var(--blur);
--webkit-backdrop-filter: var(--blur);
 border: 1px solid var(--border);
 border-radius: var(--radius);
 ```
 
-**Typography:** System font stack (`-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`). Question text 1.2rem, answer buttons 1rem. KaTeX inherits size.
+**Typography:** Three self-hosted webfonts (`@fontsource/*`, no CDN): Inter for body/UI text, Space Grotesk for headings and the Home hero wordmark, JetBrains Mono for code/metadata (deck-JSON textarea, quiz timer). Question text 1.2rem/Inter, answer buttons 1rem/Inter. KaTeX inherits size.
 
 **Animations:**
 - Screen transitions: fade + 4px vertical slide (150ms ease-out)

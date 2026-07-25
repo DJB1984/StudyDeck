@@ -1,7 +1,8 @@
 /*
- * StudyDeck component styles — ported verbatim from the legacy single-file app
- * (legacy/studydeck.html <style>) to preserve exact visual parity. Color tokens
- * live in tokens.css; everything visual/layout lives here.
+ * StudyDeck component styles — "Starfield" deep-space system. Solid layered
+ * panels on a near-black navy void (no backdrop-filter/glass anywhere —
+ * that's the deliberate departure from the prior Dark Liquid Glass system).
+ * Color tokens live in tokens.css; everything visual/layout lives here.
  */
 
 * { box-sizing: border-box; }
@@ -12,7 +13,7 @@ html, body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
 }
 
 #app {
@@ -23,8 +24,6 @@ html, body {
 
 .glass-card {
   background: var(--surface);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -41,7 +40,15 @@ html, body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-h1, h2, h3 { margin: 0 0 8px; }
+h1, h2, h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+h1 { font-size: 2rem; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: 1.1rem; }
 
 .subtitle {
   color: var(--text-secondary);
@@ -51,16 +58,17 @@ h1, h2, h3 { margin: 0 0 8px; }
 button { font-family: inherit; cursor: pointer; }
 
 .btn {
-  background: var(--accent);
-  color: var(--text-primary);
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  color: #fff;
   border: none;
   border-radius: 12px;
   padding: 10px 20px;
   font-size: 0.95rem;
-  transition: transform 100ms ease, background 150ms ease;
+  box-shadow: 0 2px 10px rgba(2, 103, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: transform 100ms ease, filter 150ms ease;
 }
 .btn:active { transform: scale(0.97); }
-.btn:hover  { background: var(--accent-light); }
+.btn:hover  { filter: brightness(1.12); }
 
 .btn-ghost {
   background: none;
@@ -145,6 +153,94 @@ button { font-family: inherit; cursor: pointer; }
   }
 }
 
+/* Home hero — the system's one Signature Moment (DESIGN.md): a radial navy
+   glow plus a static procedural starfield sit behind the header only. Every
+   other screen stays on the plain void background. */
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  margin: -8px -8px 0;
+  padding: 8px 8px 4px;
+  border-radius: var(--radius);
+  background: radial-gradient(ellipse 90% 100% at 15% 0%, var(--hero-glow) 0%, transparent 70%);
+}
+.starfield {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: star-twinkle 4.5s ease-in-out infinite;
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: var(--star-opacity, 0.6); }
+  50% { opacity: calc(var(--star-opacity, 0.6) * 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .star { animation: none; opacity: var(--star-opacity, 0.6); }
+}
+
+/* Brand mark — an 8-point sparkle cut from the Nebula gradient. This exact
+   gradient never appears anywhere else in the system (see DESIGN.md's
+   Signal Rule): starlight blue alone carries every interactive/selected
+   state, and Nebula stays reserved for this mark and the hero glow. */
+.star-mark {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: var(--nebula-gradient);
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  filter: drop-shadow(0 0 10px rgba(239, 133, 46, 0.35));
+}
+
+#home-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 24px 16px 8px;
+}
+.home-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.home-title {
+  margin: 0;
+  background: linear-gradient(180deg, #fff 0%, var(--text-hero-end) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+#new-set-corner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+/* margin-top lives here, not on #new-set-corner, so it shifts the WHOLE
+   right-hand group down uniformly (matching the original wrap-breathing-room
+   intent) instead of only one of its two flex children — that mismatch was
+   what made the avatar look 4px off from the Copy Prompt button. */
+.home-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
 /* Get-started card (Home spec R11/R12) */
 #get-started-card {
   padding: 24px;
@@ -174,7 +270,7 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(124, 58, 237, 0.18);
+  background: rgba(48, 147, 236, 0.18);
   color: var(--accent-light);
   font-size: 0.85rem;
   font-weight: 700;
@@ -223,8 +319,6 @@ button { font-family: inherit; cursor: pointer; }
   text-align: left;
   border: 2px solid var(--border);
   background: var(--surface);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   border-radius: var(--radius);
   transition: border-color 150ms, background 150ms;
   color: inherit;
@@ -261,7 +355,7 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text-primary);
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   padding: 12px 14px;
   resize: vertical;
@@ -269,35 +363,6 @@ button { font-family: inherit; cursor: pointer; }
 .paste-box textarea:focus {
   outline: none;
   border-color: var(--accent-light);
-}
-
-/* Home header: title/tagline left, "Need a new set?" corner right (R22).
-   Wraps on narrow viewports so the corner never collides with the title. */
-#home-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-}
-#new-set-corner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  flex-shrink: 0;
-}
-/* margin-top lives here, not on #new-set-corner, so it shifts the WHOLE
-   right-hand group down uniformly (matching the original wrap-breathing-room
-   intent) instead of only one of its two flex children — that mismatch was
-   what made the avatar look 4px off from the Copy Prompt button. */
-.home-header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-shrink: 0;
-  margin-top: 8px;
 }
 
 /* Auth */
@@ -316,39 +381,42 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* The whole logged-in control is ONE element that IS the avatar circle —
-   there's no separate circular badge sitting inside it. It's a liquid-glass
-   surface (var(--surface)/var(--surface-hover) + backdrop-filter) in BOTH
-   collapsed and expanded states, matching the app's other glass cards —
-   deliberately NOT a solid per-email color, so growing from circle to panel
-   never has to morph between two different visual materials. Anchored to
-   its top-right corner (fixed screen position), so it only ever grows to
-   the left and downward — never disturbing where the Copy Prompt button
-   sits. */
+   there's no separate circular badge sitting inside it. It's a solid
+   surface (var(--surface)/var(--surface-hover)) in BOTH collapsed and
+   expanded states, matching the app's other panels — deliberately NOT a
+   solid per-email color, so growing from circle to panel never has to morph
+   between two different visual materials. Anchored to its top-right corner
+   (fixed screen position), so it only ever grows to the left and downward —
+   never disturbing where the Copy Prompt button sits. */
+/* The box is ALWAYS laid out at its full natural size (width from the inline
+   style in AuthButton.tsx, height auto to content) — collapsed vs. expanded
+   is purely a clip-path crop down to the top-right 40x40 rounded square, not
+   a real resize. That's deliberate: animating width/height/max-height is a
+   layout property (forces reflow every frame); clip-path is compositor-only,
+   so the grow/shrink stays smooth AND doesn't distort the always-visible
+   person icon the way scaling the whole box would. clip-path also clips the
+   hit-test region the same as the paint (per spec, browsers restrict pointer
+   events to the visible clipped area), so the "phantom" wide box while
+   collapsed never steals clicks meant for whatever sits to its left (e.g.
+   Copy Prompt). */
 .auth-panel {
   position: absolute;
   top: 0;
   right: 0;
-  width: 40px;
-  max-height: 40px;
+  height: auto;
   overflow: hidden;
   background: var(--surface);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   border: 1px solid var(--border);
   border-radius: 20px;
   z-index: 150;
   display: flex;
   flex-direction: column;
-  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    max-height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+  clip-path: inset(0 0 calc(100% - 40px) calc(100% - 40px) round 20px);
+  transition: clip-path 260ms cubic-bezier(0.22, 1, 0.36, 1),
     background-color 260ms ease;
 }
-/* width is NOT set here — it's driven by an inline style in AuthButton.tsx,
-   measured from the actual email text so the panel is exactly as wide as its
-   content (that's what keeps the email looking centered instead of leaving
-   lopsided empty space). Only max-height/background stay class-driven. */
 .auth-panel.expanded {
-  max-height: 150px;
+  clip-path: inset(0 0 0 0 round 20px);
   background-color: var(--surface-hover);
 }
 .auth-panel.expanded .auth-person-icon {
@@ -454,7 +522,7 @@ button { font-family: inherit; cursor: pointer; }
 .login-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -526,10 +594,10 @@ button { font-family: inherit; cursor: pointer; }
   left: 50%;
   transform: translateX(-50%) translateY(200px);
   opacity: 0;
-  background: #1a0a0a;
+  background: #1c0d0c;
   border: 1px solid var(--incorrect);
   border-radius: var(--radius);
-  color: #fca5a5;
+  color: #ffb3ad;
   padding: 16px 20px;
   max-width: 480px;
   width: calc(100% - 48px);
@@ -550,7 +618,7 @@ button { font-family: inherit; cursor: pointer; }
   right: 12px;
   background: none;
   border: none;
-  color: #fca5a5;
+  color: #ffb3ad;
   font-size: 1.1rem;
   cursor: pointer;
 }
@@ -589,10 +657,13 @@ button { font-family: inherit; cursor: pointer; }
 }
 .progress-fill {
   height: 100%;
+  width: 100%;
   background: var(--accent);
   border-radius: 2px;
-  transition: width 300ms ease;
-  width: 0%;
+  /* transform, not width — avoids layout thrash on every question advance. */
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 300ms ease;
 }
 /* Graph area — reused by quiz and review screens via the Graph component */
 .graph-area {
@@ -613,14 +684,14 @@ button { font-family: inherit; cursor: pointer; }
   top: 4px; left: 0; right: 0;
   text-align: center;
   font-size: 0.8rem;
-  color: rgba(241,240,255,0.85);
+  color: rgba(225, 229, 235, 0.85);
 }
 .graph-xlabel {
   position: absolute;
   bottom: 2px; left: 0; right: 0;
   text-align: center;
   font-size: 0.78rem;
-  color: rgba(241,240,255,0.6);
+  color: rgba(225, 229, 235, 0.6);
 }
 .graph-ylabel-wrap {
   position: absolute;
@@ -638,7 +709,7 @@ button { font-family: inherit; cursor: pointer; }
   /* Left tightly wrapping the text (not stretched to fill the wrap's flex
      track) so its hover rect — the tooltip anchor — hugs the visible glyphs. */
   font-size: 0.78rem;
-  color: rgba(241,240,255,0.6);
+  color: rgba(225, 229, 235, 0.6);
   white-space: nowrap;
 }
 /* KaTeX renders at its own font size by default — shrink it to match the small axis/title text */
@@ -654,7 +725,7 @@ button { font-family: inherit; cursor: pointer; }
   z-index: 300;
   max-width: 200px;
   padding: 5px 9px;
-  background: rgba(18, 16, 28, 0.95);
+  background: rgba(8, 13, 22, 0.95);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-primary);
@@ -687,6 +758,76 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+/* Data table — same context-object role as .graph-area, rendered by the Table
+   component. Unlike the graph, a table's own header/row lines don't read as a
+   bounded shape on their own, so this one opts into the glass-card recipe. */
+.table-area {
+  position: relative;
+  margin-bottom: 20px;
+  padding: 18px 0 8px;
+  overflow: hidden;
+}
+.table-area caption {
+  padding: 0 20px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(225, 229, 235, 0.85);
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.table-area table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.table-area th,
+.table-area td {
+  padding: 10px 20px;
+  text-align: left;
+  white-space: nowrap;
+}
+.table-area thead th {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.table-area tbody td {
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.table-area tbody tr:last-child td {
+  border-bottom: none;
+}
+.table-area th.table-cell-numeric,
+.table-area td.table-cell-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.table-area th .katex, .table-area td .katex, .table-area caption .katex {
+  font-size: 1em;
+}
+/* Hints that a wide table has more columns off-screen — only shown once there's
+   actually somewhere left to scroll, and fades out again at each end. */
+.table-fade {
+  position: absolute;
+  top: 18px;
+  bottom: 8px;
+  width: 32px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.table-fade.visible { opacity: 1; }
+.table-fade-left {
+  left: 0;
+  background: linear-gradient(to right, var(--surface), transparent);
+}
+.table-fade-right {
+  right: 0;
+  background: linear-gradient(to left, var(--surface), transparent);
+}
+
 .question-text {
   font-size: 1.2rem;
   line-height: 1.7;
@@ -711,18 +852,18 @@ button { font-family: inherit; cursor: pointer; }
 .answer-btn:not(:disabled):active { transform: scale(0.97); }
 .answer-btn:disabled { cursor: default; }
 .answer-btn.correct-answer {
-  background: rgba(34,197,94,0.15) !important;
+  background: rgba(93, 200, 121, 0.15) !important;
   border-color: var(--correct) !important;
   opacity: 1 !important;
 }
 .answer-btn.wrong-answer {
-  background: rgba(239,68,68,0.15) !important;
+  background: rgba(247, 93, 89, 0.15) !important;
   border-color: var(--incorrect) !important;
   opacity: 1 !important;
 }
 .answer-btn.selected-answer {
   border-color: var(--accent-light);
-  background: rgba(124,58,237,0.12);
+  background: rgba(48, 147, 236, 0.14);
 }
 .answer-label {
   font-size: 0.82rem;
@@ -732,6 +873,273 @@ button { font-family: inherit; cursor: pointer; }
   width: 18px;
 }
 .answer-text { flex: 1; }
+
+/* multiSelect: same .answer-btn shell, plus a checkbox glyph. Only ever reflects
+   what the student picked (correct-answer/wrong-answer) — a correct option they
+   didn't pick is never highlighted, that would give the answer away. */
+.answer-checkbox {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  width: 18px;
+  color: var(--accent-light);
+}
+
+/* order: pointer-driven drag list (works on mouse + touch) + Up/Down buttons as
+   a keyboard/accessibility fallback. See OrderList in QuizUI.tsx. */
+.order-list { margin-bottom: 10px; position: relative; }
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  transition: background 150ms, border-color 150ms;
+}
+.order-item.correct-answer {
+  background: rgba(93, 200, 121, 0.15) !important;
+  border-color: var(--correct) !important;
+}
+.order-item.wrong-answer {
+  background: rgba(247, 93, 89, 0.15) !important;
+  border-color: var(--incorrect) !important;
+}
+/* The dragged item's current slot — same layout/height as a real row (so
+   hit-testing against neighbors stays stable) but visually empty, dashed;
+   the actual item floats as .order-item-floating tracking the pointer. */
+.order-item-placeholder {
+  background: transparent;
+  border: 1px dashed var(--border);
+}
+.order-item-placeholder > * { visibility: hidden; }
+/* The "held in your hand" clone — follows the pointer, rendered above everything. */
+.order-item-floating {
+  z-index: 20;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: var(--accent-light);
+}
+.order-handle {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-size: 1rem;
+  cursor: grab;
+  touch-action: none; /* prevents touch-scroll from competing with the drag */
+}
+.order-handle:active { cursor: grabbing; }
+.order-index {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  flex-shrink: 0;
+  width: 18px;
+}
+.order-text { flex: 1; }
+.order-move-buttons {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.order-move-btn {
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
+  transition: color 150ms, border-color 150ms;
+}
+.order-move-btn:not(:disabled):hover { color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
+.order-move-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* numeric: text variant reuses the system's input-text recipe (DESIGN.md);
+   slider variant reuses the Toggle's track/thumb language, adapted to a
+   continuous range with a live value readout above the thumb. */
+.numeric-text-input {
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  margin-bottom: 10px;
+  transition: border-color 150ms;
+}
+.numeric-text-input:focus {
+  outline: none;
+  border-color: var(--accent-light);
+}
+.numeric-text-input.correct-answer {
+  border-color: var(--correct) !important;
+  background: rgba(93, 200, 121, 0.15) !important;
+}
+.numeric-text-input.wrong-answer {
+  border-color: var(--incorrect) !important;
+  background: rgba(247, 93, 89, 0.15) !important;
+}
+
+.numeric-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.numeric-slider-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-light);
+}
+.numeric-slider-wrap.correct-answer .numeric-slider-value { color: var(--correct); }
+.numeric-slider-wrap.wrong-answer .numeric-slider-value { color: var(--incorrect); }
+.numeric-slider {
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.numeric-slider:disabled { cursor: default; }
+.numeric-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 20px; /* pill token — clamps to the 6px track's half-height regardless */
+  border: 1px solid var(--border);
+  /* --fill-pct is set inline per-render (NumericInput in QuizUI.tsx). Painting
+     the fill on the track pseudo-element itself (not the bare input) keeps it
+     clipped to the track's own rounded shape instead of bleeding past it. */
+  background: linear-gradient(to right, var(--accent) var(--fill-pct, 0%), var(--surface-hover) var(--fill-pct, 0%));
+}
+.numeric-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--text-primary);
+  margin-top: -7px;
+  transition: transform 100ms;
+}
+.numeric-slider:not(:disabled)::-webkit-slider-thumb:active { transform: scale(1.15); }
+.numeric-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 20px; /* pill token — clamps to the 6px track's half-height regardless */
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+}
+.numeric-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 20px; /* pill token — clamps to the 6px track's half-height regardless */
+  background: var(--accent);
+}
+.numeric-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--text-primary);
+}
+
+.quiz-check-btn { width: 100%; margin-bottom: 10px; }
+
+.format-unsupported {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+/* Code editor (answerFormat: 'code') — CodeMirror 6 instance; the editor's own
+   background/text/gutter/selection colors are set via EditorView.theme() in
+   CodeEditor.tsx (using these same tokens), so only outer framing lives here. */
+.code-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.code-editor .cm-scroller { min-height: 160px; max-height: 420px; }
+.code-editor-fallback {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 12px;
+  resize: vertical;
+}
+
+/* Pass/fail readout under the editor after "Run Tests" (Practice only). */
+.code-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.code-results.correct-answer { border-color: var(--correct) !important; }
+.code-results.wrong-answer { border-color: var(--incorrect) !important; }
+.code-results-running {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+.code-results-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent-light);
+  animation: code-spin 700ms linear infinite;
+}
+@keyframes code-spin { to { transform: rotate(360deg); } }
+.code-result-row code { font-family: var(--font-mono); }
+.code-result-pass { color: var(--correct); }
+.code-result-fail { color: var(--incorrect); }
+
+/* Review's static "what was expected" block (no execution, no grading). */
+.code-review-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.code-check-row code { font-family: var(--font-mono); color: var(--text-primary); }
+
+/* Stats breakdown's "your answer" for a wrong code submission. */
+.code-breakdown-block {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+.code-breakdown-expected { color: var(--text-secondary); }
+
 /* Sized to exactly one line of text now that the copy button that used to
    share this row lives in .quiz-nav-row's middle slot instead — it used to
    reserve min-height:44px for that button, leaving a big empty gap above the
@@ -768,6 +1176,7 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-secondary);
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
 }
 
 .screen-header {
@@ -776,6 +1185,7 @@ button { font-family: inherit; cursor: pointer; }
   gap: 16px;
   margin-bottom: 16px;
 }
+.screen-header h2 { margin: 0; }
 
 /* Mode screen */
 #mode-screen .deck-subtitle {
@@ -797,8 +1207,6 @@ button { font-family: inherit; cursor: pointer; }
   text-align: left;
   border: 2px solid var(--border);
   background: var(--surface);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   border-radius: var(--radius);
   transition: border-color 150ms, background 150ms;
   user-select: none;
@@ -806,15 +1214,26 @@ button { font-family: inherit; cursor: pointer; }
 .mode-card:hover { background: var(--surface-hover); }
 .mode-card.selected {
   border-color: var(--accent-light);
-  background: rgba(124,58,237,0.12);
+  background: rgba(48, 147, 236, 0.14);
 }
 .mode-card .mode-icon {
-  font-size: 1.6rem;
-  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  transition: color 150ms;
+}
+.mode-card .mode-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.mode-card.selected .mode-icon {
+  color: var(--accent-light);
 }
 .mode-card .mode-name {
-  font-size: 1rem;
+  font-family: var(--font-heading);
   font-weight: 600;
+  font-size: 1rem;
   color: var(--text-primary);
   margin-bottom: 6px;
 }
@@ -825,6 +1244,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .toggle-label {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -833,7 +1253,26 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.9rem;
   user-select: none;
 }
-.toggle-label input[type="checkbox"] { display: none; }
+/* Visually hidden, not display:none — display:none drops the input from the
+   accessibility tree entirely, so Tab skips the toggle and it can never show
+   a focus state. This keeps it focusable/operable while the .toggle-track
+   below carries the actual visual. */
+.toggle-label input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Border-color shift, not a ring — same focus cue as every text input in the
+   system (login-email-input, paste-box textarea, numeric-text-input). */
+.toggle-label input:focus-visible + .toggle-track {
+  border-color: var(--accent-light);
+}
 .toggle-track {
   width: 38px;
   height: 22px;
@@ -893,6 +1332,7 @@ button { font-family: inherit; cursor: pointer; }
   pointer-events: none;
 }
 #stats-score-pct {
+  font-family: var(--font-heading);
   font-size: 1.7rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -1014,8 +1454,6 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 1.3rem;
   line-height: 1.6;
   background: var(--surface);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }

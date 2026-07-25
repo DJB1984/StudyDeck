@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Phase 2 Test — Select-All & Drag-to-Order",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Sanity check: this is a normal multiple-choice question. What is $2 + 2$?",
+      "answers": ["3", "4", "5", "22"],
+      "correct": 1
+    },
+    {
+      "id": "q2",
+      "answerFormat": "multiSelect",
+      "question": "Which of the following are classic signs of hypoglycemia? Select all that apply.",
+      "answers": ["Sweating", "Confusion", "Fever", "Shakiness", "Excessive thirst"],
+      "correctIndices": [0, 1, 3]
+    },
+    {
+      "id": "q3",
+      "answerFormat": "multiSelect",
+      "question": "Which of these numbers are prime? Select all that apply.",
+      "answers": ["2", "9", "11", "15", "17"],
+      "correctIndices": [0, 2, 4]
+    },
+    {
+      "id": "q4",
+      "answerFormat": "order",
+      "question": "Drag these into the correct order of the nursing process.",
+      "items": [
+        { "id": "a", "text": "Assessment" },
+        { "id": "b", "text": "Diagnosis" },
+        { "id": "c", "text": "Planning" },
+        { "id": "d", "text": "Implementation" },
+        { "id": "e", "text": "Evaluation" }
+      ],
+      "correctOrder": ["a", "b", "c", "d", "e"]
+    },
+    {
+      "id": "q5",
+      "answerFormat": "order",
+      "question": "Order these steps of solving $2x + 4 = 10$ for $x$.",
+      "items": [
+        { "id": "a", "text": "Subtract 4 from both sides: $2x = 6$" },
+        { "id": "b", "text": "Start: $2x + 4 = 10$" },
+        { "id": "c", "text": "Divide both sides by 2: $x = 3$" }
+      ],
+      "correctOrder": ["b", "a", "c"]
+    }
+  ]
+}

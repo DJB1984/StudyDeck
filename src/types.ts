@@ -144,6 +144,10 @@ export interface AnswerRecord {
   /** order only — item ids in the order submitted/left at. */
   chosenOrder?: string[];
   correctOrder?: string[];
+  /** numeric only — the raw text/slider value submitted, undefined if left blank. */
+  numericInput?: string;
+  /** code only — the submitted source text, undefined if left at/before starterCode-empty. */
+  codeInput?: string;
 }
 
 /** The aggregated session, built by Stats after a quiz ends. */

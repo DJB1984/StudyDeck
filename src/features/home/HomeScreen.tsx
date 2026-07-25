@@ -14,6 +14,7 @@ import { copyWithFeedback } from '../../lib/clipboard';
 import { stripCodeFences } from '../../lib/deckText';
 import { RotatingWord } from './RotatingWord';
 import { AuthButton } from '../auth/AuthButton';
+import { Starfield } from '../../components/Starfield/Starfield';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
 const AI_NAMES = ['ChatGPT', 'Claude', 'Gemini', 'Grok', 'Copilot', 'Perplexity'];
@@ -53,12 +54,10 @@ function CopyPromptModal({
   onPick: (text: string) => void;
   onClose: () => void;
 }) {
-  // Portaled to document.body: CopyPromptButton renders inside .glass-card
-  // in one call site (GetStartedCard), and `backdrop-filter` on an ancestor
-  // creates a new containing block for `position: fixed` descendants — so
-  // without a portal this overlay gets trapped inside the card's box
-  // instead of covering the viewport. LoginModal doesn't need this only
-  // because its own ancestor chain happens not to use backdrop-filter.
+  // Portaled to document.body so the viewport-covering overlay can't get
+  // trapped inside GetStartedCard's box regardless of what ancestor styling
+  // that card picks up later (LoginModal renders inline instead, since
+  // nothing in its own ancestor chain creates a containing block today).
   return createPortal(
     <div
       className="copy-prompt-modal-overlay"
@@ -225,6 +224,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
 
   function deleteCard(e: React.MouseEvent, title: string) {
     e.stopPropagation(); // R3: don't also trigger the card's open action.
+    if (!window.confirm(`Remove "${title}"? This also clears any saved flashcard progress for it.`)) return;
     Storage.deleteFile(title);
     refresh();
   }
@@ -303,30 +303,36 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
           and — only once at least one deck exists — the prominent "Need a new
           set?" corner on the right. Empty state keeps the corner out so the
           GetStartedCard hero stays the single first-run path. */}
-      <div id="home-header">
-        <div className="home-header-left">
-          <h1>StudyDeck</h1>
-          {/* R14/R15: two rotating slots, staggered so they can never flip together.
-              gcd(3600, 2400) = 1200; the 600ms offset keeps every pair of flips
-              ≥600ms apart forever — more than the 250ms roll, so no overlap. */}
-          <p className="subtitle tagline">
-            Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to turn
-            your notes into interactive <RotatingWord words={OUTPUTS} intervalMs={2400} />.
-          </p>
-        </div>
-        {/* Home.spec.md R23: AuthButton is always visible, independent of
-            isEmpty — it does NOT reuse the Copy Prompt corner's gate. It's
-            placed AFTER new-set-corner so it's always the rightmost element —
-            pinned in the same spot whether or not a "Need a new set?" corner
-            is showing, instead of shifting position with isEmpty. */}
-        <div className="home-header-right">
-          {!isEmpty && (
-            <div id="new-set-corner">
-              <span>Need a new set?</span>
-              <CopyPromptButton />
+      <div className="home-hero">
+        <Starfield />
+        <div id="home-header">
+          <div className="home-header-left">
+            <div className="home-title-row">
+              <span className="star-mark" />
+              <h1 className="home-title">StudyDeck</h1>
             </div>
-          )}
-          <AuthButton />
+            {/* R14/R15: two rotating slots, staggered so they can never flip together.
+                gcd(3600, 2400) = 1200; the 600ms offset keeps every pair of flips
+                ≥600ms apart forever — more than the 250ms roll, so no overlap. */}
+            <p className="subtitle tagline">
+              Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to turn
+              your notes into interactive <RotatingWord words={OUTPUTS} intervalMs={2400} />.
+            </p>
+          </div>
+          {/* Home.spec.md R23: AuthButton is always visible, independent of
+              isEmpty — it does NOT reuse the Copy Prompt corner's gate. It's
+              placed AFTER new-set-corner so it's always the rightmost element —
+              pinned in the same spot whether or not a "Need a new set?" corner
+              is showing, instead of shifting position with isEmpty. */}
+          <div className="home-header-right">
+            {!isEmpty && (
+              <div id="new-set-corner">
+                <span>Need a new set?</span>
+                <CopyPromptButton />
+              </div>
+            )}
+            <AuthButton />
+          </div>
         </div>
       </div>
 
