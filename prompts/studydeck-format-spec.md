@@ -6,18 +6,18 @@ tags: [studydeck, format-spec, ai-generation]
 
 # StudyDeck Format Spec
 
-This is the technical contract for generating a `.json` file that loads cleanly into StudyDeck, a free, open, AI-agnostic study app — the schema, LaTeX/graph rules, question-quality bar, and validation checklist below apply no matter how the conversation with the student is being run. This file is always paired with a separate "how to respond" intro that governs the conversational side (see `studydeck-quick-intro.md` / `studydeck-guided-intro.md`) — decide quiz vs. flashcards (different schemas), follow the matching schema exactly, double-check the **JSON backslash-escaping** section before writing any LaTeX, and run through the **validation checklist** at the end before producing your final output.
+Technical contract for a `.json` file that loads into StudyDeck, a free AI-agnostic study app — the schema, LaTeX/graph rules, question-quality bar, and validation checklist apply no matter how the conversation is run. Normally paired with a "how to respond" intro (`studydeck-quick-intro.md` / `studydeck-guided-intro.md`); either way, decide quiz vs. flashcards, follow that schema exactly, double-check **JSON backslash-escaping** before writing LaTeX, and run the **validation checklist** before final output.
 
 ---
 
 ## 1. Two Deck Types
 
-A deck is either a **quiz** or a **flashcard set** — never both, and the shape of each `question` object is different. Declare it with a top-level `"type"` field:
+A deck is either a **quiz** or a **flashcard set** — never both; each has a different `question` shape. Declare it with a top-level `"type"` field:
 
 - `"type": "quiz"` (or omit `type` entirely — quiz is the default) → unlocks Practice and Test modes in the app.
 - `"type": "flashcard"` → unlocks Flashcard mode only.
 
-Pick whichever matches what was asked for. If someone wants to drill vocab/terms/definitions, that's flashcards. If they want multiple-choice practice or a test, that's a quiz.
+Pick whichever matches the request: vocab/term drilling → flashcards; multiple-choice practice or a test → quiz.
 
 ### Quiz schema
 
@@ -64,17 +64,17 @@ Pick whichever matches what was asked for. If someone wants to drill vocab/terms
 |---|---|---|---|
 | `version` | integer | **Yes** | Must be `1`. |
 | `type` | string | No | `"quiz"`. Default if omitted. |
-| `title` | string | **Yes** | Shown on the home screen card and at quiz start. |
+| `title` | string | **Yes** | Shown on the home screen and at quiz start. |
 | `questions` | array | **Yes** | Must contain at least one question. |
-| `questions[].id` | string | **Yes** | Unique, stable per question (see §5). |
+| `questions[].id` | string | **Yes** | Unique, stable per question (see §4). |
 | `questions[].question` | string | **Yes** | LaTeX via `$...$` / `$$...$$` supported. |
-| `questions[].answers` | array of strings | **Yes** | **Exactly 4** entries, no more, no fewer. |
+| `questions[].answers` | array of strings | **Yes** | **Exactly 4** entries. |
 | `questions[].correct` | integer | **Yes** | Index into `answers`, so `0`–`3`. |
 | `questions[].graph` | object | No | Omit the key entirely if there's no graph — don't set it to `null`. |
 
 ### Answer formats (quiz decks)
 
-Every quiz question supports an optional `"answerFormat"` field. Omit it (or set `"mcq"`) for the classic 4-answer multiple choice shown above. StudyDeck also supports these formats today — use whichever genuinely fits the material, don't force everything into mcq:
+Every quiz question supports an optional `"answerFormat"` field. Omit it (or set `"mcq"`) for classic 4-answer multiple choice. StudyDeck also supports the formats below — use whichever genuinely fits the material, don't force everything into mcq:
 
 | `answerFormat` | Best for |
 |---|---|
@@ -84,7 +84,7 @@ Every quiz question supports an optional `"answerFormat"` field. Omit it (or set
 | `"order"` | Drag a shuffled list of steps/items into the correct sequence |
 | `"code"` | Write real code (JavaScript or Python) and get it graded on syntax/structure/behavior |
 
-Each is detailed below. A question can also carry a `"table"` object (see its own section) as context alongside any of these formats, the same way `"graph"` already works.
+Each is detailed below. A question can also carry a `"table"` object as context alongside any of these formats, the same way `"graph"` already works.
 
 #### `"multiSelect"` — select all that apply
 
@@ -101,7 +101,7 @@ Each is detailed below. A question can also carry a `"table"` object (see its ow
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `answers` | array of strings | **Yes** | **Not** locked to 4 — real "select all" questions commonly have 5-8 options. |
-| `correctIndices` | array of integers | **Yes** | Indices into `answers`, one per correct option. Every index must be in range and none repeated. Grading is all-or-nothing (the exact correct set), no partial credit. |
+| `correctIndices` | array of integers | **Yes** | Indices into `answers`; must be in-range and non-duplicate. Grading is all-or-nothing (the exact correct set), no partial credit. |
 
 #### `"numeric"` — typed or slider numeric answer
 
@@ -118,9 +118,9 @@ Each is detailed below. A question can also carry a `"table"` object (see its ow
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `correctValue` | number | **Yes** | The correct numeric answer. |
-| `tolerance` | number | **Yes** | How far off still counts as correct. Pick something sensible for the problem — `0` for an exact integer answer, a small decimal for a rounded physical quantity. |
+| `tolerance` | number | **Yes** | How far off still counts as correct — `0` for an exact integer, a small decimal for a rounded physical quantity. |
 | `inputWidget` | string | No | `"text"` (default) or `"slider"`. |
-| `sliderMin` / `sliderMax` / `sliderStep` | number | **Required if `inputWidget` is `"slider"`** | The draggable range and step size. `sliderMin` must be less than `sliderMax`. |
+| `sliderMin` / `sliderMax` / `sliderStep` | number | **Required if `inputWidget` is `"slider"`** | Draggable range and step size; `sliderMin` must be less than `sliderMax`. |
 
 Don't include `answers` or `correct` on a `numeric` question — they're ignored.
 
@@ -144,8 +144,8 @@ Don't include `answers` or `correct` on a `numeric` question — they're ignored
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `items` | array of `{id, text}` | **Yes** | At least 2 entries. Each `id` just needs to be unique within the question (short letters/numbers are fine); StudyDeck shuffles `items` for display, so the order you list them in doesn't matter and isn't a spoiler. |
-| `correctOrder` | array of strings | **Yes** | The `id`s from `items`, in the correct sequence — must contain exactly the same ids as `items`, each exactly once. |
+| `items` | array of `{id, text}` | **Yes** | At least 2 entries; `id`s just need to be unique within the question. StudyDeck shuffles `items` for display, so listing order doesn't matter and isn't a spoiler. |
+| `correctOrder` | array of strings | **Yes** | The `id`s from `items` in the correct sequence — same set as `items`, each exactly once. |
 
 Grading is exact-sequence match, all-or-nothing.
 
@@ -171,14 +171,14 @@ Grading is exact-sequence match, all-or-nothing.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `language` | string | **Yes** | `"javascript"` or `"python"` **only** — Java is not supported yet, don't generate `language: "java"` questions. |
-| `starterCode` | string | No | Pre-filled editor content — usually the function/class signature with an empty body, so the student fills in the logic. |
+| `language` | string | **Yes** | `"javascript"` or `"python"` **only** — Java isn't supported yet, don't generate `language: "java"`. |
+| `starterCode` | string | No | Pre-filled editor content — usually a function/class signature with an empty body for the student to fill in. |
 | `checks.syntax` | boolean | No | `true` gates the rest of grading on the code actually parsing. |
 | `checks.structure` | object | No | `{ "requiredNames": [...] }` — names (function/class/variable) that must be declared somewhere in the submission. Good for "write a class with this shape" questions that don't need behavioral tests. |
-| `checks.tests` | array of `{call, expect}` | No | Each `call` and `expect` must be a valid expression **in the question's own `language`** (e.g. Python syntax for a `"python"` question, JavaScript syntax for `"javascript"`) — not JSON, not pseudocode. `expect` is evaluated the same way `call` is, so it can be any literal: `"5"`, `"'cba'"`, `"[1, 2, 3]"`, `"True"` (Python) / `"true"` (JavaScript). |
+| `checks.tests` | array of `{call, expect}` | No | Each `call`/`expect` must be a valid expression **in the question's own `language`** — not JSON, not pseudocode. `expect` is evaluated like `call`, so it can be any literal: `"5"`, `"'cba'"`, `"[1, 2, 3]"`, `"True"` (Python) / `"true"` (JavaScript). |
 | Don't include | — | — | `answers`/`correct` are not used for `code` questions. |
 
-At least one of `checks.syntax` / `checks.structure` / `checks.tests` must be present — a pure structure-only question (no `tests`) is fine when the point is "did you write a valid shape," not behavior.
+At least one of `checks.syntax` / `checks.structure` / `checks.tests` must be present — a structure-only question (no `tests`) is fine when the point is "did you write a valid shape," not behavior.
 
 ### Table object (any quiz question, when present)
 
@@ -223,7 +223,7 @@ Flashcards don't need distractors, so they use `front` / `back` instead of `ques
 | `type` | string | **Yes** | Must be `"flashcard"`. |
 | `title` | string | **Yes** | Shown on the home screen card. |
 | `questions` | array | **Yes** | Must contain at least one card. |
-| `questions[].id` | string | **Yes** | Unique, stable per card (see §5). |
+| `questions[].id` | string | **Yes** | Unique, stable per card (see §4). |
 | `questions[].front` | string | **Yes** | Shown on the card front. LaTeX supported. |
 | `questions[].back` | string | **Yes** | Shown on the card back. LaTeX supported. |
 
@@ -232,9 +232,9 @@ Flashcards don't need distractors, so they use `front` / `back` instead of `ques
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `type` | string | **Yes** | `"points"` or `"equation"`. |
-| `data` | array or string | **Yes** | Array of `[x, y]` pairs if `points`; a **JavaScript** expression string if `equation` (see §4). |
+| `data` | array or string | **Yes** | Array of `[x, y]` pairs if `points`; a **JavaScript** expression string if `equation` (see §3). |
 | `x_range` | `[min, max]` | Required for `equation`, optional for `points` | Order doesn't matter — StudyDeck normalizes min/max automatically. Points auto-fit the axis if omitted. |
-| `y_range` | `[min, max]` | No | Pins the y-axis instead of auto-fitting. Use this if the data range would make an oddly zoomed-in or zoomed-out chart. |
+| `y_range` | `[min, max]` | No | Pins the y-axis instead of auto-fitting — use if the data range would zoom oddly. |
 | `x_label` | string | **Yes** | Supports `$...$` LaTeX. |
 | `y_label` | string | **Yes** | Supports `$...$` LaTeX. |
 | `title` | string | **Yes** | Supports `$...$` LaTeX. |
@@ -250,7 +250,7 @@ Flashcards don't need distractors, so they use `front` / `back` instead of `ques
 
 ### ⚠️ JSON backslash-escaping (the #1 mistake)
 
-JSON strings use `\` as an escape character, so every literal backslash in your LaTeX must be written as `\\` inside the JSON string. Writing a single backslash will either corrupt the LaTeX or produce invalid JSON outright.
+JSON strings use `\` as an escape character, so every literal backslash in your LaTeX must be written as `\\`. A single backslash corrupts the LaTeX or produces invalid JSON outright.
 
 **Wrong** (invalid JSON — `\f` is not a legal escape in this position):
 ```json
@@ -268,7 +268,7 @@ This applies to every LaTeX command: `\\sin`, `\\sqrt`, `\\frac`, `\\theta`, `\\
 
 ## 3. Graph Equations Are JavaScript, Not LaTeX or Python
 
-For `"type": "equation"`, the `data` string is evaluated in the browser via `new Function('x', 'return (' + data + ')')`. That means it must be **valid JavaScript**, evaluated once per sample point across `x_range` (100 samples) — *not* LaTeX notation and *not* Python.
+For `"type": "equation"`, the `data` string is evaluated in the browser via `new Function('x', 'return (' + data + ')')` — it must be **valid JavaScript**, evaluated once per sample point across `x_range` (100 samples), *not* LaTeX and *not* Python.
 
 | Math notation | ✅ Correct JS for `data` | ❌ Wrong |
 |---|---|---|
@@ -280,7 +280,7 @@ For `"type": "equation"`, the `data` string is evaluated in the browser via `new
 | $\frac{1}{x}$ | `1 / x` | `1/x` is actually fine, just don't write a fraction-style string |
 
 Other rules for equation graphs:
-- The domain `x_range` must avoid producing `NaN` or `Infinity` anywhere in the sampled range — e.g. don't pass negative numbers to `Math.sqrt`, or `0` to `1/x`, within `x_range`. If evaluation produces a non-finite value anywhere, StudyDeck shows "Graph unavailable" instead of the chart.
+- `x_range` must avoid producing `NaN`/`Infinity` anywhere sampled — e.g. no negative numbers into `Math.sqrt`, no `0` into `1/x`. Any non-finite value anywhere shows "Graph unavailable" instead of the chart.
 - `x_range` and `y_range` can be given in either order (`[5, -5]` works the same as `[-5, 5]`) — StudyDeck sorts them automatically.
 
 For `"type": "points"`, `data` is a plain array of `[x, y]` number pairs — no code evaluation involved.
@@ -301,30 +301,30 @@ Hold your question *content* to a strict academic examiner's standard. (This is 
 
 ### Material boundary (everything)
 
-- Test **only** the facts, concepts, and relationships explicitly stated in the student's materials. No outside knowledge, no undisplayed facts, no external course content.
-- The one freedom: **scenarios may be invented.** A what-if or application question can wrap the material's concepts in a novel hypothetical situation (a hockey puck the notes never mentioned, a fictional patient) — as long as everything needed to *answer* it comes from the materials.
+- Test **only** the facts, concepts, and relationships explicitly stated in the student's materials — no outside knowledge, no external course content.
+- The one freedom: **scenarios may be invented.** A what-if/application question can wrap the material's concepts in a novel hypothetical (a hockey puck the notes never mentioned, a fictional patient) as long as everything needed to *answer* it comes from the materials.
 
 ### Difficulty — set by the material, not by asking
 
-- Calibrate difficulty to whatever rigor the student's own materials already demonstrate: bare-definition slides stay at that level; problem sets with multi-step derivations get matched at that level. The material the student handed you (their professor's slides, practice quizzes, past exams) *is* the difficulty signal — there's no better source for "how hard should this be."
-- Don't ask the student what difficulty they want. Only adjust it if they bring it up unprompted (e.g. "make it harder than my notes" or "easier, just the basics").
+- Calibrate difficulty to the rigor the student's own materials already demonstrate: bare-definition slides stay at that level, multi-step problem sets get matched at that level. The material *is* the difficulty signal.
+- Don't ask the student what difficulty they want — only adjust it if they bring it up unprompted (e.g. "make it harder than my notes").
 
 ### Quiz decks — cognitive depth
 
-- Default to **conceptual understanding, application, and analysis**: what-if scenarios, identifying relationships between concepts in the text, compare/contrast. Rephrase the material rather than quoting it, so questions test understanding instead of recognition.
+- Default to **conceptual understanding, application, and analysis**: what-if scenarios, relationships between concepts, compare/contrast. Rephrase the material rather than quoting it, so questions test understanding, not recognition.
 - Avoid simple definition-retrieval and factual trivia (dates, vocabulary matches) **by default** — with two exceptions:
   - The material itself is inherently definitional (term lists, vocab-heavy notes) — then definition questions are fine, even in a normal quiz.
   - The student's stated preferences call for easier or recall-style questions.
-- **The student's preferences always outrank these defaults.** This section exists to produce *good* questions for them, not to pelt them with maximally hard ones. Aim for mostly deep questions with a few comprehension warm-ups, and shift that mix freely with whatever they've told you during tailoring.
-- Make the **3 distractors highly plausible and deeply related to the material** — each should require careful thought to rule out. No obviously-wrong lazy filler, and no "All of the above" / "None of the above" (there's no room for them in a fixed 4-option format). Exactly **one** clearly correct answer.
-- Double-check your own arithmetic. If a question references a graph, verify the equation or data points actually produce the numbers your answer choices claim — a wrong `correct` index or an answer that doesn't match the graph's actual values is the most common AI-generated error.
+- **Student preferences always outrank these defaults** — this section exists to produce *good* questions for them, not to pelt them with maximally hard ones. Aim for mostly deep questions with a few comprehension warm-ups, and shift that mix freely with whatever they've told you during tailoring.
+- Make the **3 distractors highly plausible and deeply related to the material** — each should require careful thought to rule out. No lazy filler, and no "All of the above" / "None of the above" (no room for them in a fixed 4-option format). Exactly **one** clearly correct answer.
+- Double-check your own arithmetic — if a question references a graph, verify the equation or data points actually produce the numbers your answer choices claim. A wrong `correct` index or an answer that doesn't match the graph's actual values is the most common AI-generated error.
 - Prefer graphs as question *context* (e.g. "the graph below shows...") rather than putting a graph-dependent claim in the answer choices themselves.
 
 ### Flashcard decks — active recall
 
 - **If the student provided explicit terms/definitions** (e.g. a bolded list or glossary): use them directly — the term becomes the `front`, its definition the `back`.
 - **If they provided slides or general notes**: identify the most important core terms and concepts yourself.
-- One concept per card — keep the `front` focused (a term, a formula, a single concept) and the `back` clear but complete. Don't cram multiple facts onto one card.
+- One concept per card — keep `front` focused (a term, a formula, a single concept) and `back` clear but complete. Don't cram multiple facts onto one card.
 
 ### Both
 
@@ -366,41 +366,22 @@ StudyDeck rejects the entire file if any of these fail — it will *not* silentl
 
 ---
 
-## 7. Ready-to-Use Prompt Templates
+## 7. Ready-to-Use Prompt Template
 
-**Quiz:**
+For sending this file on its own, without one of the paired intros (which already include a delivery-format instruction) — attach this as your message:
+
 ```
-Generate a StudyDeck .json quiz for [topic] with [N] questions based on the
-following materials: [paste your notes / textbook excerpt / slides here]
+Generate a StudyDeck .json [quiz / flashcard set] for [topic] with [N]
+[questions / cards], based on the following materials: [paste your notes /
+textbook excerpt / slides here]
 
-Follow the StudyDeck format spec exactly:
-- version: 1, "type": "quiz", a descriptive title, and a "questions" array
-- Each question: a unique stable "id" (q1, q2, ...), "question" text,
-  exactly 4 "answers", and a "correct" index (0-3)
-- Use $...$ for inline LaTeX and $$...$$ for display LaTeX — remember to
-  escape every backslash as \\ since this is JSON (e.g. \\frac, \\sqrt)
-- Only add a "graph" object if the question genuinely needs one; if you do,
-  "data" for an equation graph must be valid JavaScript (e.g. Math.sin(x),
-  x * x), not LaTeX or Python syntax, and x_label/y_label/title are required
-- Double-check that "correct" actually matches the right answer, and that
-  any graph's equation or data actually produces the values you reference
-- Reply with one short line telling me to paste the result into StudyDeck,
-  then the JSON in a single code block — nothing else
-```
+Follow the format spec above exactly. Escape every backslash as \\ in LaTeX
+(e.g. \\frac, \\sqrt). Quiz: only add a "graph" if genuinely needed, and
+double-check "correct" and any graph values are accurate. Flashcards: keep
+one concept per card.
 
-**Flashcards:**
-```
-Generate a StudyDeck .json flashcard set for [topic] with [N] cards based on
-the following materials: [paste your notes / textbook excerpt / slides here]
-
-Follow the StudyDeck format spec exactly:
-- version: 1, "type": "flashcard", a descriptive title, and a "questions" array
-- Each card: a unique stable "id" (q1, q2, ...), a short "front", and a "back"
-- Use $...$ for inline LaTeX — remember to escape every backslash as \\ since
-  this is JSON (e.g. \\frac, \\sqrt)
-- One concept per card — keep "front" short
-- Reply with one short line telling me to paste the result into StudyDeck,
-  then the JSON in a single code block — nothing else
+Reply with one short line telling me to paste the result into StudyDeck,
+then the JSON in a single code block — nothing else.
 ```
 
 <--- End of StudyDeck instructions --->

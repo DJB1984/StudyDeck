@@ -17,6 +17,9 @@ deploy.config.json
 !.vscode/extensions.json
 .idea/
 
+# impeccable skill's local cache/session state (not repo business)
+.impeccable/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
