@@ -301,7 +301,7 @@ button { font-family: inherit; cursor: pointer; }
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
 }
 .copy-prompt-modal-desc {
   color: var(--text-secondary);

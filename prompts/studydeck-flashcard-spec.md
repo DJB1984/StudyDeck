@@ -6,7 +6,7 @@ tags: [studydeck, format-spec, flashcard, ai-generation]
 
 # StudyDeck Flashcard Format Spec
 
-Technical contract for generating a **flashcard**-type `.json` file that loads into StudyDeck, a free AI-agnostic study app — schema, LaTeX rules, question-quality bar, and validation checklist. (For quizzes, see the sibling `studydeck-quiz-spec.md`.) Normally paired with a "how to respond" intro (`studydeck-quick-intro.md` / `studydeck-guided-intro.md`); either way, follow the schema exactly, double-check **JSON backslash-escaping** before writing LaTeX, and run the **validation checklist** before final output.
+Technical contract for generating a **flashcard**-type `.json` file that loads into StudyDeck, a free AI-agnostic study app — schema, LaTeX rules, question-quality bar, and validation checklist. (For quizzes, see the sibling `studydeck-quiz-spec.md`.) Normally paired with a "how to respond" intro (`studydeck-quick-flashcard-intro.md` / `studydeck-guided-flashcard-intro.md`); either way, follow the schema exactly, double-check **JSON backslash-escaping** before writing LaTeX, and run the **validation checklist** before final output.
 
 ---
 

@@ -9,7 +9,12 @@ import type { Deck, HistoryEntry } from '../../types';
 import { Storage } from '../../lib/Storage';
 import { validateDeck } from '../../lib/DeckValidation';
 import { showError } from '../../lib/toast';
-import { QUICK_PROMPT_MD, GUIDED_PROMPT_MD } from '../../lib/formatSpec';
+import {
+  QUICK_QUIZ_PROMPT_MD,
+  QUICK_FLASHCARD_PROMPT_MD,
+  GUIDED_QUIZ_PROMPT_MD,
+  GUIDED_FLASHCARD_PROMPT_MD,
+} from '../../lib/formatSpec';
 import { copyWithFeedback } from '../../lib/clipboard';
 import { stripCodeFences } from '../../lib/deckText';
 import { RotatingWord } from './RotatingWord';
@@ -25,9 +30,9 @@ function today(): string {
 }
 
 // R12: label says "Copy Prompt" but the payload is a full composed prompt
-// (intro + shared schema contract). Clicking opens a full-screen Quick/Guided
-// choice modal (matching LoginModal's overlay pattern) instead of copying
-// immediately.
+// (deck-type intro + matching schema contract). Clicking opens a full-screen
+// Quick/Guided x Quiz/Flashcard choice modal (matching LoginModal's overlay
+// pattern) instead of copying immediately.
 function CopyPromptButton({ className = 'btn' }: { className?: string }) {
   const [label, setLabel] = useState('Copy Prompt');
   const [modalOpen, setModalOpen] = useState(false);
@@ -70,16 +75,34 @@ function CopyPromptModal({
           &times;
         </button>
         <h3>Copy a prompt</h3>
-        <p className="copy-prompt-modal-desc">Pick how you want the AI to build your set.</p>
+        <p className="copy-prompt-modal-desc">Pick a deck type and how much guidance you want.</p>
         <div className="copy-prompt-modal-grid">
-          <button className="copy-prompt-modal-option" onClick={() => onPick(QUICK_PROMPT_MD)}>
-            <div className="copy-prompt-modal-option-title">Quick</div>
+          <button className="copy-prompt-modal-option" onClick={() => onPick(QUICK_QUIZ_PROMPT_MD)}>
+            <div className="copy-prompt-modal-option-title">Quick Quiz</div>
             <div className="copy-prompt-modal-option-desc">
               Paste your notes and go — fast, no questions asked.
             </div>
           </button>
-          <button className="copy-prompt-modal-option" onClick={() => onPick(GUIDED_PROMPT_MD)}>
-            <div className="copy-prompt-modal-option-title">Guided</div>
+          <button
+            className="copy-prompt-modal-option"
+            onClick={() => onPick(QUICK_FLASHCARD_PROMPT_MD)}
+          >
+            <div className="copy-prompt-modal-option-title">Quick Flashcards</div>
+            <div className="copy-prompt-modal-option-desc">
+              Paste your notes and go — fast, no questions asked.
+            </div>
+          </button>
+          <button className="copy-prompt-modal-option" onClick={() => onPick(GUIDED_QUIZ_PROMPT_MD)}>
+            <div className="copy-prompt-modal-option-title">Guided Quiz</div>
+            <div className="copy-prompt-modal-option-desc">
+              A few quick questions first, so the quiz is tailored to what you actually need.
+            </div>
+          </button>
+          <button
+            className="copy-prompt-modal-option"
+            onClick={() => onPick(GUIDED_FLASHCARD_PROMPT_MD)}
+          >
+            <div className="copy-prompt-modal-option-title">Guided Flashcards</div>
             <div className="copy-prompt-modal-option-desc">
               A few quick questions first, so the set is tailored to what you actually need.
             </div>
