@@ -234,6 +234,38 @@ button { font-family: inherit; cursor: pointer; }
   flex-shrink: 0;
   margin-top: 8px;
 }
+/* Narrow screens: the header row can't fit title + "Need a new set?" + avatar
+   side by side, and plain flex-wrap dropped the WHOLE right-hand group (avatar
+   included) below the title. The avatar has to stay in the top-right corner,
+   so the header becomes a 2-col grid — title left, avatar right, the Copy
+   Prompt corner spanning row 2. .home-header-right goes display:contents so
+   its two children are placed independently; the login modal's overlay is
+   position:fixed, so it's out of flow and never takes a grid cell. */
+@media (max-width: 560px) {
+  #home-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px 16px;
+  }
+  .home-header-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .home-header-right {
+    display: contents;
+  }
+  .auth-avatar-wrap,
+  .auth-login-btn {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  #new-set-corner {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
 
 /* Get-started card (Home spec R11/R12) */
 #get-started-card {
