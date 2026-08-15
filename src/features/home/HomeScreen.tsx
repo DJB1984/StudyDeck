@@ -15,6 +15,7 @@ import { stripCodeFences } from '../../lib/deckText';
 import { RotatingWord } from './RotatingWord';
 import { AuthButton } from '../auth/AuthButton';
 import { Starfield } from '../../components/Starfield/Starfield';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
 const AI_NAMES = ['ChatGPT', 'Claude', 'Gemini', 'Grok', 'Copilot', 'Perplexity'];
@@ -125,6 +126,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   const [dragOver, setDragOver] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pasteBoxRef = useRef<HTMLTextAreaElement>(null);
 
@@ -222,10 +224,18 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
     onOpenDeck(updated);
   }
 
+  // R3: the delete control asks first, via the in-app ConfirmModal rather than
+  // a browser confirm() popup. Holding the pending title (not a boolean) keeps
+  // one modal serving every card.
   function deleteCard(e: React.MouseEvent, title: string) {
     e.stopPropagation(); // R3: don't also trigger the card's open action.
-    if (!window.confirm(`Remove "${title}"? This also clears any saved flashcard progress for it.`)) return;
-    Storage.deleteFile(title);
+    setPendingDelete(title);
+  }
+
+  function confirmDelete() {
+    if (pendingDelete === null) return;
+    Storage.deleteFile(pendingDelete);
+    setPendingDelete(null);
     refresh();
   }
 
@@ -367,6 +377,16 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
           </div>
           {addDeckSurface}
         </>
+      )}
+
+      {pendingDelete !== null && (
+        <ConfirmModal
+          title="Remove this study set?"
+          confirmLabel="Remove"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </section>
   );

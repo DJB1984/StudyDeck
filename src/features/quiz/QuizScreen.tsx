@@ -28,6 +28,7 @@ import {
   CodeResultsPanel,
 } from '../../components/QuizUI';
 import { CodeEditor } from '../../components/Code/CodeEditor';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
 import { buildRecord, formatDuration } from '../stats/stats';
 import { shuffleArray } from '../../lib/shuffle';
@@ -82,6 +83,7 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
   const [copyLabel, setCopyLabel] = useState('Copy explanation prompt');
   const [codeRunning, setCodeRunning] = useState(false);
   const [codeRunningLabel, setCodeRunningLabel] = useState('Running…');
+  const [confirmQuit, setConfirmQuit] = useState(false);
 
   const sessionStartRef = useRef<number>(Date.now());
   const questionEnteredAtRef = useRef<number>(Date.now());
@@ -487,6 +489,10 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
       return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || !!el.closest('.code-editor');
     }
     function onKey(e: KeyboardEvent) {
+      // The quit confirm is modal: while it's up, keys must not reach the
+      // question underneath (Enter would advance it, 1–4 would answer it).
+      // window.confirm() used to block the page for us; this doesn't.
+      if (confirmQuit) return;
       if (isFormField(e.target as HTMLElement)) return;
       if (format === 'mcq' && ['1', '2', '3', '4'].includes(e.key)) {
         const i = parseInt(e.key, 10) - 1;
@@ -504,7 +510,7 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, answers]);
+  }, [idx, answers, confirmQuit]);
 
   const feedbackMsg =
     mode !== 'practice' || !answered || format === 'code' // code's detailed pass/fail lives in CodeResultsPanel instead
@@ -531,7 +537,10 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
   // throws that progress away for good, so it's the one mode worth a confirm.
   // Practice has nothing at stake (retries don't count) and stays a single click.
   function handleAbandon() {
-    if (mode === 'test' && !window.confirm("Quit this test? Your progress won't be saved.")) return;
+    if (mode === 'test') {
+      setConfirmQuit(true);
+      return;
+    }
     onAbandon();
   }
 
@@ -657,6 +666,17 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
           {isLast ? 'See Results' : 'Next →'}
         </button>
       </div>
+
+      {confirmQuit && (
+        <ConfirmModal
+          title="Quit this test?"
+          message="Your progress won't be saved."
+          confirmLabel="Quit test"
+          danger
+          onConfirm={onAbandon}
+          onCancel={() => setConfirmQuit(false)}
+        />
+      )}
     </section>
   );
 }
