@@ -53,6 +53,8 @@ The schema above is `"mcq"` — the default, and the right choice for most quest
 | `"order"` | Arranging steps into a sequence | `items` (≥2 `{id, text}`; StudyDeck shuffles them, so listing order isn't a spoiler) + `correctOrder` — the same ids, each exactly once. Graded exact-match. |
 | `"code"` | Writing real code | `language` (`"javascript"` or `"python"` **only** — never `"java"`) + `checks`, needing at least one of `syntax` / `structure` / `tests`. Optional `starterCode`. |
 
+For `multiSelect`, vary the number of correct options — usually two or more, sometimes a majority, occasionally just one. Never settle into one ratio like 3-of-5.
+
 One example of each, as they'd appear inside `questions`:
 
 ```json
