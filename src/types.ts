@@ -169,8 +169,27 @@ export interface QuizSession {
   order: number[];
 }
 
+/**
+ * The in-progress flashcard round, persisted so a reload resumes where the
+ * student left off instead of restarting. Local-only: the cloud `flash_state`
+ * table stores just the piles, so a hydration simply drops this and the next
+ * entry starts fresh.
+ */
+export interface FlashSession {
+  /** Card ids in this round's order (linear mode). */
+  order: string[];
+  /** Mastery-mode working queue (added in a later phase; unused in linear mode). */
+  queue?: string[];
+  /** Position within `order`; unused in mastery mode. */
+  currentIdx: number;
+  drillMode: 'all' | 'learning';
+  randomOrder: boolean;
+  masteryMode: boolean;
+}
+
 /** Persisted flashcard pile state, keyed by question id (never index). */
 export interface FlashState {
   known: string[];
   learning: string[];
+  session?: FlashSession;
 }

@@ -116,6 +116,9 @@ button { font-family: inherit; cursor: pointer; }
 }
 .file-card h3 { font-size: 1rem; padding-right: 24px; }
 .file-card .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+/* Flashcard-only mastery line: same scale as .meta but accent-colored, so a
+   deck's progress reads as progress and not as more filename metadata. */
+.file-card .meta-flash { font-size: 0.8rem; color: var(--accent-light); margin-top: 2px; }
 .file-card .delete-btn {
   position: absolute;
   top: 12px;
@@ -1476,9 +1479,12 @@ button { font-family: inherit; cursor: pointer; }
 .review-nav-next { grid-column: 3; justify-self: end; }
 
 /* Flashcard screen */
+/* Three toggles no longer fit one line on a phone — wrap rather than squeeze,
+   with a tighter row gap so a wrapped third toggle still reads as one group. */
 .flash-options {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 12px 24px;
   margin-bottom: 16px;
 }
 
@@ -1546,7 +1552,22 @@ button { font-family: inherit; cursor: pointer; }
 .flash-actions {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 16px;
+}
+/* Undo sits in the same row as the two sort buttons but must not compete with
+   them — it's a correction, not a choice. Borderless and smaller keeps the
+   Still Learning / Know It pair reading as the only real decision on screen. */
+.flash-undo-btn {
+  border-color: transparent;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+.flash-undo-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  color: var(--text-secondary);
+  border-color: transparent;
 }
 .flash-complete-card {
   padding: 32px;

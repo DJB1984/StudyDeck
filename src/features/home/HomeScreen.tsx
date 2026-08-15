@@ -25,6 +25,15 @@ function today(): string {
   return new Date().toLocaleDateString();
 }
 
+// Cards a flashcard deck's owner has marked Know It, counted against the deck
+// itself rather than trusting the pile's length: a re-imported deck can leave
+// behind known ids for questions it no longer contains, and "12 / 8 known" is
+// worse than no badge at all.
+function knownCount(file: HistoryEntry): number {
+  const known = new Set(Storage.getFlashState(file.title).known);
+  return file.data.questions.filter((q) => known.has(q.id)).length;
+}
+
 // R12: label says "Copy Prompt" but the payload is a full composed prompt
 // (deck-type intro + matching schema contract). Clicking opens a full-screen
 // Quiz/Flashcards choice modal (matching LoginModal's overlay pattern) instead
@@ -372,6 +381,14 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                 <div className="meta">
                   {file.count} questions · {file.lastOpened}
                 </div>
+                {/* Flashcard decks only: a live snapshot of the Know It pile,
+                    re-read from Storage on every render rather than persisted
+                    as its own value — it must not drift from the piles the
+                    flashcard engine actually owns. Never-opened decks read
+                    "0 / N known" via getFlashState's empty default. */}
+                {file.data.type === 'flashcard' && (
+                  <div className="meta-flash">{knownCount(file)} / {file.count} known</div>
+                )}
               </div>
             ))}
           </div>
