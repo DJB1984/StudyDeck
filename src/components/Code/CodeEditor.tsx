@@ -27,7 +27,7 @@ import { tags } from '@lezer/highlight';
 import type { QuizQuestion } from '../../types';
 
 // Palette restricted to existing tokens (no new colors, no Nebula — that
-// gradient is reserved for the brand mark/hero only per DESIGN.md's
+// gradient is reserved for Home's hero only per DESIGN.md's
 // Nebula-Is-Rare Rule and must never be used as chart/decoration color).
 const starfieldHighlight = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--accent-light)' },

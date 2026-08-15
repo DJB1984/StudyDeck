@@ -308,7 +308,6 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
         <div id="home-header">
           <div className="home-header-left">
             <div className="home-title-row">
-              <span className="star-mark" />
               <h1 className="home-title">StudyDeck</h1>
             </div>
             {/* R14/R15: two rotating slots, staggered so they can never flip together.

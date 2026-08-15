@@ -18,8 +18,8 @@
   --accent-light: #63b3ff;              /* hover/focus/text-on-dark */
   --accent-deep: #0267c7;               /* gradient base for filled buttons */
 
-  /* Nebula — reserved exclusively for the brand mark and Home's hero moment,
-     never for ordinary interactive chrome (see DESIGN.md's Signal Rule). */
+  /* Nebula — reserved exclusively for Home's hero moment, never for ordinary
+     interactive chrome (see DESIGN.md's Signal Rule). */
   --nebula-ember: #ef852e;
   --nebula-pink: #c841a5;
   --nebula-gradient: conic-gradient(from 200deg, var(--nebula-ember), var(--nebula-pink), var(--accent), var(--nebula-ember));

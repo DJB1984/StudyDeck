@@ -76,7 +76,7 @@ Existing `{Feature}.spec.md` files (e.g. `src/features/quiz/Quiz.spec.md`, `src/
 
 ### Visual design
 
-"Starfield" deep-space aesthetic — solid tonal-layered panels (no `backdrop-filter`/glass), one restrained accent (Starlight Blue), a reserved multi-hue Nebula gradient held back for the brand mark and Home's hero only. **`DESIGN.md`** at the repo root is the source of truth for the full system (palette, typography, named rules); `docs/core/design-doc.md`'s Visual Design section is a synced technical summary. Color tokens live in `src/theme/tokens.css` (isolated so a shared cross-project theme can swap in later); component styles in `src/theme/styles.css`. Use the existing `--bg`/`--surface`/`--accent`/etc. tokens rather than introducing new colors.
+"Starfield" deep-space aesthetic — solid tonal-layered panels (no `backdrop-filter`/glass), one restrained accent (Starlight Blue), a reserved multi-hue Nebula gradient held back for Home's hero only. **`DESIGN.md`** at the repo root is the source of truth for the full system (palette, typography, named rules); `docs/core/design-doc.md`'s Visual Design section is a synced technical summary. Color tokens live in `src/theme/tokens.css` (isolated so a shared cross-project theme can swap in later); component styles in `src/theme/styles.css`. Use the existing `--bg`/`--surface`/`--accent`/etc. tokens rather than introducing new colors.
 
 ## Deployment (live site)
 

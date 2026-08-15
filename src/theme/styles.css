@@ -185,20 +185,6 @@ button { font-family: inherit; cursor: pointer; }
   .star { animation: none; opacity: var(--star-opacity, 0.6); }
 }
 
-/* Brand mark — an 8-point sparkle cut from the Nebula gradient. This exact
-   gradient never appears anywhere else in the system (see DESIGN.md's
-   Signal Rule): starlight blue alone carries every interactive/selected
-   state, and Nebula stays reserved for this mark and the hero glow. */
-.star-mark {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  background: var(--nebula-gradient);
-  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
-  filter: drop-shadow(0 0 10px rgba(239, 133, 46, 0.35));
-}
-
 #home-header {
   position: relative;
   z-index: 1;

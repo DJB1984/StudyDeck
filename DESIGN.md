@@ -98,13 +98,13 @@ components:
 
 StudyDeck's surface is a deep-space navy void with solid, layered panels resting on it — flat fills stepped up in lightness (void → surface → surface-raised), edged with a hairline 8% white border. This is a deliberate departure from the prior "Dark Liquid Glass" identity: there is no `backdrop-filter` anywhere in the system. Depth now comes from tonal layering and a hairline edge, not translucency or blur.
 
-Starlight Blue is the system's one everyday accent, governing every primary button, progress fill, selected card, and focused input — its rarity is what makes it read as intentional. A second, multi-hue "Nebula" gradient (ember → pink → starlight blue) exists in the system, but it is reserved exclusively for the brand mark and Home's hero header — the system's one Signature Moment, mirroring how the prior system reserved the flashcard flip as its one expressive beat. Nebula never appears on a button, a selection state, or anything a visitor interacts with; if it did, Starlight Blue's rarity — and the reliability of "blue means interactive" — would break.
+Starlight Blue is the system's one everyday accent, governing every primary button, progress fill, selected card, and focused input — its rarity is what makes it read as intentional. A second, multi-hue "Nebula" gradient (ember → pink → starlight blue) exists in the system, but it is reserved exclusively for Home's hero header — the system's one Signature Moment, mirroring how the prior system reserved the flashcard flip as its one expressive beat. Nebula never appears on a button, a selection state, or anything a visitor interacts with; if it did, Starlight Blue's rarity — and the reliability of "blue means interactive" — would break.
 
 Typography moved from a zero-webfont, borrowed-OS-font system to three purposeful self-hosted faces: Inter for all body/UI copy, Space Grotesk for headings and the hero wordmark, and JetBrains Mono for code/metadata. Density, spacing scale, layout grid, and screen-transition motion are unchanged from the prior system — this redesign replaces the *material and palette*, not the product's structure or interaction model.
 
 **Key Characteristics:**
 - Solid tonal-layered panels on a deep-space navy void — no blur, no translucency anywhere
-- One accent (Starlight Blue) for everyday interactive/selected state; one reserved gradient (Nebula) for exactly two places: the brand mark and Home's hero
+- One accent (Starlight Blue) for everyday interactive/selected state; one reserved gradient (Nebula) for exactly one place: Home's hero
 - Three purposeful webfonts (Inter / Space Grotesk / JetBrains Mono), replacing the prior system-font-only rule
 - Correct/incorrect green and red are feedback-only, never decorative (carried over unchanged)
 - A procedural starfield (small twinkling dots) decorates Home's header only — nowhere else in the app
@@ -119,7 +119,7 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 - **Starlight Blue Deep** (`#0267c7`): the gradient base for filled buttons and the slider fill's leading edge.
 
 ### Nebula (reserved — see Named Rules)
-- **Nebula Ember** (`#ef852e`) / **Nebula Pink** (`#c841a5`): combine with Starlight Blue in a conic gradient (`--nebula-gradient`) used by exactly two things: the `.star-mark` brand glyph and the radial glow behind Home's hero header. Never appears on interactive chrome.
+- **Nebula Ember** (`#ef852e`) / **Nebula Pink** (`#c841a5`): combine with Starlight Blue in a conic gradient (`--nebula-gradient`) used by exactly one thing: the radial glow behind Home's hero header. Never appears on interactive chrome.
 
 ### Neutral
 - **Void Navy** (`#080d16`): the page background — a near-black with a cool navy undertone, never pure `#000`.
@@ -136,7 +136,7 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 ### Named Rules
 **The Signal Rule.** Starlight Blue is the only color that means "you can act on this" or "this is selected." It appears on exactly one thing per view — the current primary action, the active selection, or the in-progress fill — and never as decoration.
 
-**The Nebula-Is-Rare Rule.** The Nebula gradient exists in exactly two places system-wide: the `.star-mark` brand glyph and Home's hero glow. It is never a button fill, a selection state, or chart/decoration color — diluting it past those two spots breaks both its own impact and Starlight Blue's claim to "interactive."
+**The Nebula-Is-Rare Rule.** The Nebula gradient exists in exactly one place system-wide: Home's hero glow. It is never a button fill, a selection state, or chart/decoration color — diluting it past that one spot breaks both its own impact and Starlight Blue's claim to "interactive."
 
 **The Feedback-Only Rule.** Success Green and Alert Red exist solely to answer "was this right or wrong." They never appear as generic UI accents, chart colors, or decoration outside a quiz-feedback context.
 
@@ -176,7 +176,7 @@ No blur, no translucency, no shadow-based elevation at rest. Depth comes entirel
 
 ## Shapes
 
-`16px` radius (the `--radius` token) is the system's signature curve: every panel, the flashcard, graph containers, and the error toast all share it. Interactive controls step down to `12px` (buttons, inputs, answer/order rows); the smallest chrome (icon buttons, drag/order step buttons, tooltips) uses `8px`. Fully circular elements — the step-number badge, the auth avatar circle, toggle-switch tracks/thumbs — use `50%` or a radius equal to half their own height. The one non-rectangular shape in the system is `.star-mark`, an 8-point sparkle cut with `clip-path` and filled with the Nebula gradient — used only for the brand mark. Border weight is still the system's tell for interactivity: static surfaces get a 1px Border Hairline; anything clickable/selectable (mode cards, copy-prompt option cards) steps up to 2px, then shifts to Starlight Blue Light + a faint blue tint when selected.
+`16px` radius (the `--radius` token) is the system's signature curve: every panel, the flashcard, graph containers, and the error toast all share it. Interactive controls step down to `12px` (buttons, inputs, answer/order rows); the smallest chrome (icon buttons, drag/order step buttons, tooltips) uses `8px`. Fully circular elements — the step-number badge, the auth avatar circle, toggle-switch tracks/thumbs — use `50%` or a radius equal to half their own height. Border weight is still the system's tell for interactivity: static surfaces get a 1px Border Hairline; anything clickable/selectable (mode cards, copy-prompt option cards) steps up to 2px, then shifts to Starlight Blue Light + a faint blue tint when selected.
 
 ## Components
 
@@ -202,7 +202,7 @@ No blur, no translucency, no shadow-based elevation at rest. Depth comes entirel
 No persistent top nav — each screen is a full-page state. Practice, Test, and Review share one Progress Header: a ghost ✕ "abandon" icon, a compact progress-text label, and a `4px` Surface-Raised track filled by Starlight Blue as the session advances.
 
 ### Home Hero (signature moment)
-Home's header sits inside `.home-hero`: a radial navy glow plus a static procedural starfield (`Starfield.tsx` — ~48 small dots at fixed pseudo-random positions, gently twinkling, `prefers-reduced-motion`-aware) behind the title row only. The "StudyDeck" `h1` renders with a top-to-bottom white-to-Text-Hero-End (`#abbfdf`) gradient-text treatment, paired with `.star-mark` — the Nebula-gradient sparkle glyph. This is the only screen with either the starfield or the gradient text; everywhere else stays on the plain Void Navy background with solid Text Primary type.
+Home's header sits inside `.home-hero`: a radial navy glow plus a static procedural starfield (`Starfield.tsx` — ~48 small dots at fixed pseudo-random positions, gently twinkling, `prefers-reduced-motion`-aware) behind the title row only. The "StudyDeck" `h1` renders with a top-to-bottom white-to-Text-Hero-End (`#abbfdf`) gradient-text treatment, standing alone as the wordmark. This is the only screen with either the starfield or the gradient text; everywhere else stays on the plain Void Navy background with solid Text Primary type.
 
 ### Flashcard (signature interaction)
 Unchanged from the prior system: a real 3D CSS flip (`perspective: 1000px`, `rotateY(180deg)`, `400ms ease`) reveals the answer in Starlight Blue Light text. "Know It" slides the card off-screen with rotation and fade; "Still Learning" shakes it in place.
@@ -223,7 +223,7 @@ Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `
 
 ### Don't:
 - **Don't** add `backdrop-filter`/blur anywhere — this system is solid, tonal-layered panels, not glass.
-- **Don't** use the Nebula gradient on anything interactive — it lives on the brand mark and Home's hero only (The Nebula-Is-Rare Rule).
+- **Don't** use the Nebula gradient on anything interactive — it lives on Home's hero only (The Nebula-Is-Rare Rule).
 - **Don't** add drop shadows to static, at-rest surfaces — depth comes from tonal layering, not elevation (The Shadow-Is-Motion Rule).
 - **Don't** add bright, multi-color, gamified educational-app styling — badges, confetti, mascots, cheerful illustration, color emoji icons. The project is explicitly "not a Quizlet clone."
 - **Don't** style focus states with a glow or ring. The established cue is a border-color shift to Starlight Blue Light only.

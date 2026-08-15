@@ -33,11 +33,12 @@ export function ProgressHeader({ current, total, onAbandon, abandonTitle }: Prog
         {current} of {total}
       </span>
       <div className="progress-bar">
-        {/* Bar reflects questions COMPLETED, not including the current one — reads 0% on Q1.
+        {/* Bar tracks position INCLUSIVE of the current question, so it matches the
+            "N of total" label: 1 of 5 shows a fifth filled, 5 of 5 reads fully complete.
             scaleX, not width, so the fill animates via transform instead of triggering layout. */}
         <div
           className="progress-fill"
-          style={{ transform: `scaleX(${(current - 1) / total})` }}
+          style={{ transform: `scaleX(${total > 0 ? current / total : 0})` }}
         ></div>
       </div>
     </div>

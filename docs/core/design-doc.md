@@ -213,7 +213,7 @@ Home → Mode Select → Quiz/Flashcard → Stats → Home
 
 ## Visual Design
 
-**Design language:** "Starfield" — a deep-space navy system. Solid, tonal-layered panels (no `backdrop-filter`/glass). One restrained accent (Starlight Blue) for everyday interactive/selected state; a reserved multi-hue "Nebula" gradient held back for exactly the brand mark and Home's hero. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
+**Design language:** "Starfield" — a deep-space navy system. Solid, tonal-layered panels (no `backdrop-filter`/glass). One restrained accent (Starlight Blue) for everyday interactive/selected state; a reserved multi-hue "Nebula" gradient held back for exactly Home's hero. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
 
 **Color tokens:**
 ```css
