@@ -131,6 +131,11 @@ interface OrderListProps {
   getClassName?: (i: number) => string;
 }
 
+/** Touch hold before a drag takes over the gesture (ms). */
+const LONG_PRESS_MS = 200;
+/** Finger travel during the hold that reads as a scroll, not a drag (px). */
+const TOUCH_SLOP = 10;
+
 /**
  * Reorderable list for `answerFormat: 'order'` — a custom pointer-events-based
  * drag (works identically on mouse and touch, unlike native HTML5 drag-and-drop,
@@ -138,12 +143,14 @@ interface OrderListProps {
  * work on touch screens at all). The dragged item leaves a dashed placeholder
  * in its slot and floats as a clone that tracks the pointer; crossing another
  * item's midpoint live-shifts the rest of the list (insert-style, not a swap).
- * Drag is the primary interaction, but each row also carries Up/Down buttons
- * (`.order-move-btn`, styled to match the drag handle) as a keyboard- and
- * screen-reader-reachable fallback — a move commits immediately via
- * `onReorder`, unlike a drag which only commits on pointer-up. The caller
- * owns the committed order (`items`) and persistence via `onReorder`; this
- * component owns only the drag's own transient, uncommitted preview state.
+ *
+ * The whole row is the grab target — the `⠿` glyph is now only a visual cue
+ * that the row is draggable. Mouse/pen drags start on pointer-down; touch
+ * drags wait out a `LONG_PRESS_MS` hold first, so a quick swipe over the list
+ * still scrolls the page (the standard mobile reorder gesture). Drag commits
+ * only on pointer-up. The caller owns the committed order (`items`) and
+ * persistence via `onReorder`; this component owns only the drag's own
+ * transient, uncommitted preview state.
  */
 export function OrderList({ items, onReorder, disabled, getClassName }: OrderListProps) {
   const [liveItems, setLiveItems] = useState(items);
@@ -199,39 +206,78 @@ export function OrderList({ items, onReorder, disabled, getClassName }: OrderLis
       onReorder(liveItemsRef.current);
     }
 
+    // Touch drags need the page pinned: `touch-action` alone can't stop a
+    // scroll the browser is already willing to start, so cancel the native
+    // gesture outright for as long as a drag is held.
+    function blockScroll(e: TouchEvent) {
+      e.preventDefault();
+    }
+
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onUp);
+    document.addEventListener('touchmove', blockScroll, { passive: false });
     return () => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
+      document.removeEventListener('touchmove', blockScroll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragId]);
 
   function handlePointerDown(e: React.PointerEvent, id: string) {
-    if (disabled) return;
-    e.preventDefault();
-    const rect = itemRefs.current.get(id)?.getBoundingClientRect();
-    const listRect = containerRef.current?.getBoundingClientRect();
-    if (!rect || !listRect) return;
-    grabOffsetRef.current = e.clientY - rect.top;
-    containerRectRef.current = { left: listRect.left, top: listRect.top, width: listRect.width };
-    setPointerY(e.clientY);
-    setDragId(id);
-  }
+    if (disabled || e.button > 0) return;
 
-  /** Keyboard/screen-reader fallback for drag: moves and commits in one step. */
-  function moveItem(index: number, direction: -1 | 1) {
-    if (disabled) return;
-    const to = index + direction;
-    if (to < 0 || to >= liveItems.length) return;
-    const next = [...liveItems];
-    const [moved] = next.splice(index, 1);
-    next.splice(to, 0, moved);
-    setLiveItems(next);
-    onReorder(next);
+    // Measured at activation, not at pointer-down: a touch hold can outlast a
+    // small scroll, so the rects must be read when the drag actually starts.
+    const begin = (clientY: number) => {
+      const rect = itemRefs.current.get(id)?.getBoundingClientRect();
+      const listRect = containerRef.current?.getBoundingClientRect();
+      if (!rect || !listRect) return;
+      grabOffsetRef.current = clientY - rect.top;
+      containerRectRef.current = { left: listRect.left, top: listRect.top, width: listRect.width };
+      setPointerY(clientY);
+      setDragId(id);
+    };
+
+    if (e.pointerType !== 'touch') {
+      e.preventDefault(); // suppress text selection and native image/link drags
+      begin(e.clientY);
+      return;
+    }
+
+    // Touch: hold to drag. Any real movement before the timer fires means the
+    // user is scrolling, so we bow out and leave the gesture to the browser.
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let lastY = e.clientY;
+    let timer: number | null = null;
+
+    const endHold = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      document.removeEventListener('pointermove', onHoldMove);
+      document.removeEventListener('pointerup', endHold);
+      document.removeEventListener('pointercancel', endHold);
+    };
+
+    function onHoldMove(ev: PointerEvent) {
+      lastY = ev.clientY;
+      if (Math.abs(ev.clientY - startY) > TOUCH_SLOP || Math.abs(ev.clientX - startX) > TOUCH_SLOP) {
+        endHold();
+      }
+    }
+
+    timer = window.setTimeout(() => {
+      endHold();
+      begin(lastY);
+    }, LONG_PRESS_MS);
+    document.addEventListener('pointermove', onHoldMove);
+    document.addEventListener('pointerup', endHold);
+    document.addEventListener('pointercancel', endHold);
   }
 
   const draggedItem = liveItems.find((it) => it.id === dragId) ?? null;
@@ -245,7 +291,7 @@ export function OrderList({ items, onReorder, disabled, getClassName }: OrderLis
     : undefined;
 
   return (
-    <div className="order-list" ref={containerRef}>
+    <div className={'order-list' + (dragId !== null ? ' dragging' : '')} ref={containerRef}>
       {liveItems.map((item, i) => {
         if (item.id === dragId) {
           // Same markup as a real row (hidden via CSS), not an empty div — an
@@ -267,37 +313,18 @@ export function OrderList({ items, onReorder, disabled, getClassName }: OrderLis
               if (el) itemRefs.current.set(item.id, el);
               else itemRefs.current.delete(item.id);
             }}
-            className={'order-item' + (getClassName ? ' ' + getClassName(i) : '')}
+            className={
+              'order-item' +
+              (disabled ? ' order-item-locked' : '') +
+              (getClassName ? ' ' + getClassName(i) : '')
+            }
+            onPointerDown={(e) => handlePointerDown(e, item.id)}
           >
-            <span
-              className="order-handle"
-              aria-hidden="true"
-              onPointerDown={(e) => handlePointerDown(e, item.id)}
-            >
+            <span className="order-handle" aria-hidden="true">
               ⠿
             </span>
             <span className="order-index">{i + 1}</span>
             <Katex className="order-text" text={item.text} />
-            <span className="order-move-buttons">
-              <button
-                type="button"
-                className="order-move-btn"
-                aria-label={`Move item ${i + 1} up`}
-                disabled={disabled || i === 0}
-                onClick={() => moveItem(i, -1)}
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                className="order-move-btn"
-                aria-label={`Move item ${i + 1} down`}
-                disabled={disabled || i === liveItems.length - 1}
-                onClick={() => moveItem(i, 1)}
-              >
-                ▼
-              </button>
-            </span>
           </div>
         );
       })}

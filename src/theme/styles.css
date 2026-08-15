@@ -884,9 +884,12 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--accent-light);
 }
 
-/* order: pointer-driven drag list (works on mouse + touch) + Up/Down buttons as
-   a keyboard/accessibility fallback. See OrderList in QuizUI.tsx. */
+/* order: pointer-driven drag list (works on mouse + touch). The whole row is
+   the grab target; touch requires a short hold. See OrderList in QuizUI.tsx. */
 .order-list { margin-bottom: 10px; position: relative; }
+/* Belt-and-braces with the JS touchmove blocker: keeps a fresh gesture from
+   claiming a scroll while a drag is already held. */
+.order-list.dragging { touch-action: none; }
 .order-item {
   display: flex;
   align-items: center;
@@ -899,7 +902,16 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 8px;
   color: var(--text-primary);
   transition: background 150ms, border-color 150ms;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Lets a quick swipe scroll the page; the hold-to-drag timer takes over
+     from there (see LONG_PRESS_MS). */
+  touch-action: pan-y;
 }
+.order-item:not(.order-item-locked):hover { border-color: rgba(255,255,255,0.2); }
+.order-item:not(.order-item-locked):active { cursor: grabbing; }
+.order-item-locked { cursor: default; }
 .order-item.correct-answer {
   background: rgba(93, 200, 121, 0.15) !important;
   border-color: var(--correct) !important;
@@ -923,14 +935,12 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   border-color: var(--accent-light);
 }
+/* Decorative only — the whole row is the grab target. */
 .order-handle {
   color: var(--text-secondary);
   flex-shrink: 0;
   font-size: 1rem;
-  cursor: grab;
-  touch-action: none; /* prevents touch-scroll from competing with the drag */
 }
-.order-handle:active { cursor: grabbing; }
 .order-index {
   font-size: 0.82rem;
   font-weight: 700;
@@ -939,23 +949,6 @@ button { font-family: inherit; cursor: pointer; }
   width: 18px;
 }
 .order-text { flex: 1; }
-.order-move-buttons {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.order-move-btn {
-  background: none;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  width: 28px;
-  height: 28px;
-  font-size: 0.85rem;
-  transition: color 150ms, border-color 150ms;
-}
-.order-move-btn:not(:disabled):hover { color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
-.order-move-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* numeric: text variant reuses the system's input-text recipe (DESIGN.md);
    slider variant reuses the Toggle's track/thumb language, adapted to a
