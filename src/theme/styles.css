@@ -280,13 +280,19 @@ button { font-family: inherit; cursor: pointer; }
   flex-direction: column;
   gap: 12px;
 }
+/* No flex-wrap here: a wrapping flex container breaks lines on each item's
+   max-content size before shrinking, so step 2's long sentence would jump to
+   its own line and strand the number badge above it. Nowrap lets the text
+   shrink and wrap inside its own box, beside the badge. */
 .get-started-step {
   display: flex;
   align-items: center;
   gap: 12px;
   color: var(--text-secondary);
   font-size: 0.95rem;
-  flex-wrap: wrap;
+}
+.get-started-step .btn {
+  flex-shrink: 0;
 }
 .step-num {
   flex-shrink: 0;
@@ -302,6 +308,7 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 700;
 }
 .step-text {
+  min-width: 0;
   line-height: 1.5;
 }
 
