@@ -49,7 +49,7 @@ Name: "StudyDeck." The shipped "Starfield" deep-space visual identity and design
 - `test-decks/` — real example quiz/flashcard decks used to validate against.
 - `legacy/studydeck.html` — the original single-file implementation, preserved unchanged as reference.
 - `docs/core/PRD.md`, `docs/core/design-doc.md`, `docs/auth/PRD.md` — the authoritative behavior/requirements record.
-- `prompts/studydeck-format-spec.md` — the AI-facing schema contract used to generate compatible decks.
+- `prompts/` — the AI-facing schema contracts (`studydeck-quiz-spec.md`, `studydeck-flashcard-spec.md`) plus the four Quick/Guided intros composed with them.
 - Live production deployment at https://studydeck.brookslanding.com.
 - Absence to preserve: no user testimonials, usage metrics, or case studies exist yet — future work must not fabricate them.
 

@@ -6,7 +6,7 @@ status: draft
 tags: [studydeck, claude-code, implementation, question-types]
 ---
 
-Hand this file to [[Claude Code]] along with `PRD.md` and `design-doc.md` (this folder). Work phase by phase — each phase should leave the app in a working, typecheck-clean state before moving to the next. Run `npm run typecheck` and exercise the feature in the dev server after each phase before moving on. Update `prompts/studydeck-format-spec.md` at the end of each phase so it never drifts from what's actually shipped (it's imported verbatim into the app via `?raw`).
+Hand this file to [[Claude Code]] along with `PRD.md` and `design-doc.md` (this folder). Work phase by phase — each phase should leave the app in a working, typecheck-clean state before moving to the next. Run `npm run typecheck` and exercise the feature in the dev server after each phase before moving on. Update `prompts/studydeck-quiz-spec.md` at the end of each phase so it never drifts from what's actually shipped (it's imported verbatim into the app via `?raw`).
 
 ---
 

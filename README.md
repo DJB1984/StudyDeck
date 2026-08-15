@@ -28,7 +28,7 @@ I was using AI to study from my professor's slides, but the generation side and 
 - **LaTeX rendering** — full KaTeX support for math and physics notation via `$...$` and `$$...$$`.
 - **Graph rendering** — Chart.js plots from either raw data points or an equation string, with required axis labels and titles.
 - **Local history** — every deck you've loaded is saved in `localStorage` and reloads instantly from the home screen; deleting a deck cleans up its flashcard state too.
-- **AI-agnostic format spec** — a plain markdown spec (`prompts/studydeck-format-spec.md`) any model can read to generate a valid deck, so nothing is locked to one AI provider.
+- **AI-agnostic format spec** — plain markdown specs (`prompts/studydeck-quiz-spec.md`, `prompts/studydeck-flashcard-spec.md`) any model can read to generate a valid deck, so nothing is locked to one AI provider.
 
 ---
 
@@ -55,7 +55,7 @@ npm run dev
 
 Then open the printed local URL. Build a static bundle with `npm run build` (output in `dist/`).
 
-To try it immediately, drag one of the example decks from `test-decks/` onto the home screen. To create your own deck, give any AI model `prompts/studydeck-format-spec.md` along with your course material and ask it to generate a compatible `.json` file.
+To try it immediately, drag one of the example decks from `test-decks/` onto the home screen. To create your own deck, use the home screen's **Copy Prompt** button and paste the result into any AI model along with your course material — or hand it `prompts/studydeck-quiz-spec.md` (or `prompts/studydeck-flashcard-spec.md`) directly.
 
 ---
 

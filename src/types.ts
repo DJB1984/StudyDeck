@@ -1,5 +1,6 @@
 // Shared domain types for StudyDeck. Mirrors the JSON schema in
-// docs/core/design-doc.md and prompts/studydeck-format-spec.md.
+// docs/core/design-doc.md and prompts/studydeck-quiz-spec.md +
+// prompts/studydeck-flashcard-spec.md.
 
 export type DeckType = 'quiz' | 'flashcard';
 export type QuizMode = 'practice' | 'test';

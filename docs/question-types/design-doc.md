@@ -8,7 +8,7 @@ tags: [studydeck, design, architecture, question-types]
 
 ## Relationship to the core design doc
 
-This extends `docs/core/design-doc.md`'s "JSON Schema" and "App Architecture" sections. Once a feature here is actually implemented, its schema addition should be folded into the main `docs/core/design-doc.md` and `prompts/studydeck-format-spec.md` (per CLAUDE.md: `design-doc.md` is the source of truth for behavior, and the format spec must never drift from what's actually shipped). This document is the working design for the batch; it is not itself the long-term source of truth.
+This extends `docs/core/design-doc.md`'s "JSON Schema" and "App Architecture" sections. Once a feature here is actually implemented, its schema addition should be folded into the main `docs/core/design-doc.md` and `prompts/studydeck-quiz-spec.md` (per CLAUDE.md: `design-doc.md` is the source of truth for behavior, and the format spec must never drift from what's actually shipped). This document is the working design for the batch; it is not itself the long-term source of truth.
 
 All new question sub-types are introduced via an optional `answerFormat` discriminator on quiz questions, defaulting to `"mcq"` (today's exact-4-answers, single `correct` index behavior) when omitted — so every existing deck in the wild continues to validate and render exactly as before. This mirrors the existing top-level `type` field pattern (`"quiz"` default, `"flashcard"` opt-in).
 

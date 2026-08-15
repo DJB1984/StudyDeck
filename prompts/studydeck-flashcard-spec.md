@@ -6,13 +6,11 @@ tags: [studydeck, format-spec, flashcard, ai-generation]
 
 # StudyDeck Flashcard Format Spec
 
-Technical contract for generating a **flashcard**-type `.json` file that loads into StudyDeck, a free AI-agnostic study app — schema, LaTeX rules, question-quality bar, and validation checklist. (For quizzes, see the sibling `studydeck-quiz-spec.md`.) Normally paired with a "how to respond" intro (`studydeck-quick-flashcard-intro.md` / `studydeck-guided-flashcard-intro.md`); either way, follow the schema exactly, double-check **JSON backslash-escaping** before writing LaTeX, and run the **validation checklist** before final output.
+Technical contract for a **flashcard**-type `.json` file for StudyDeck, a free study app. Follow it exactly, double-check **backslash-escaping** in any LaTeX, and run the **validation checklist** before output.
 
----
+## 1. Schema
 
-## 1. Flashcard Schema
-
-Flashcards don't need distractors, so cards use `front` / `back` rather than `question` / `answers` / `correct`. Graphs aren't supported on flashcards.
+Cards use `front` / `back` — no distractors, no answer formats, no graphs or tables.
 
 ```json
 {
@@ -26,103 +24,48 @@ Flashcards don't need distractors, so cards use `front` / `back` rather than `qu
 }
 ```
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `version` | integer | **Yes** | Must be `1`. |
-| `type` | string | **Yes** | Must be `"flashcard"`. |
-| `title` | string | **Yes** | Shown on the home screen card. |
-| `questions` | array | **Yes** | Must contain at least one card. |
-| `questions[].id` | string | **Yes** | Unique, stable per card (see §3). |
-| `questions[].front` | string | **Yes** | Shown on the card front. LaTeX supported. |
-| `questions[].back` | string | **Yes** | Shown on the card back. LaTeX supported. |
+| Field | Required | Notes |
+|---|---|---|
+| `version` | **Yes** | Must be `1`. |
+| `type` | **Yes** | Must be `"flashcard"`. |
+| `title` | **Yes** | Shown on the home screen. |
+| `questions` | **Yes** | Non-empty array. |
+| `.id` | **Yes** | Short, unique, **stable** — `"q1"`, `"q2"`… Used for Know It / Still Learning pile progress, so never renumber existing cards when editing a deck; give new ones fresh ids. |
+| `.front` | **Yes** | Card front. LaTeX supported. |
+| `.back` | **Yes** | Card back. LaTeX supported. |
 
----
+## 2. LaTeX
 
-## 2. LaTeX Conventions
+Inline `$...$`, rendered with KaTeX — standard math commands work (`\frac{}{}`, `\sqrt{}`, `^`, `_`, `\sin`, `\sum`, `\int`, `\pi`…), in both `front` and `back`.
 
-- Inline math: `$...$` — e.g. `$x = 5$`
-- Rendered with KaTeX. Standard LaTeX math commands work: `\frac{}{}`, `\sqrt{}`, `^`, `_`, `\sin`, `\cos`, `\ln`, `\sum`, `\int`, `\pm`, Greek letters (`\pi`, `\theta`), etc.
-- LaTeX is supported in both `front` and `back`.
+### ⚠️ Backslash-escaping (the #1 mistake)
 
-### ⚠️ JSON backslash-escaping (the #1 mistake)
+JSON uses `\` as an escape character, so **every** literal backslash must be doubled. A single one corrupts the LaTeX or invalidates the JSON outright.
 
-JSON strings use `\` as an escape character, so every literal backslash in your LaTeX must be written as `\\`. A single backslash corrupts the LaTeX or produces invalid JSON outright.
-
-**Wrong** (invalid JSON — `\f` is not a legal escape in this position):
 ```json
-"back": "$\frac{1}{2}$"
+"back": "$\frac{1}{2}$"    ← WRONG (invalid JSON)
+"back": "$\\frac{1}{2}$"   ← RIGHT
 ```
 
-**Right** (double backslash):
-```json
-"back": "$\\frac{1}{2}$"
-```
+Before finalizing, scan every string for a single backslash followed by a letter and double it.
 
-This applies to every LaTeX command: `\\sin`, `\\sqrt`, `\\frac`, `\\theta`, `\\pm`, `\\dfrac`, etc. Before finalizing your output, scan every string for single backslashes followed by a letter and double them.
+## 3. Card quality
 
----
+Hold card *content* to a strict academic examiner's standard (a content standard only — your conversational tone stays friendly).
 
-## 3. Stable Card IDs
+- **Material boundary:** cover only what the student's materials explicitly state — no outside knowledge. Invented *scenarios* are the one freedom, as long as everything needed to answer comes from the materials.
+- **Difficulty:** calibrate to the rigor the materials themselves demonstrate. Don't ask what difficulty they want; adjust only if they raise it unprompted.
+- **Source of terms:** if they gave an explicit glossary or bolded term list, use it directly — term on the `front`, definition on the `back`. From general notes or slides, pick out the key terms yourself.
+- **One concept per card.** Keep `front` focused (a term, a formula, one concept) and `back` complete but uncluttered. Never cram multiple facts onto a card.
+- **Self-contained:** no card should depend on another. Match the source material's exact notation and terminology.
 
-- Use short, sequential, unique ids: `"q1"`, `"q2"`, ... `"q24"`.
-- IDs are used internally for flashcard pile progress (Know It / Still Learning) — **they must stay the same** for a given card even if you reorder cards later.
-- If you edit an existing deck and add new cards, give the new ones new ids that don't collide with existing ones (don't renumber everything — that silently resets a returning student's progress on unrelated cards).
+## 4. Validation checklist
 
----
+StudyDeck rejects the **entire file** if any of these fail — it will not silently skip bad cards.
 
-## 4. Question Quality
-
-Hold your card *content* to a strict academic examiner's standard. (This is a content standard only — your conversational tone stays friendly, per §0.)
-
-### Material boundary (everything)
-
-- Test **only** the facts, concepts, and relationships explicitly stated in the student's materials — no outside knowledge, no external course content.
-- The one freedom: **scenarios may be invented.** A what-if/application card can wrap the material's concepts in a novel hypothetical as long as everything needed to *answer* it comes from the materials.
-
-### Difficulty — set by the material, not by asking
-
-- Calibrate difficulty to the rigor the student's own materials already demonstrate. The material *is* the difficulty signal.
-- Don't ask the student what difficulty they want — only adjust it if they bring it up unprompted (e.g. "make it harder than my notes").
-
-### Active recall
-
-- **If the student provided explicit terms/definitions** (e.g. a bolded list or glossary): use them directly — the term becomes the `front`, its definition the `back`.
-- **If they provided slides or general notes**: identify the most important core terms and concepts yourself.
-- One concept per card — keep `front` focused (a term, a formula, a single concept) and `back` clear but complete. Don't cram multiple facts onto one card.
-- Keep each card self-contained — a student shouldn't need information from a different one to answer it.
-- Match the exact notation and terminology used in the source material, so the deck feels consistent with their class.
-
----
-
-## 5. Validation Checklist
-
-StudyDeck rejects the entire file if any of these fail — it will *not* silently skip bad cards, so get this right before outputting:
-
-- [ ] Top-level `version` is present and equals `1`
-- [ ] Top-level `title` is a non-empty string
-- [ ] Top-level `type` is exactly `"flashcard"`
-- [ ] Top-level `questions` is a non-empty array
-- [ ] Every card has a non-empty `id`
-- [ ] Every card has a non-empty `front` string
-- [ ] Every card has a non-empty `back` string
-- [ ] Every backslash inside a LaTeX string is doubled (`\\`) for valid JSON
-- [ ] The whole file is valid JSON (no trailing commas, no unescaped quotes)
-
----
-
-## 6. Ready-to-Use Prompt Template
-
-For sending this file on its own, without one of the paired intros (which already include a delivery-format instruction) — attach this as your message:
-
-```
-Generate a StudyDeck .json flashcard set for [topic] with [N] cards, based
-on the following materials: [paste your notes / textbook excerpt / slides here]
-
-Follow the format spec above exactly. Escape every backslash as \\ in LaTeX
-(e.g. \\frac, \\sqrt), and keep one concept per card.
-
-Reply with one short line telling me to paste the result into StudyDeck,
-then the JSON in a single code block — nothing else.
-```
+- [ ] `version` is `1`; `title` is a non-empty string; `type` is exactly `"flashcard"`
+- [ ] `questions` is non-empty; every card has a non-empty `id`, `front`, and `back`
+- [ ] Every LaTeX backslash is doubled (`\\`)
+- [ ] The whole file is valid JSON — no trailing commas, no unescaped quotes
 
 <--- End of StudyDeck instructions --->
