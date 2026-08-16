@@ -13,8 +13,8 @@ interface FlashcardScreenProps {
   onBack: () => void;
 }
 
-// The three ways a round can run, as one exclusive choice. Standard and Piles
-// differ only in the working set; Mastery changes how the round walks it.
+// The three ways a round can run, as one exclusive choice. Standard just walks
+// the deck; Piles narrows the working set and sorts; Mastery sorts and requeues.
 type StudyMode = 'standard' | 'piles' | 'mastery';
 
 const MODE_LABEL: Record<StudyMode, string> = {
@@ -24,7 +24,7 @@ const MODE_LABEL: Record<StudyMode, string> = {
 };
 
 const MODE_HINT: Record<StudyMode, string> = {
-  standard: 'One pass through the whole deck — each card is shown once.',
+  standard: 'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
   piles: 'One pass through your Still Learning pile only — cards already marked Know It sit it out.',
   mastery: 'The whole deck, and missed cards come back later in the round until every one is marked Know It.',
 };
@@ -104,6 +104,21 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
+  // Standard mode's card navigation. Nothing animates on a browse step (there's
+  // no pile for the card to fly into), so these don't take the sorting lock —
+  // but they do respect it, so an arrow pressed mid-animation in another mode
+  // can't step the cursor out from under the slide.
+  // Both stop at the round-complete screen the way undoSort() does, so the
+  // arrow keys can't quietly walk back onto a card the screen isn't showing.
+  function browsePrev() {
+    if (sortingRef.current || eng.isComplete()) return;
+    if (eng.stepBack()) force();
+  }
+  function browseNext() {
+    if (sortingRef.current || eng.isComplete()) return;
+    if (eng.stepForward()) force();
+  }
+
   // R17: undo the last sort. Shares flip/sort's `sortingRef` lock so it can't
   // race an in-flight sort animation (which would undo a sort the engine hasn't
   // applied yet, or step back off a card mid-slide).
@@ -113,10 +128,9 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
-  // Both of these restart over a working set they choose themselves, so they
-  // drop out of Piles (whose whole definition is "the Still Learning subset")
-  // while leaving Mastery alone — it describes how the round walks, which still
-  // applies to whatever set is being restarted.
+  // Restarts over the whole deck, so it drops out of Piles (whose whole
+  // definition is "the Still Learning subset") while leaving Mastery alone — it
+  // describes how the round walks, which still applies to the full deck.
   function restartAll() {
     setMode((m) => (m === 'piles' ? 'standard' : m));
     eng.start({
@@ -128,30 +142,41 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
+  // No setMode here: this button only appears when the round marked cards Still
+  // Learning, which only Piles and Mastery can do, and the continued round stays
+  // in whichever of those it came from.
   function continueLearning() {
-    setMode((m) => (m === 'piles' ? 'standard' : m));
     eng.continueWithRoundLearning();
     force();
   }
 
-  // R1 (keyboard): space/Enter flips the card. R17: Left Arrow undoes the last
-  // sort, under the same guards as the button (both funnel through undoSort()).
-  // R19: Right Arrow / Down Arrow sort, funnelling through sort() so they share
-  // the same debounce lock and complete-screen guard as the buttons.
+  // Keyboard: the arrows split by axis, which is what makes the scheme learnable
+  // across the three modes. Vertical is always the card itself — ↑/↓ flip it,
+  // same as Space and Enter (R1), in every mode. Horizontal is always the round
+  // moving on: Standard steps between cards, Piles and Mastery undo the last
+  // sort (R17) and mark Know It. Still Learning has no key as a result; it's the
+  // one action whose direction the axis rule doesn't have a slot for, so it
+  // stays button-only rather than getting an arbitrary binding.
+  //
+  // Every branch funnels through the same handler as its button, so they share
+  // the debounce lock, the end guards and the complete-screen guard.
+  //
+  // Reads the mode off the engine, not the `mode` state: this effect runs once,
+  // so a state read here would be pinned to the mode the screen opened in.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === ' ' || e.key === 'Enter') {
+      const browsing = eng.isBrowseMode();
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         flip();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        undoSort();
+        if (browsing) browsePrev();
+        else undoSort();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        sort('known');
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        sort('learning');
+        if (browsing) browseNext();
+        else sort('known');
       }
     }
     window.addEventListener('keydown', onKey);
@@ -256,27 +281,57 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
             </div>
           </div>
 
-          <p className="flash-hint">Click card to flip</p>
+          {/* The keys are named here because a flip has no visible control to
+              discover them from — the card is the button. */}
+          <p className="flash-hint">Click card to flip, or press ↑ / ↓</p>
 
-          <div className="flash-actions">
-            {/* Labeled "Undo" rather than "Back": the screen header already owns
-                a "← Back" that exits to Home, and two Backs a few hundred pixels
-                apart doing opposite things is exactly the misclick this adds. */}
-            <button
-              className="btn-ghost flash-undo-btn"
-              onClick={undoSort}
-              disabled={!eng.canGoBack() || sortAnim !== null}
-              title="Undo the last sort (←)"
-            >
-              ← Undo
-            </button>
-            <button className="btn-ghost" onClick={() => sort('learning')}>
-              Still Learning
-            </button>
-            <button className="btn" onClick={() => sort('known')}>
-              Know It
-            </button>
-          </div>
+          {/* Standard mode has no verdict to give, only a direction to move, so
+              its controls are the two arrows and nothing else — a labelled
+              button pair would be naming the same thing twice. Piles and Mastery
+              keep words, because there the two choices mean different things and
+              a bare arrow couldn't say which. */}
+          {mode === 'standard' ? (
+            <div className="flash-actions">
+              <button
+                className="flash-nav-btn"
+                onClick={browsePrev}
+                disabled={eng.currentIdx === 0}
+                aria-label="Previous card"
+                title="Previous card (←)"
+              >
+                <span aria-hidden="true">←</span>
+              </button>
+              <button
+                className="flash-nav-btn"
+                onClick={browseNext}
+                aria-label="Next card"
+                title="Next card (→)"
+              >
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flash-actions">
+              {/* Labeled "Undo" rather than "Back": the screen header already
+                  owns a "← Back" that exits to Home, and two Backs a few hundred
+                  pixels apart doing opposite things is exactly the misclick this
+                  adds. */}
+              <button
+                className="btn-ghost flash-undo-btn"
+                onClick={undoSort}
+                disabled={!eng.canGoBack() || sortAnim !== null}
+                title="Undo the last sort (←)"
+              >
+                ← Undo
+              </button>
+              <button className="btn-ghost" onClick={() => sort('learning')}>
+                Still Learning
+              </button>
+              <button className="btn" onClick={() => sort('known')}>
+                Know It
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -287,6 +342,13 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
               <>
                 <h3>All Caught Up!</h3>
                 <p>Every card in this deck is already marked Know It — nothing left to drill.</p>
+              </>
+            ) : eng.isBrowseMode() ? (
+              // Standard marks nothing, so the known/learning tallies below
+              // would report zeros for a round that had no verdicts in it.
+              <>
+                <h3>End of Deck</h3>
+                <p>You've been through all {total} card(s).</p>
               </>
             ) : eng.masteryMode ? (
               // Mastery mode only ends when the queue empties, i.e. every card

@@ -1637,6 +1637,34 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   gap: 16px;
 }
+/* Standard mode's prev/next pair. Solid rather than .btn-ghost's outline —
+   they're the only controls on the screen, and an icon with no label needs
+   enough surface to read as a target. Fully-rounded and wide so the pair reads
+   as a movement axis rather than as two decisions. */
+.flash-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 48px;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: background 150ms, border-color 150ms, transform 100ms ease;
+}
+.flash-nav-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface-hover) 88%, #fff);
+  border-color: var(--border-strong);
+}
+.flash-nav-btn:active:not(:disabled) { transform: scale(0.96); }
+.flash-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* Undo sits in the same row as the two sort buttons but must not compete with
    them — it's a correction, not a choice. Borderless and smaller keeps the
    Still Learning / Know It pair reading as the only real decision on screen. */

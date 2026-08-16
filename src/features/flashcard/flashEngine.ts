@@ -148,9 +148,12 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
             this.roundLearning.add(id);
           }
         }
-      } else {
+      } else if (!this.isBrowseMode()) {
         // Every card before currentIdx was sorted in this round, and its pile
-        // membership is exactly the pile it was sorted into.
+        // membership is exactly the pile it was sorted into. Skipped for a
+        // browse round, where the cards behind the cursor were only looked at —
+        // any pile they sit in came from an earlier session, and crediting it to
+        // this round would invent a tally the student never made.
         for (let i = 0; i < this.currentIdx; i++) {
           const id = this.order[i];
           if (this.known.has(id)) this.roundKnown.add(id);
@@ -170,6 +173,38 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
     isComplete(): boolean {
       if (this.order.length === 0) return false; // R11: empty-from-start is its own state
       return this.masteryMode ? this.queue.length === 0 : this.currentIdx >= this.order.length;
+    },
+
+    // Standard mode = the whole deck, walked one card at a time, with no pile
+    // sorting at all — the student just flips through. It's the projection of
+    // these two fields rather than a third stored flag, so a resumed session
+    // (and the UI's mode pill) can't disagree about which mode is running.
+    // A continue-with-Still-Learning round runs over a custom deck but keeps
+    // drillMode 'learning', so it sorts like the Piles round it came from.
+    isBrowseMode(): boolean {
+      return !this.masteryMode && this.drillMode === 'all';
+    },
+
+    // Standard mode's navigation. Deliberately separate from sortCard(): a
+    // browse step records nothing, so there's no pile write, no round tally and
+    // no undo entry — Left Arrow here means "previous card", not "undo".
+    stepBack(): boolean {
+      if (this.currentIdx <= 0) return false;
+      this.currentIdx--;
+      this.flipped = false;
+      this.persist();
+      return true;
+    },
+
+    // Stepping off the last card is what ends a browse round (currentIdx ===
+    // order.length is isComplete()'s linear condition), so unlike stepBack this
+    // intentionally does not clamp one short of the end.
+    stepForward(): boolean {
+      if (this.currentIdx >= this.order.length) return false;
+      this.currentIdx++;
+      this.flipped = false;
+      this.persist();
+      return true;
     },
 
     progress(): { current: number; total: number } {
@@ -304,6 +339,12 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
       const cards = this.allQuestions.filter((q) => this.roundLearning.has(q.id));
       this.start({
         customDeck: cards,
+        // customDeck already narrows the working set, so drillMode isn't doing
+        // any filtering here — it's carried so the new round is still a sorting
+        // round. Left at 'all' it would read as Standard (isBrowseMode), and
+        // "continue with what I missed" would hand back a deck you can only
+        // flip through.
+        drillMode: 'learning',
         randomOrder: this.randomOrder,
         masteryMode: this.masteryMode,
         forceRestart: true,
