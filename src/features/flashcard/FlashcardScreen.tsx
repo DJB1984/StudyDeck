@@ -13,6 +13,31 @@ interface FlashcardScreenProps {
   onBack: () => void;
 }
 
+// The three ways a round can run, as one exclusive choice. Standard and Piles
+// differ only in the working set; Mastery changes how the round walks it.
+type StudyMode = 'standard' | 'piles' | 'mastery';
+
+const MODE_LABEL: Record<StudyMode, string> = {
+  standard: 'Standard',
+  piles: 'Piles',
+  mastery: 'Mastery',
+};
+
+const MODE_HINT: Record<StudyMode, string> = {
+  standard: 'One pass through the whole deck — each card is shown once.',
+  piles: 'One pass through your Still Learning pile only — cards already marked Know It sit it out.',
+  mastery: 'The whole deck, and missed cards come back later in the round until every one is marked Know It.',
+};
+
+// Projects the engine's two independent fields onto the pill. Mastery wins when
+// a session somehow carries both (a session saved by the older two-checkbox UI
+// could): the pill reads Mastery while that round finishes over the narrower
+// working set, and the next explicit mode pick resolves it.
+function modeOf(eng: FlashEngine): StudyMode {
+  if (eng.masteryMode) return 'mastery';
+  return eng.drillMode === 'learning' ? 'piles' : 'standard';
+}
+
 export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   const engineRef = useRef<FlashEngine | null>(null);
   if (!engineRef.current) {
@@ -25,23 +50,26 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   const eng = engineRef.current;
 
   const [, force] = useReducer((x: number) => x + 1, 0);
-  // Seeded from the engine so a resumed session shows the toggles it was started with.
-  const [drillOn, setDrillOn] = useState(() => eng.drillMode === 'learning');
+  // Seeded from the engine so a resumed session shows the mode it was started
+  // with. The engine still stores drill and mastery as two independent fields
+  // (they're separate concerns down there — which cards are in the working set
+  // vs. how the round walks it); the pill is the UI's three-way projection of
+  // the two combinations that are actually worth studying in.
+  const [mode, setMode] = useState<StudyMode>(() => modeOf(eng));
   const [randomOn, setRandomOn] = useState(() => eng.randomOrder);
-  const [masteryOn, setMasteryOn] = useState(() => eng.masteryMode);
   const [sortAnim, setSortAnim] = useState<'known' | 'learning' | null>(null);
   const sortingRef = useRef(false);
 
-  // R7/R18: toggling any option restarts the session from the top — an explicit
-  // restart, so it never resumes the saved session. Each handler passes the other
-  // two options through from the engine, so flipping one never silently clears
-  // the others.
-  function onDrillToggle(checked: boolean) {
-    setDrillOn(checked);
+  // R7/R18: changing any option restarts the session from the top — an explicit
+  // restart, so it never resumes the saved session. Each handler passes the
+  // other options through from the engine, so changing one never silently
+  // clears the others.
+  function onModeSelect(next: StudyMode) {
+    setMode(next);
     eng.start({
-      drillMode: checked ? 'learning' : 'all',
+      drillMode: next === 'piles' ? 'learning' : 'all',
       randomOrder: eng.randomOrder,
-      masteryMode: eng.masteryMode,
+      masteryMode: next === 'mastery',
       forceRestart: true,
     });
     force();
@@ -52,16 +80,6 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
       drillMode: eng.drillMode,
       randomOrder: checked,
       masteryMode: eng.masteryMode,
-      forceRestart: true,
-    });
-    force();
-  }
-  function onMasteryToggle(checked: boolean) {
-    setMasteryOn(checked);
-    eng.start({
-      drillMode: eng.drillMode,
-      randomOrder: eng.randomOrder,
-      masteryMode: checked,
       forceRestart: true,
     });
     force();
@@ -95,8 +113,12 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
+  // Both of these restart over a working set they choose themselves, so they
+  // drop out of Piles (whose whole definition is "the Still Learning subset")
+  // while leaving Mastery alone — it describes how the round walks, which still
+  // applies to whatever set is being restarted.
   function restartAll() {
-    setDrillOn(false);
+    setMode((m) => (m === 'piles' ? 'standard' : m));
     eng.start({
       drillMode: 'all',
       randomOrder: eng.randomOrder,
@@ -107,7 +129,7 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   }
 
   function continueLearning() {
-    setDrillOn(false);
+    setMode((m) => (m === 'piles' ? 'standard' : m));
     eng.continueWithRoundLearning();
     force();
   }
@@ -184,15 +206,24 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
       </div>
 
       <div className="flash-options">
-        <label className="toggle-label">
-          <input
-            type="checkbox"
-            checked={drillOn}
-            onChange={(e) => onDrillToggle(e.target.checked)}
-          />
-          <span className="toggle-track"></span>
-          Drill Still Learning only
-        </label>
+        {/* These are three whole ways a round runs, not add-ons to a default —
+            a sliding pill states all three names at once, where the old
+            checkboxes left the unchecked modes unnamed. Radios (not buttons) so
+            arrow keys move between them and the group announces as one control. */}
+        <div className="mode-pill" role="radiogroup" aria-label="Study mode">
+          <span className="mode-pill-thumb" data-mode={mode} aria-hidden="true" />
+          {(['standard', 'piles', 'mastery'] as const).map((m) => (
+            <label className="mode-pill-option" key={m}>
+              <input
+                type="radio"
+                name="flash-study-mode"
+                checked={mode === m}
+                onChange={() => onModeSelect(m)}
+              />
+              <span>{MODE_LABEL[m]}</span>
+            </label>
+          ))}
+        </div>
         <label className="toggle-label">
           <input
             type="checkbox"
@@ -202,16 +233,13 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
           <span className="toggle-track"></span>
           Random order
         </label>
-        <label className="toggle-label">
-          <input
-            type="checkbox"
-            checked={masteryOn}
-            onChange={(e) => onMasteryToggle(e.target.checked)}
-          />
-          <span className="toggle-track"></span>
-          Study until mastered
-        </label>
       </div>
+
+      {/* One word per segment can't carry what a mode actually does, and those
+          differences (which cards am I seeing, and do missed ones come back?)
+          are the whole reason to pick one — so a line of copy tracks the
+          selection. */}
+      <p className="flash-mode-hint">{MODE_HINT[mode]}</p>
 
       {!showComplete && card && (
         <div id="flash-active-area">

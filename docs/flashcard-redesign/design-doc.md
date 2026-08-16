@@ -62,7 +62,7 @@ R12 currently mandates a **fresh full-deck session on every entry**, drill/rando
 
 ### 3. "Study Until Mastered" (opt-in interleaving)
 
-A third toggle, `masteryMode`, alongside the existing Drill/Random toggles in `FlashcardScreen.tsx` — **off by default**, per the PRD's explicit call that today's single-pass-then-choose flow stays the default. When on, the engine switches from the linear `order`/`currentIdx` walk to a queue:
+`masteryMode`, alongside the existing Drill/Random toggles in `FlashcardScreen.tsx` — **off by default**, per the PRD's explicit call that today's single-pass-then-choose flow stays the default. When on, the engine switches from the linear `order`/`currentIdx` walk to a queue:
 
 ```ts
 // Mastery mode only. Cards sorted "known" are removed from the queue;
@@ -99,6 +99,10 @@ sortCardMastery(pile: 'known' | 'learning') {
 **Caution carried into implementation**: a card can flip between known/learning multiple times within one mastery-mode session (sort Know It, later — no, it can't resurface after Know It since Know It removes it from the queue entirely; only Still Learning requeues). So a card visits the queue exactly once more per Still Learning sort, and exits for good on a Know It sort — no risk of a known card resurfacing and getting double-counted in `roundKnown`.
 
 Progress display changes for mastery mode: `progress()` returns `{ current, total }` for linear mode as today; add `progressMastery(): { mastered: number; remaining: number }` — `mastered` = cards in `roundKnown` this session, `remaining` = `queue.length` (deduplicated by id, since a Still-Learning card can appear once in `queue` but represents one card regardless of requeue count). `FlashcardScreen.tsx` renders `"{mastered} mastered · {remaining} left"` instead of `"Card {current} of {total}"` when `masteryMode` is on, since "Card X of Y" implies a fixed linear position that doesn't hold once cards can requeue.
+
+**UI (amended 2026-08-16):** `masteryMode` and `drillMode` are no longer two checkboxes ("Study until mastered", "Drill Still Learning only"). They're one three-up segmented pill — **Standard | Piles | Mastery** — with a sliding thumb, above the surviving Random-order toggle, plus a one-line hint under the row describing the selected mode. Checkboxes left the default modes unnamed, so both read as add-ons rather than as the three ways a round actually runs.
+
+The engine contract is unchanged: `drillMode` and `masteryMode` remain two independent fields (they're separate concerns down there — which cards are in the working set vs. how the round walks it), and the pill writes both through the same `start({ forceRestart: true })` path. `FlashcardScreen` owns the projection: Standard = `{ drillMode: 'all', masteryMode: false }`, Piles = `{ drillMode: 'learning', masteryMode: false }`, Mastery = `{ drillMode: 'all', masteryMode: true }`. The learning-subset-under-mastery combination is no longer reachable from the UI — it was available before and effectively unused, and "master the cards I'm still learning" is what "Continue with Still Learning" already does at round end. A session saved by the old UI carrying both flags still resumes and runs correctly; the pill reads Mastery until the next explicit mode pick. Standard is still the default. See DESIGN.md → Components → Segmented Pill.
 
 ### 4. Back / undo-last-sort
 

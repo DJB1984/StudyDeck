@@ -208,7 +208,7 @@ Home → Mode Select → Quiz/Flashcard → Stats → Home
 
 **Stats screen:** Pie chart (correct/incorrect, purple/dark). Score text. Session duration displayed. Scrollable question list — correct ones collapsed to a single line, wrong ones expanded showing chosen answer (or "You didn't answer this one") vs correct answer + copy-to-AI button. Two buttons: Retake / Review. Retake restarts immediately in the same question order.
 
-**Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Bottom controls: Know It / Still Learning buttons. Progress counter. Toggle: drill Still Learning only or all cards. Random toggle.
+**Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Bottom controls: Know It / Still Learning buttons. Progress counter. Options row: a Standard | Piles | Mastery segmented pill (sliding thumb; Standard default) with a hint line describing the selected mode, plus a random-order toggle. Standard = one pass over the whole deck; Piles = one pass over the Still Learning subset (`drillMode: 'learning'`); Mastery = whole deck with missed cards requeued until all are known.
 
 ## Visual Design
 

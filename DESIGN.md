@@ -213,6 +213,11 @@ Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `
 ### Toggle
 - **Style:** a `38×22px` pill track (Surface Raised fill, Border Hairline) with a `14px` circular thumb. Checked state fills the track Starlight Blue and slides the thumb to white.
 
+### Segmented Pill
+- **Style:** a fully-rounded track (Panel fill, Border Hairline, `3px` padding) holding equal-width labels, with a Starlight Blue thumb one segment wide (`calc((100% - 6px) / n)`) that slides between them by `translateX(100% × index)` (`220ms`, `cubic-bezier(0.4, 0, 0.2, 1)`, suppressed under `prefers-reduced-motion`). The selected label turns white; unselected stay Text Muted.
+- **Use for:** picking between two or three named, mutually exclusive modes of the same activity (Flashcards' Standard / Piles / Mastery). Use the Toggle instead for an on/off option layered on top of a default — a toggle leaves its off state unnamed, which is exactly wrong when the choices are all real modes. Cap it at three: past that the labels get too narrow to read at this size, and it wants a dropdown.
+- **Markup:** visually-hidden radios inside the labels (same hidden-input treatment as Toggle) so the group is keyboard-operable and announces as one control.
+
 ## Do's and Don'ts
 
 ### Do:
