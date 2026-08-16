@@ -11,6 +11,13 @@ colors:
   starlight-blue-deep: "#0267c7"
   nebula-ember: "#ef852e"
   nebula-pink: "#c841a5"
+  mode-standard-fill: "#1673cf"
+  mode-piles-tint: "#c2762f"
+  mode-piles-light: "#e8a86a"
+  mode-piles-fill: "#96551d"
+  mode-mastery-tint: "#a2519a"
+  mode-mastery-light: "#d68cc9"
+  mode-mastery-fill: "#8f4489"
   text-primary: "#e1e5eb"
   text-muted: "#79818d"
   on-accent: "#ffffff"
@@ -104,10 +111,10 @@ Typography moved from a zero-webfont, borrowed-OS-font system to three purposefu
 
 **Key Characteristics:**
 - Solid tonal-layered panels on a deep-space navy void — no blur, no translucency anywhere
-- One accent (Starlight Blue) for everyday interactive/selected state; one reserved gradient (Nebula) for exactly one place: Home's hero
+- One accent (Starlight Blue) for everyday interactive/selected state; Nebula reserved to two places — Home's hero gradient, and the muted per-mode casts of the three Flashcard atmospheres
 - Three purposeful webfonts (Inter / Space Grotesk / JetBrains Mono), replacing the prior system-font-only rule
 - Correct/incorrect green and red are feedback-only, never decorative (carried over unchanged)
-- A procedural starfield (small twinkling dots) decorates Home's header only — nowhere else in the app
+- Procedural star fields appear in exactly two places: the static decoration behind Home's header, and Flashcards' live per-mode atmosphere
 
 ## Colors
 
@@ -120,6 +127,15 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 
 ### Nebula (reserved — see Named Rules)
 - **Nebula Ember** (`#ef852e`) / **Nebula Pink** (`#c841a5`): combine with Starlight Blue in a conic gradient (`--nebula-gradient`) used by exactly one thing: the radial glow behind Home's hero header. Never appears on interactive chrome.
+
+### Flashcard Mode Atmospheres (Nebula's one other home)
+Nebula's second sanctioned appearance, and its only one outside Home: the three Flashcard study modes. Each mode owns a four-token family (`--mode-{name}-tint / -light / -fill / -veil`), projected onto the screen through four scoped properties (`--mode-tint`, `--mode-light`, `--mode-fill`, `--mode-veil`) that `#flashcard-screen[data-mode]` reassigns.
+
+- **Standard** — Starlight Blue (`#3093ec` / `#63b3ff` / fill `#1673cf`): the system's everyday accent, unchanged. The mode that adds nothing also changes nothing.
+- **Piles** — muted Ember (`#c2762f` / `#e8a86a` / fill `#96551d`): Nebula Ember pulled far down in saturation into a deep-space cast.
+- **Mastery** — muted Pink (`#a2519a` / `#d68cc9` / fill `#8f4489`): the same treatment of Nebula Pink.
+
+`-tint` is the identity hue (rims, the card's tonal cast, the hint dot); `-light` is the readable-on-void variant (flipped-card answer text, the progress tally, the ambient particles); `-fill` is a deliberately deeper tone used only where white sits on top, so every mode's pill label clears 4.5:1; `-veil` is the radial ground wash. All four are registered via `@property` as `<color>`, so switching modes interpolates the hue over 700ms instead of snapping.
 
 ### Neutral
 - **Void Navy** (`#080d16`): the page background — a near-black with a cool navy undertone, never pure `#000`.
@@ -136,7 +152,9 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 ### Named Rules
 **The Signal Rule.** Starlight Blue is the only color that means "you can act on this" or "this is selected." It appears on exactly one thing per view — the current primary action, the active selection, or the in-progress fill — and never as decoration.
 
-**The Nebula-Is-Rare Rule.** The Nebula gradient exists in exactly one place system-wide: Home's hero glow. It is never a button fill, a selection state, or chart/decoration color — diluting it past that one spot breaks both its own impact and Starlight Blue's claim to "interactive."
+**The Nebula-Is-Rare Rule.** Nebula has exactly two sanctioned homes system-wide: the full-saturation conic gradient behind Home's hero, and the deeply muted per-mode casts of Flashcards' Piles and Mastery atmospheres. Nowhere else — never a button fill, never a chart or decoration color. Anything beyond those two breaks both Nebula's own impact and Starlight Blue's claim to "interactive."
+
+**The Atmosphere-Is-Not-A-Control Rule.** A mode's hue describes the round the student is in; it never says "act here." Ambience, rims, tonal casts and the mode pill's own thumb (the one control whose entire job is naming the mode) take the mode color. Every other control on the screen — the primary button, ghost buttons, focus rings — stays Starlight Blue. This is what lets a whole screen turn ember without Starlight Blue losing its meaning.
 
 **The Feedback-Only Rule.** Success Green and Alert Red exist solely to answer "was this right or wrong." They never appear as generic UI accents, chart colors, or decoration outside a quiz-feedback context.
 
@@ -207,6 +225,17 @@ Home's header sits inside `.home-hero`: a radial navy glow plus a static procedu
 ### Flashcard (signature interaction)
 Unchanged from the prior system: a real 3D CSS flip (`perspective: 1000px`, `rotateY(180deg)`, `400ms ease`) reveals the answer in Starlight Blue Light text. "Know It" slides the card off-screen with rotation and fade; "Still Learning" shakes it in place.
 
+### Flashcard Atmosphere (second signature moment)
+Behind the flashcard sits `FlashAmbience.tsx`, a Canvas 2D field that gives each study mode its own physics — the visible difference between the three modes, and the only animated decoration in the app outside Home's starfield.
+
+- **Standard** — stars breathe in place around fixed homes and twinkle out of phase. Nothing travels, because nothing is at stake.
+- **Piles** — particles ride quadratic beziers from the upper field into two gravity wells low on either side, on a squared parameter so they accelerate like something falling. Two soft radial glows mark the wells.
+- **Mastery** — an accretion disc: inner particles sweep faster than outer ones around a foreshortened ellipse, with a central core whose brightness scales with the share of the deck already mastered.
+
+All three are pure functions of `(particle, time)` over one fixed pool, so a mode switch **crossfades by lerping each particle between its two mode positions** — the field physically flies from one behavior into the other over 700ms, matched to the CSS `@property` hue transition. Sorting a card fires a small expanding ring at the pile it went into. The canvas overhangs the active area and carries a radial vignette mask so no edge of it is ever visible as a line; it pauses when the tab is hidden or it scrolls out of view, and under `prefers-reduced-motion` it renders one composed still frame per mode.
+
+**It is frozen by default.** Decoration is opt-in on a study screen — a compact "Play motion" button in the options row starts it, the label names the action it will take rather than asking anyone to read state off a switch, and the choice is remembered per device. The atmosphere survives the freeze intact: hue, card rim, tonal cast and a composed still frame all read exactly as they do in motion, so the default costs the mode nothing. Motion off also suppresses the 700ms hue interpolation — the effect is one thing, and half of it left running on a screen someone asked to hold still is worse than none of it.
+
 ### Mode Icons
 Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `1.6` stroke width, no fill) instead of color emoji — Text Muted at rest, Starlight Blue Light when the card is selected. Replaces the prior full-color-emoji icons, which were the one ornamental element left over from before this redesign.
 
@@ -228,7 +257,8 @@ Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `
 
 ### Don't:
 - **Don't** add `backdrop-filter`/blur anywhere — this system is solid, tonal-layered panels, not glass.
-- **Don't** use the Nebula gradient on anything interactive — it lives on Home's hero only (The Nebula-Is-Rare Rule).
+- **Don't** use the Nebula gradient on anything interactive, or take its hues anywhere beyond Home's hero and the Flashcard mode atmospheres (The Nebula-Is-Rare Rule).
+- **Don't** let a mode's hue reach a control that isn't the mode pill's thumb — Starlight Blue owns every action on the screen, whatever color the atmosphere is (The Atmosphere-Is-Not-A-Control Rule).
 - **Don't** add drop shadows to static, at-rest surfaces — depth comes from tonal layering, not elevation (The Shadow-Is-Motion Rule).
 - **Don't** add bright, multi-color, gamified educational-app styling — badges, confetti, mascots, cheerful illustration, color emoji icons. The project is explicitly "not a Quizlet clone."
 - **Don't** style focus states with a glow or ring. The established cue is a border-color shift to Starlight Blue Light only.

@@ -7,6 +7,7 @@ import type { Deck, FlashCard } from '../../types';
 import { Katex } from '../../components/Math/Katex';
 import { Storage } from '../../lib/Storage';
 import { createFlashEngine, type FlashEngine } from './flashEngine';
+import { FlashAmbience, type FlashAmbienceHandle } from './FlashAmbience';
 
 interface FlashcardScreenProps {
   deck: Deck;
@@ -38,6 +39,34 @@ function modeOf(eng: FlashEngine): StudyMode {
   return eng.drillMode === 'learning' ? 'piles' : 'standard';
 }
 
+// Drawn rather than typed: DESIGN.md's icon rule is authored SVG at a single
+// stroke weight, and the ▶/⏸ characters render as color emoji on some
+// platforms. 1.6 stroke matches the mode-select icons.
+function MotionIcon({ playing }: { playing: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {playing ? (
+        <>
+          <line x1="6" y1="3.5" x2="6" y2="12.5" />
+          <line x1="10" y1="3.5" x2="10" y2="12.5" />
+        </>
+      ) : (
+        <path d="M5 3.4 L12.6 8 L5 12.6 Z" />
+      )}
+    </svg>
+  );
+}
+
 export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   const engineRef = useRef<FlashEngine | null>(null);
   if (!engineRef.current) {
@@ -57,8 +86,13 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   // the two combinations that are actually worth studying in.
   const [mode, setMode] = useState<StudyMode>(() => modeOf(eng));
   const [randomOn, setRandomOn] = useState(() => eng.randomOrder);
+  // Off unless the student turned it on, and remembered per device. The
+  // atmosphere still reads while frozen — colour, rim and a composed still
+  // frame all survive — so the default costs the mode nothing.
+  const [motionOn, setMotionOn] = useState(() => Storage.getAmbientMotion());
   const [sortAnim, setSortAnim] = useState<'known' | 'learning' | null>(null);
   const sortingRef = useRef(false);
+  const ambienceRef = useRef<FlashAmbienceHandle | null>(null);
 
   // R7/R18: changing any option restarts the session from the top — an explicit
   // restart, so it never resumes the saved session. Each handler passes the
@@ -85,11 +119,22 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
+  function toggleMotion() {
+    setMotionOn((on) => {
+      Storage.setAmbientMotion(!on);
+      return !on;
+    });
+  }
+
   // R2: debounce sorting for the animation window so cards aren't skipped.
   function sort(pile: 'known' | 'learning') {
     if (sortingRef.current || eng.isComplete() || !eng.currentCard()) return;
     sortingRef.current = true;
     setSortAnim(pile);
+    // Fired with the card animation, not after it: the ripple has to leave the
+    // well while the card is still travelling toward it, or the two read as two
+    // separate events instead of one.
+    ambienceRef.current?.pulse(pile);
     window.setTimeout(() => {
       eng.sortCard(pile);
       setSortAnim(null);
@@ -214,14 +259,25 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     (eng.flipped ? 'flipped ' : '') +
     (sortAnim === 'known' ? 'sort-known' : sortAnim === 'learning' ? 'sort-learning' : '');
 
+  // Drives how brightly Mastery's core burns — the round starts on a dim ember
+  // and ends on a lit one. Denominator guarded: a mastered card leaves the
+  // queue for good, so both terms are zero on the completion frame.
+  const masteryTotal = mastery.mastered + mastery.remaining;
+  const masteryIntensity = masteryTotal > 0 ? mastery.mastered / masteryTotal : 1;
+
   return (
-    <section id="flashcard-screen" className="screen">
+    <section
+      id="flashcard-screen"
+      className="screen"
+      data-mode={mode}
+      data-motion={motionOn ? 'on' : 'off'}
+    >
       <div className="screen-header">
         <button className="btn-ghost" onClick={onBack}>
           ← Back
         </button>
         <h2>Flashcards</h2>
-        <span className="review-progress-text">
+        <span className="review-progress-text flash-progress-text">
           {showComplete
             ? ''
             : eng.masteryMode
@@ -258,6 +314,23 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
           <span className="toggle-track"></span>
           Random order
         </label>
+        {/* A button rather than a third toggle: the two controls to its left
+            are study options that change what the round IS, and this one only
+            changes how the screen looks. Its label names the action it will
+            take, so the current state never has to be inferred from a switch. */}
+        <button
+          type="button"
+          className="btn-ghost flash-motion-btn"
+          onClick={toggleMotion}
+          title={
+            motionOn
+              ? 'Hold the background field still'
+              : 'Let the background field move'
+          }
+        >
+          <MotionIcon playing={motionOn} />
+          {motionOn ? 'Pause motion' : 'Play motion'}
+        </button>
       </div>
 
       {/* One word per segment can't carry what a mode actually does, and those
@@ -268,6 +341,15 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
 
       {!showComplete && card && (
         <div id="flash-active-area">
+          {/* Sits behind the card, the hint and the buttons — the wells it
+              draws are positioned to land on the two sort buttons, so it has to
+              span the whole active area rather than just the card. */}
+          <FlashAmbience
+            ref={ambienceRef}
+            mode={mode}
+            intensity={masteryIntensity}
+            paused={!motionOn}
+          />
           <div id="flash-card-wrap">
             <div id="flash-card" key={card.id} className={cardClass} onClick={flip}>
               <div className="card-inner">
