@@ -56,11 +56,9 @@ The original vanilla-JS module objects map onto React modules. **Each module sti
 - **`src/features/stats/`** — `stats.ts` builds the session record + score/pie data, kept separate from Quiz so scoring can evolve. `StatsScreen.tsx` renders the doughnut + breakdown.
 - **`src/features/home/`, `modeSelect/`, `review/`** — the remaining screens.
 
-## Requirements specs — requirements-writer agent is RETIRED
+## Requirements specs — retired
 
-**Do not invoke the `requirements-writer` subagent for this project, for any pass, before or after.** Davis's explicit call (2026-07-20) — stop using it entirely. This overrides any older instinct to spawn it before touching a feature folder.
-
-Existing `{Feature}.spec.md` files (e.g. `src/features/quiz/Quiz.spec.md`, `src/lib/Storage.spec.md`, `src/features/auth/Auth.spec.md`) remain in the repo as historical reference/documentation, but are no longer actively maintained via that agent. If a change makes one materially wrong, either fix the specific stale line by hand or just leave it — don't spawn the agent to reconcile it.
+**Do not invoke the `requirements-writer` subagent for this project, for any pass, before or after.** Davis's explicit call (2026-07-20) — stop using it entirely. This overrides any older instinct to spawn it before touching a feature folder. The co-located `{Feature}.spec.md` files it used to maintain (e.g. `Quiz.spec.md`, `Storage.spec.md`, `Auth.spec.md`) have been removed (2026-08-16, no longer helpful) — don't reintroduce them.
 
 ### Data model
 

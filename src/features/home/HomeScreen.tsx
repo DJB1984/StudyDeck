@@ -1,4 +1,4 @@
-// Home — landing screen and entry point for every session (spec: Home.spec.md).
+// Home — landing screen and entry point for every session.
 // Designed to be understood at a glance by a non-technical first-time user:
 // the tagline teaches the recipe, the get-started card is the hero when no
 // decks exist, and paste-to-import removes the save-as-.json hurdle entirely.
@@ -143,8 +143,8 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
     if (pasteOpen) pasteBoxRef.current?.focus();
   }, [pasteOpen]);
 
-  // Auth.spec.md R15: re-read history after a login-time hydration/migration
-  // bulk-overwrites the local cache — without this, the write succeeds but
+  // Re-read history after a login-time hydration/migration bulk-overwrites
+  // the local cache — without this, the write succeeds but
   // an already-mounted Home screen never learns to show it.
   useEffect(() => {
     return Storage.subscribe(refresh);
@@ -337,7 +337,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
               your notes into interactive <RotatingWord words={OUTPUTS} intervalMs={2400} />.
             </p>
           </div>
-          {/* Home.spec.md R23: AuthButton is always visible, independent of
+          {/* AuthButton is always visible, independent of
               isEmpty — it does NOT reuse the Copy Prompt corner's gate. It's
               placed AFTER new-set-corner so it's always the rightmost element —
               pinned in the same spot whether or not a "Need a new set?" corner

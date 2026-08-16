@@ -1,4 +1,4 @@
-// AuthButton — Home screen header element (spec: Auth.spec.md R1, R8-R10).
+// AuthButton — Home screen header element.
 // Logged out: ghost "Log in" button. Logged in: a circular avatar (generic
 // person icon, matching the app's solid panel surfaces rather than a solid
 // per-email color) that smoothly grows into a panel showing the

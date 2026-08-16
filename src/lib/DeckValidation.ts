@@ -1,6 +1,6 @@
 // DeckValidation — field-level, actionable validation of an already-parsed deck
-// object (spec: src/lib/DeckValidation.spec.md). Returns an array of error
-// strings; empty means valid. The deck is rejected as a WHOLE on any error —
+// object. Returns an array of error strings; empty means valid. The deck is
+// rejected as a WHOLE on any error —
 // never silently skip bad questions.
 
 // Input is untrusted JSON, so we validate against `unknown` / loose shapes.

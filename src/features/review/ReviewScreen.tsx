@@ -1,6 +1,6 @@
-// Review — read-only browser through a quiz deck with the correct answer shown
-// (spec: src/features/review/Review.spec.md). Reachable from Mode Select and from
-// Stats; the caller owns the "back to origin" navigation.
+// Review — read-only browser through a quiz deck with the correct answer shown.
+// Reachable from Mode Select and from Stats; the caller owns the "back to
+// origin" navigation.
 
 import { useEffect, useState } from 'react';
 import type { QuizQuestion } from '../../types';

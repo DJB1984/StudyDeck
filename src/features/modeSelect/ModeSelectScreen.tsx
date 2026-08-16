@@ -1,4 +1,4 @@
-// Mode Select — the branch point for QUIZ decks (spec: ModeSelect.spec.md).
+// Mode Select — the branch point for QUIZ decks.
 // Flashcard decks never reach this screen: App routes them straight to the
 // Flashcard screen (a one-option menu is a pointless click), so this renders
 // exactly Practice / Test / Review.

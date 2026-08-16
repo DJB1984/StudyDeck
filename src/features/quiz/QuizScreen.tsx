@@ -1,4 +1,4 @@
-// Quiz — the two scored modes, Practice and Test (spec: src/features/quiz/Quiz.spec.md).
+// Quiz — the two scored modes, Practice and Test.
 // Navigation is free in both modes: Back/Next are always visible and never require
 // answering first, and either arrow key moves between questions. A per-question
 // answer map (keyed by question id, not index) persists across that navigation, so

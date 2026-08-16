@@ -1,5 +1,5 @@
-// Stats screen — score summary, doughnut chart, and per-question breakdown
-// (spec: src/features/stats/Stats.spec.md). Retake reuses the same question order.
+// Stats screen — score summary, doughnut chart, and per-question breakdown.
+// Retake reuses the same question order.
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Chart } from 'chart.js/auto';

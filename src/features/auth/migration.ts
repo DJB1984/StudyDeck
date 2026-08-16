@@ -1,4 +1,4 @@
-// migration — runs on every login (spec: Auth.spec.md R11-R15). Always does
+// migration — runs on every login. Always does
 // both directions: MERGE-DOWN adds every cloud deck/pile that isn't already
 // present locally, then UPLOAD pushes every local deck/pile up to the account
 // (upsert by title, so it never destroys cloud data). Local data is never

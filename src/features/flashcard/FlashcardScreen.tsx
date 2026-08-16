@@ -1,7 +1,6 @@
-// Flashcard screen — Quizlet-style flip + Know It / Still Learning piles
-// (spec: src/features/flashcard/Flashcard.spec.md). Wraps the mutable flashEngine
-// in a ref and forces re-renders after mutations, matching the legacy flow while
-// staying inside React.
+// Flashcard screen — Quizlet-style flip + Know It / Still Learning piles.
+// Wraps the mutable flashEngine in a ref and forces re-renders after
+// mutations, matching the legacy flow while staying inside React.
 
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { Deck, FlashCard } from '../../types';
@@ -138,8 +137,8 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auth.spec.md R15: re-read this deck's pile state after a login-time
-  // hydration/migration bulk-overwrites the local cache.
+  // Re-read this deck's pile state after a login-time hydration/migration
+  // bulk-overwrites the local cache.
   useEffect(() => {
     return Storage.subscribe(() => {
       eng.start({

@@ -1,4 +1,4 @@
-// Graph — renders a question's optional chart (spec: src/components/Graph/Graph.spec.md).
+// Graph — renders a question's optional chart.
 // Overriding constraint: it must NEVER throw out to its caller. Any failure
 // (missing fields, bad equation, non-finite samples, Chart.js errors) degrades to
 // a small "Graph unavailable" message and the rest of the app keeps working.

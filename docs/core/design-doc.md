@@ -134,12 +134,11 @@ src/
 ├── lib/                Storage, SupabaseClient, DeckValidation, clipboard, formatSpec, shuffle, toast
 ├── components/         Math/Katex.tsx, Graph/Graph.tsx, Toast.tsx
 └── features/           home, modeSelect, quiz, stats, review, flashcard, auth
-                        (each with its co-located {Feature}.spec.md)
 ```
 
 `src/lib/SupabaseClient.ts` (see `docs/auth/design-doc.md`) is the only module that imports `@supabase/supabase-js`, mirroring how `Storage.ts` is the only module that touches `localStorage`. `src/features/auth/` (`AuthButton.tsx`, `LoginModal.tsx`, `migration.ts`) is the optional email-magic-link login UI, wired into the Home screen header only.
 
-Behavioral contracts per module (co-located `*.spec.md` files are the authoritative, verifiable version of these):
+Behavioral contracts per module:
 
 <details>
 <summary>Legacy single-file layout (preserved at legacy/studydeck.html)</summary>
@@ -300,7 +299,7 @@ Piles use question `id` fields (not array indices) so state survives question re
 
 **Quota safety:** All `localStorage.setItem()` calls are wrapped in try/catch. On `QuotaExceededError`, surface a user-facing warning ("Storage full — oldest file removed") and remove the oldest history entry before retrying.
 
-**Supabase mirror (optional, see `docs/auth/PRD.md`/`docs/auth/design-doc.md`):** `localStorage` remains the source of truth for every synchronous read in the app, logged in or not — `Storage`'s public surface never becomes `Promise`-based. When a session is active, `Storage.saveFile`/`deleteFile`/`setFlashState` additionally fire a best-effort, non-blocking async mirror of the same write to two Supabase tables (`decks`, `flash_state`, both RLS-scoped to `auth.uid()`) via `src/lib/SupabaseClient.ts`, the only module that imports `@supabase/supabase-js`. On login, `src/features/auth/migration.ts` uploads any existing local decks to a brand-new (empty) account, or downloads an existing account's cloud data back into the local cache — never both directions for the same login, to avoid an incomplete upload clobbering local-only data on retry. A `Storage.subscribe()` listener bus (modeled on `toast.ts`) notifies mounted screens after such a bulk local-cache overwrite. See `src/lib/Storage.spec.md` and `src/features/auth/Auth.spec.md` for the full requirement set.
+**Supabase mirror (optional, see `docs/auth/PRD.md`/`docs/auth/design-doc.md`):** `localStorage` remains the source of truth for every synchronous read in the app, logged in or not — `Storage`'s public surface never becomes `Promise`-based. When a session is active, `Storage.saveFile`/`deleteFile`/`setFlashState` additionally fire a best-effort, non-blocking async mirror of the same write to two Supabase tables (`decks`, `flash_state`, both RLS-scoped to `auth.uid()`) via `src/lib/SupabaseClient.ts`, the only module that imports `@supabase/supabase-js`. On login, `src/features/auth/migration.ts` uploads any existing local decks to a brand-new (empty) account, or downloads an existing account's cloud data back into the local cache — never both directions for the same login, to avoid an incomplete upload clobbering local-only data on retry. A `Storage.subscribe()` listener bus (modeled on `toast.ts`) notifies mounted screens after such a bulk local-cache overwrite.
 
 ## Graph Rendering Notes
 

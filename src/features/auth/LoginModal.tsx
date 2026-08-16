@@ -1,4 +1,4 @@
-// LoginModal — email magic-link entry point (spec: Auth.spec.md R2-R7).
+// LoginModal — email magic-link entry point.
 // Four states: idle, loading, sent, error. Loading is styled to tolerate a
 // several-second wait without looking broken (Supabase free-tier projects
 // wake from an idle pause on first request — R4).

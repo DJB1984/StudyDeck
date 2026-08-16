@@ -63,8 +63,6 @@ To try it immediately, drag one of the example decks from `test-decks/` onto the
 
 The app is a client-side React SPA — a screen state machine in `App.tsx`, no backend, no router library. Logic is split into modules that each own one concern: `Storage` is the only module that touches `localStorage`; the `Katex` and `Graph` components own all rendering and degrade to fallback text/"Graph unavailable" rather than crash; the quiz and flashcard engines separately track session state. A deck is just JSON: quiz decks carry `question`/`answers`/`correct` (+ optional `graph`), flashcard decks carry `front`/`back`, and a stable string `id` on every question ties stats and pile state to the question itself rather than its array position — so decks can be edited or reordered without losing progress.
 
-Every feature has a co-located `*.spec.md` requirements file describing its intended behavior, kept honest by a requirements-writer agent that authors specs before a change and audits the code against them after.
-
 ---
 
 ## Lessons Learned

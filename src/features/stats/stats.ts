@@ -1,6 +1,6 @@
-// Stats logic — builds the session record and derived score/pie data
-// (spec: src/features/stats/Stats.spec.md). Kept separate from the Quiz engine
-// so scoring can evolve independently of how questions are asked.
+// Stats logic — builds the session record and derived score/pie data.
+// Kept separate from the Quiz engine so scoring can evolve independently of
+// how questions are asked.
 
 import type { AnswerRecord, QuizMode, SessionRecord } from '../../types';
 

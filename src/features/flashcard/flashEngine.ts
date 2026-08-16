@@ -1,4 +1,4 @@
-// Flashcard engine — pile logic + persistence (spec: src/features/flashcard/Flashcard.spec.md).
+// Flashcard engine — pile logic + persistence.
 // A mutable object (reused across renders via a ref) that mirrors the legacy
 // FlashEngine. Piles are keyed by question `id`, never index, so progress
 // survives deck reordering. sortCard() is the ONLY method that decides pile

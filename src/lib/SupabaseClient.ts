@@ -1,5 +1,5 @@
 // SupabaseClient — the ONLY module that imports @supabase/supabase-js or
-// holds a reference to a Supabase client instance (spec: Auth.spec.md R17).
+// holds a reference to a Supabase client instance.
 // Storage.ts and the auth UI reach Supabase exclusively through the functions
 // exported here, mirroring the "Storage.ts is the only module that touches
 // localStorage" rule in the root CLAUDE.md.
@@ -64,7 +64,7 @@ export function onAuthStateChange(callback: (session: Session | null) => void): 
 // Fires only on Supabase's 'SIGNED_IN' event — a real login just completed
 // (magic-link redirect landed), not "a session already existed on page
 // load" (that's 'INITIAL_SESSION'). This is the exact signal migration.ts
-// needs to run once per login, per Auth.spec.md R11/R14.
+// needs to run once per login.
 export function onSignedIn(callback: () => void): () => void {
   if (!client) return () => {};
   const {

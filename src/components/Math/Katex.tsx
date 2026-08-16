@@ -1,4 +1,4 @@
-// Katex — renders LaTeX embedded in deck text (spec: src/components/Math/Katex.spec.md).
+// Katex — renders LaTeX embedded in deck text.
 // $$...$$ → display math, $...$ → inline. Runs with throwOnError:false so malformed
 // LaTeX degrades to its raw source string instead of crashing the host component.
 

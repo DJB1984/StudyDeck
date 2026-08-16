@@ -1,4 +1,4 @@
-// Toast — the app-level error surface (spec: src/components/Toast.spec.md).
+// Toast — the app-level error surface.
 // Registers itself with the toast bus so any module (React or not) can call
 // showError() and have it appear here. Auto-dismisses after a reading-time
 // delay that scales with message length; the × still dismisses immediately.

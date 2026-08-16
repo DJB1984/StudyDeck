@@ -1,4 +1,4 @@
-// Storage — the ONLY module that touches localStorage (spec: src/lib/Storage.spec.md).
+// Storage — the ONLY module that touches localStorage.
 // Every other module goes through this surface so persistence concerns (quota
 // handling, key naming, atomic deletes, id-keyed piles) stay in one place and a
 // future IndexedDB migration is a one-module change.
@@ -49,8 +49,8 @@ export const Storage = {
     return () => listeners.delete(callback);
   },
 
-  // Used by the auth feature's hydration/migration step (Auth.spec.md R14) to
-  // write a full history array back into the local cache and notify screens.
+  // Used by the auth feature's hydration/migration step to write a full
+  // history array back into the local cache and notify screens.
   // Goes through the same `set` used everywhere else — no separate write path.
   replaceHistory(history: HistoryEntry[]): void {
     this.set(HISTORY_KEY, history);
