@@ -378,17 +378,28 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                   &times;
                 </button>
                 <h3>{file.title}</h3>
+                {/* Flashcard decks show the Know It tally IN PLACE OF the
+                    question count — progress is what a returning student is
+                    looking for, and the count survives as its denominator. The
+                    tally is a live snapshot re-read from Storage on every
+                    render rather than persisted as its own value, so it can't
+                    drift from the piles the flashcard engine actually owns;
+                    never-opened decks read "0 / N known" via getFlashState's
+                    empty default. */}
                 <div className="meta">
-                  {file.count} questions · {file.lastOpened}
+                  {file.data.type === 'flashcard' ? (
+                    <>
+                      <span className="meta-flash">
+                        {knownCount(file)} / {file.count} known
+                      </span>{' '}
+                      · {file.lastOpened}
+                    </>
+                  ) : (
+                    <>
+                      {file.count} questions · {file.lastOpened}
+                    </>
+                  )}
                 </div>
-                {/* Flashcard decks only: a live snapshot of the Know It pile,
-                    re-read from Storage on every render rather than persisted
-                    as its own value — it must not drift from the piles the
-                    flashcard engine actually owns. Never-opened decks read
-                    "0 / N known" via getFlashState's empty default. */}
-                {file.data.type === 'flashcard' && (
-                  <div className="meta-flash">{knownCount(file)} / {file.count} known</div>
-                )}
               </div>
             ))}
           </div>

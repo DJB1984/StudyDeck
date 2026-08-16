@@ -116,9 +116,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 .file-card h3 { font-size: 1rem; padding-right: 24px; }
 .file-card .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
-/* Flashcard-only mastery line: same scale as .meta but accent-colored, so a
-   deck's progress reads as progress and not as more filename metadata. */
-.file-card .meta-flash { font-size: 0.8rem; color: var(--accent-light); margin-top: 2px; }
+/* Flashcard-only mastery tally, inline in .meta where the question count sits
+   on quiz decks: inherits .meta's scale but accent-colored, so a deck's
+   progress reads as progress and not as more filename metadata. */
+.file-card .meta-flash { color: var(--accent-light); }
 .file-card .delete-btn {
   position: absolute;
   top: 12px;
