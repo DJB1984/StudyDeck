@@ -105,8 +105,13 @@ export const Storage = {
         if (history.length > 0) {
           // "oldest" = last element, because saveFile prepends newest-first (R9).
           const oldest = history[history.length - 1];
-          this.deleteFile(oldest.title);
-          showError('Storage full — oldest file removed to make room.');
+          // deleteLocal, NOT deleteFile: eviction is a local-cache problem, so
+          // it must never mirror a delete to the account. Otherwise a full
+          // localStorage permanently destroys the user's oldest cloud deck —
+          // the exact opposite of the cloud being the durable copy. The deck
+          // stays in the account and comes back down on the next login.
+          this.deleteLocal(oldest.title);
+          showError('Storage full — oldest file removed from this device to make room.');
           try {
             localStorage.setItem(key, JSON.stringify(val));
             return true;
@@ -143,10 +148,11 @@ export const Storage = {
   },
 
   // R6: atomic across BOTH keys — history entry AND its flash-pile state.
-  // R13/R15: local delete is unchanged; a logged-in session additionally
-  // mirrors the delete to both cloud tables, independently (a failure on one
-  // never rolls back the other or the local delete).
-  deleteFile(title: string): void {
+  // Local-cache only: the account copy is deliberately left alone, so this is
+  // safe to call for reasons that aren't "the user deleted this deck" (see the
+  // quota-eviction path in `set`). User-initiated deletes go through
+  // deleteFile, which is this plus the cloud mirror.
+  deleteLocal(title: string): void {
     const history = this.getHistory().filter((f) => f.title !== title);
     this.set(HISTORY_KEY, history);
     try {
@@ -154,6 +160,15 @@ export const Storage = {
     } catch {
       /* flash-key removal must never throw out */
     }
+  },
+
+  // R13/R15: local delete is unchanged; a logged-in session additionally
+  // mirrors the delete to both cloud tables, independently (a failure on one
+  // never rolls back the other or the local delete). Note the mirror is
+  // best-effort with no retry — a delete that fails to reach the account comes
+  // back down on the next login's merge (accepted, Davis 2026-08-16).
+  deleteFile(title: string): void {
+    this.deleteLocal(title);
     if (SupabaseClient.isLoggedIn()) {
       mirror(SupabaseClient.deleteDeck(title));
       mirror(SupabaseClient.deleteFlashState(title));
