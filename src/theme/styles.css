@@ -120,6 +120,22 @@ button { font-family: inherit; cursor: pointer; }
    on quiz decks: inherits .meta's scale but accent-colored, so a deck's
    progress reads as progress and not as more filename metadata. */
 .file-card .meta-flash { color: var(--accent-light); }
+/* "3 due" — the one time-sensitive thing on Home, so it gets a pill rather than
+   another run of inline text. Carries Mastery's own tint (not the everyday
+   accent) so the badge and the mode it sends you to read as the same thing. */
+.file-card .meta-due {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--mode-mastery-veil);
+  border: 1px solid var(--mode-mastery-tint);
+  color: var(--mode-mastery-light);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  vertical-align: 0.05em;
+}
 .file-card .delete-btn {
   position: absolute;
   top: 12px;
@@ -1660,7 +1676,24 @@ button { font-family: inherit; cursor: pointer; }
   vertical-align: 0.08em;
 }
 
-/* The mastery tally ("8 mastered · 4 left") is mode-specific information, so it
+/* Says which KIND of card is on screen when it isn't an ordinary ladder repeat.
+   A final check and a spacing filler look identical on the card itself, and the
+   honest answer to "do I know this?" differs between them — so the distinction
+   has to be visible before the student flips, not after. */
+.flash-phase-tag {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--text-secondary);
+}
+/* The final check is the moment the mode exists for, so it carries the mode's
+   light; filler is deliberately quiet, because it isn't work being asked of the
+   student and shouldn't compete with the card. */
+.flash-phase-tag[data-phase='cold'] { color: var(--mode-light); }
+
+/* The mastery tally ("8 learned · 4 left") is mode-specific information, so it
    reads in the mode's own light. */
 .flash-progress-text { color: var(--mode-light); }
 

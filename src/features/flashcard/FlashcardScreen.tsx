@@ -3,19 +3,20 @@
 // mutations, matching the legacy flow while staying inside React.
 
 import { useEffect, useReducer, useRef, useState } from 'react';
-import type { Deck, FlashCard } from '../../types';
+import type { FlashCard, HistoryEntry } from '../../types';
 import { Katex } from '../../components/Math/Katex';
 import { Storage } from '../../lib/Storage';
 import { createFlashEngine, type FlashEngine } from './flashEngine';
+import { describeDue } from './schedule';
 import { FlashAmbience, type FlashAmbienceHandle } from './FlashAmbience';
 
 interface FlashcardScreenProps {
-  deck: Deck;
+  file: HistoryEntry;
   onBack: () => void;
 }
 
 // The two ways a round can run, as one exclusive choice. Standard just walks
-// the deck; Mastery sorts into piles and requeues what was missed.
+// the deck; Mastery runs the ladder.
 type StudyMode = 'standard' | 'mastery';
 
 const MODE_LABEL: Record<StudyMode, string> = {
@@ -23,9 +24,15 @@ const MODE_LABEL: Record<StudyMode, string> = {
   mastery: 'Mastery',
 };
 
+// Mastery's hint states the part students get wrong about it: three in a row
+// isn't the finish line, and the mode is meant to be returned to. Saying so
+// up front is the difference between "I finished the deck" and "I'm learning
+// this deck", which is the entire behaviour change the mode exists to cause.
 const MODE_HINT: Record<StudyMode, string> = {
-  standard: 'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
-  mastery: 'The whole deck, and missed cards come back later in the round until every one is marked Know It.',
+  standard:
+    'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
+  mastery:
+    'Get a card right three times, spaced further apart each time, and it’s set aside for a final check tomorrow. Passing that check masters it for good.',
 };
 
 function modeOf(eng: FlashEngine): StudyMode {
@@ -60,13 +67,18 @@ function MotionIcon({ playing }: { playing: boolean }) {
   );
 }
 
-export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
+export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
+  const deck = file.data;
   const engineRef = useRef<FlashEngine | null>(null);
   if (!engineRef.current) {
     // R12: entered directly from opening a flashcard deck — resumes a saved
     // unfinished session (same card, same toggles), else a fresh full-deck
-    // session with drill off and random off.
-    engineRef.current = createFlashEngine(deck.title, deck.questions as FlashCard[]);
+    // session with mastery off and random off.
+    //
+    // Keyed by the entry's stable id, never the title: mastery scheduling is
+    // days of work, and a title is a string the deck's author can change.
+    // Storage guarantees an id on anything that came out of getHistory().
+    engineRef.current = createFlashEngine(file.id!, deck.questions as FlashCard[]);
     engineRef.current.start({ randomOrder: false, masteryMode: false });
   }
   const eng = engineRef.current;
@@ -218,12 +230,17 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   }, []);
 
   const emptyFromStart = eng.deck.length === 0; // R11
-  const complete = !emptyFromStart && eng.isComplete(); // R9
-  const showComplete = emptyFromStart || complete;
+  // Mastery with every card either retired or not yet due — a finished state,
+  // but a different one from "you got through the round".
+  const caughtUp = !emptyFromStart && eng.nothingDue();
+  const complete = !emptyFromStart && !caughtUp && eng.isComplete(); // R9
+  const showComplete = emptyFromStart || caughtUp || complete;
 
   const card = eng.currentCard();
   const progress = eng.progress();
   const mastery = eng.progressMastery();
+  const nextDue = eng.nextDue();
+  const coldCheck = !showComplete && eng.currentIsColdCheck();
 
   const total = eng.order.length;
 
@@ -232,10 +249,10 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     (sortAnim === 'known' ? 'sort-known' : sortAnim === 'learning' ? 'sort-learning' : '');
 
   // Drives how brightly Mastery's core burns — the round starts on a dim ember
-  // and ends on a lit one. Denominator guarded: a mastered card leaves the
-  // queue for good, so both terms are zero on the completion frame.
-  const masteryTotal = mastery.mastered + mastery.remaining;
-  const masteryIntensity = masteryTotal > 0 ? mastery.mastered / masteryTotal : 1;
+  // and ends on a lit one. Denominator guarded: a learned card leaves the
+  // queue, so both terms are zero on the completion frame.
+  const masteryTotal = mastery.learned + mastery.remaining;
+  const masteryIntensity = masteryTotal > 0 ? mastery.learned / masteryTotal : 1;
 
   return (
     <section
@@ -253,7 +270,7 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
           {showComplete
             ? ''
             : eng.masteryMode
-              ? `${mastery.mastered} mastered · ${mastery.remaining} left`
+              ? `${mastery.learned} learned · ${mastery.remaining} left`
               : `Card ${progress.current} of ${progress.total}`}
         </span>
       </div>
@@ -322,6 +339,18 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
             intensity={masteryIntensity}
             paused={!motionOn}
           />
+          {/* A cold check and a mid-ladder repeat look identical on the card,
+              but they mean opposite things — one is a real test of yesterday's
+              learning, the other is a step toward it. Saying which is what
+              keeps "Know It" from being answered on autopilot. */}
+          {eng.masteryMode && (coldCheck || eng.currentIsFiller()) && (
+            <p className="flash-phase-tag" data-phase={coldCheck ? 'cold' : 'filler'}>
+              {coldCheck
+                ? 'Final check — you learned this on an earlier day.'
+                : 'Already learned — just keeping the spacing honest.'}
+            </p>
+          )}
+
           <div id="flash-card-wrap">
             <div id="flash-card" key={card.id} className={cardClass} onClick={flip}>
               <div className="card-inner">
@@ -399,26 +428,58 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
                 <h3>Nothing to Study</h3>
                 <p>This deck has no cards in it.</p>
               </>
+            ) : caughtUp ? (
+              // Mastery's most important screen: there is genuinely nothing
+              // useful to do right now, and the honest thing is to say so and
+              // name the day rather than invent busywork to fill the session.
+              nextDue ? (
+                <>
+                  <h3>All Caught Up</h3>
+                  <p>
+                    Every card here is either mastered or waiting on its final check. The next one
+                    comes due {describeDue(nextDue)}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3>Deck Mastered</h3>
+                  <p>Every card passed its final check on a later day. This deck is done.</p>
+                </>
+              )
             ) : eng.isBrowseMode() ? (
-              // Standard marks nothing, so a known/learning tally here would
-              // report zeros for a round that had no verdicts in it.
+              // Standard marks nothing, so a tally here would report zeros for a
+              // round that had no verdicts in it.
               <>
                 <h3>End of Deck</h3>
                 <p>You've been through all {total} card(s).</p>
               </>
             ) : (
-              // Mastery mode only ends when the queue empties, i.e. every card
-              // was marked Know It — so a "nailed every card this round" line
-              // would read as praise for a round that may have taken several passes.
+              // Mastery's round end. Deliberately NOT "Deck Mastered": what the
+              // student just did was learn cards, and the claim that they've
+              // stuck is one only tomorrow can make. Overstating it here is the
+              // exact illusion of competence the mode is built to prevent.
               <>
-                <h3>Deck Mastered</h3>
-                <p>All {total} card(s) marked Know It — nothing left in the rotation.</p>
+                <h3>Round Complete</h3>
+                <p>
+                  {mastery.learned} of {total} card(s) learned this session.
+                  {nextDue
+                    ? ` Come back ${describeDue(nextDue)} for the final check that locks them in.`
+                    : ' Come back tomorrow for the final check that locks them in.'}
+                </p>
               </>
             )}
             <div className="stats-actions" style={{ justifyContent: 'center' }}>
-              <button className="btn-ghost" onClick={restartAll}>
-                Restart All
-              </button>
+              {/* Restarting a caught-up round just lands back on this same
+                  screen, so that state offers the one thing still worth doing. */}
+              {caughtUp ? (
+                <button className="btn-ghost" onClick={() => onModeSelect('standard')}>
+                  Browse the Deck
+                </button>
+              ) : (
+                <button className="btn-ghost" onClick={restartAll}>
+                  Restart All
+                </button>
+              )}
             </div>
           </div>
         </div>

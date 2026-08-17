@@ -52,7 +52,7 @@ The original vanilla-JS module objects map onto React modules. **Each module sti
 - **`src/components/Graph/Graph.tsx`** — Chart.js v4 rendering. `renderGraph` logic MUST never throw out to the app — every failure catches and shows "Graph unavailable". LaTeX axis labels are KaTeX HTML overlays (Chart.js can't render LaTeX on canvas). Chart destroyed/recreated per question.
 - **`src/components/QuizUI.tsx`** — the presentational shell shared by Quiz and Review (`ProgressHeader`, `QuestionBody`, `AnswerList`, plus the `LETTERS` constant). Deliberately shell-only: Quiz's scoring/retry-locking state and Review's static correct-highlight stay in their own screens, passed in as per-button className/disabled/onSelect callbacks. Don't grow this into a merged Quiz+Review component — the two modes' logic is genuinely different, only the markup isn't.
 - **`src/features/quiz/`** — `QuizScreen.tsx` runs practice + test. Tracks `firstAttemptCorrect` per question; retries never overwrite the first-attempt record. Owns the session timer.
-- **`src/features/flashcard/`** — `flashEngine.ts` holds pile state (`known`/`learning`) keyed by question `id` (never index), persisted via Storage. `sortCard()` is the isolated seam for a future spaced-repetition scheduler.
+- **`src/features/flashcard/`** — `schedule.ts` owns the mastery scheduling POLICY (ladder gaps, lapse handling, due dates, legacy back-fill) with no engine state and no I/O; `flashEngine.ts` owns the rotation and persistence and calls into it. `sortCard()` remains the single seam that changes a card's standing — every rule it applies comes from `schedule.ts`, so a different scheduler is a one-module swap. Records are keyed by question `id` (never index).
 - **`src/features/stats/`** — `stats.ts` builds the session record + score/pie data, kept separate from Quiz so scoring can evolve. `StatsScreen.tsx` renders the doughnut + breakdown.
 - **`src/features/home/`, `modeSelect/`, `review/`** — the remaining screens.
 
@@ -66,11 +66,14 @@ The original vanilla-JS module objects map onto React modules. **Each module sti
 - Quiz questions: stable string `id`, `question` (LaTeX via `$...$`/`$$...$$`), exactly 4 `answers`, integer `correct` (0–3), optional `graph` (`points` or `equation`).
 - Flashcards: stable string `id`, `front`, `back` (no `answers`/`correct`/`graph`). Mode Select reads `type` to show only matching mode(s).
 - `version` must currently equal `1`; unknown versions warn, not hard-fail.
-- localStorage keys: `studydeck_history` and `studydeck_flash_{title}` (keyed by question `id`). Full shapes in `docs/core/design-doc.md` under "localStorage Schema".
+- History entries carry a generated `id` (`HistoryEntry.id`), assigned by `Storage` on first save/read and stable for the life of the deck. Flashcard state is filed under it, never the title.
+- localStorage keys: `studydeck_history` and `studydeck_flash_{deckId}` (records keyed by question `id`). Full shapes in `docs/core/design-doc.md` under "localStorage Schema".
 
 ### Screens
 
-`Home → Mode Select → Quiz/Flashcard → Stats → Home`, with a `Review` branch off both Mode Select and Stats. The live app has **four** modes: Practice, Test, Review, Flashcard. Practice shows live feedback with retries (retries don't affect stats); Test shows no feedback until Stats and disallows retries; Review is a read-only browser with the correct answer shown.
+`Home → Mode Select → Quiz/Flashcard → Stats → Home`, with a `Review` branch off both Mode Select and Stats. The live app has **four** modes: Practice, Test, Review, Flashcard.
+
+The Flashcard screen has two study modes of its own: **Standard** (browse, records nothing) and **Mastery** (the spaced ladder). Mastery is a *come-back-tomorrow* mode by design — three spaced hits in one session make a card provisional, and a cold check on a later day is what actually masters it. It will legitimately open onto an "All Caught Up" screen with nothing to do; that's the mode working, not a bug. See the design doc's "Mastery ladder" section before changing any of it. Practice shows live feedback with retries (retries don't affect stats); Test shows no feedback until Stats and disallows retries; Review is a read-only browser with the correct answer shown.
 
 ### Visual design
 

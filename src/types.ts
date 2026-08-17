@@ -116,6 +116,14 @@ export interface Deck {
 
 /** A deck as persisted in history, with its metadata. */
 export interface HistoryEntry {
+  /**
+   * Stable per-deck identifier, generated on first save. Mastery state is keyed
+   * off this rather than the title, so the scheduling data isn't tied to a
+   * mutable display string. Optional on the TYPE only because entries persisted
+   * before this existed have no id — `Storage.getHistory()` back-fills one on
+   * read, so anything that came out of Storage always has it.
+   */
+  id?: string;
   name: string;
   title: string;
   count: number;
@@ -180,6 +188,26 @@ export interface FlashSession {
   order: string[];
   /** Mastery-mode working queue; unused in Standard mode. */
   queue?: string[];
+  /**
+   * Mastery-mode runtime that can't be re-derived from the card records,
+   * because the records only say where a card SITS, not how it got there.
+   * All unused in Standard mode.
+   */
+  /** Cards in this session's cold-check phase — one hit retires them. */
+  coldCheck?: string[];
+  /** Cards awaiting a relearn touch, whose next Know It doesn't advance the ladder. */
+  relearning?: string[];
+  /** Cards already pulled in as rotation filler — each is eligible only once. */
+  fillerUsed?: string[];
+  /** Cards that reached provisional (or retired) during THIS round, for the tally. */
+  learned?: string[];
+  /**
+   * Local calendar day (YYYY-MM-DD) the mastery round was started on. A round is
+   * a day's work: resuming yesterday's unfinished queue would silently skip
+   * every cold check that came due overnight, which is the one thing the
+   * student came back for.
+   */
+  startedOn?: string;
   /** Position within `order`; unused in mastery mode. */
   currentIdx: number;
   /**
@@ -192,9 +220,46 @@ export interface FlashSession {
   masteryMode: boolean;
 }
 
-/** Persisted flashcard pile state, keyed by question id (never index). */
+/**
+ * Where one card sits on the mastery ladder. Keyed by question id (never index).
+ *
+ * The lifecycle is deliberately finite: three in-session successes make a card
+ * *provisional*, one cold hit on a later day retires it for good. There is no
+ * widening review schedule after that (Davis's call, 2026-08-17) — "mastered"
+ * has to be something a student can actually reach and be done with.
+ */
+export interface CardProgress {
+  /**
+   * Ladder rung. 0 = not passed yet, 1-2 = mid-ladder, 3 = provisional: three
+   * in a row within one session, now waiting on its next-day cold check.
+   */
+  step: 0 | 1 | 2 | 3;
+  /**
+   * Lapses within the CURRENT session only — reset when a session starts. The
+   * first costs one rung; the second in the same session resets to 0, because a
+   * card missed twice in one sitting genuinely isn't learned.
+   */
+  lapses: number;
+  /** ISO time this provisional card becomes eligible for its cold check; null unless step is 3. */
+  dueAt: string | null;
+  /** ISO time of the last verdict given on this card. */
+  lastSeen: string | null;
+  /** Passed its cold check — retired, never scheduled again. */
+  mastered: boolean;
+}
+
+/**
+ * Persisted flashcard state for one deck, keyed by DECK ID (see HistoryEntry.id).
+ *
+ * `cards` is the real state. `known`/`learning` are derived mirrors kept in sync
+ * on every write purely for back-compat: the cloud `flash_state` table has only
+ * those two columns, and Home's tally reads them. Don't write to them directly —
+ * `derivePiles()` in features/flashcard/schedule.ts owns their contents.
+ */
 export interface FlashState {
   known: string[];
   learning: string[];
   session?: FlashSession;
+  /** Absent on state written before the mastery ladder — back-filled on read. */
+  cards?: Record<string, CardProgress>;
 }

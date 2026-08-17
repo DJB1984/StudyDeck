@@ -290,15 +290,28 @@ I chose: [chosen answer]
 All reads/writes go through the `Storage` module. No other module accesses `localStorage` directly. This abstraction allows a future migration to IndexedDB without touching any other module.
 
 ```js
-// File history
+// File history. `id` is generated on first save and never changes; it is what
+// flashcard state is filed under, so a deck's title can change without
+// orphaning weeks of mastery scheduling.
 "studydeck_history": [
-  { "name": "Physics Ch3.json", "title": "Physics Chapter 3", "count": 20, "lastOpened": "2026-06-29", "data": { ...full parsed JSON... } }
+  { "id": "3f2b...", "name": "Physics Ch3.json", "title": "Physics Chapter 3", "count": 20, "lastOpened": "2026-06-29", "data": { ...full parsed JSON... } }
 ]
 
-// Flashcard piles — keyed by file title, indexed by question id (not position)
-"studydeck_flash_Physics Chapter 3": {
-  "known": ["q1", "q3", "q7"],       // question ids in Know It pile
-  "learning": ["q2", "q4", "q5"]    // question ids in Still Learning pile
+// Flashcard state — keyed by DECK ID, indexed by question id (not position)
+"studydeck_flash_3f2b...": {
+  // The real state: where each card sits on the mastery ladder.
+  "cards": {
+    "q1": { "step": 3, "lapses": 0, "dueAt": "2026-08-18T00:00:00.000Z", "lastSeen": "...", "mastered": false },
+    "q2": { "step": 1, "lapses": 1, "dueAt": null, "lastSeen": "...", "mastered": false },
+    "q3": { "step": 3, "lapses": 0, "dueAt": null, "lastSeen": "...", "mastered": true }
+  },
+  // Derived mirrors, rewritten from `cards` on every save. They exist only
+  // because the cloud `flash_state` table has just these two columns. Never
+  // write them directly — schedule.ts `derivePiles()` owns their contents.
+  "known": ["q1", "q3"],
+  "learning": ["q2"],
+  // The in-progress round, so a reload resumes where the student left off.
+  "session": { "order": [...], "queue": [...], "coldCheck": [...], "startedOn": "2026-08-17", ... }
 }
 
 // Whether Flashcards' decorative ambient motion may animate. Absent = off:
@@ -308,13 +321,30 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
 "studydeck_ambient_motion": true
 ```
 
-Piles use question `id` fields (not array indices) so state survives question reordering.
+Card records use question `id` fields (not array indices) so state survives question reordering.
 
-**Deletion lifecycle:** `Storage.deleteFile(title)` removes the entry from `studydeck_history` AND deletes the corresponding `studydeck_flash_{title}` key in one atomic operation. This keeps localStorage clean and prevents orphaned pile data accumulating over time.
+**Mastery ladder (see `src/features/flashcard/schedule.ts`, which owns every rule below).** The mode is deliberately two-stage and deliberately finite:
+
+1. **In-session ladder.** Three Know Its inside one session, spaced 6 then 14 cards apart, move a card to `step: 3` — *provisional*, not mastered. It leaves the rotation with `dueAt` set to the start of the next local day (floored at 8 hours out, so studying at 11:50pm doesn't make a card due at midnight).
+2. **Cold check.** On a later session, due cards run **first**. One Know It sets `mastered: true` and retires the card permanently. There is no widening review schedule after that — "mastered" is a state a student can reach and be done with (Davis, 2026-08-17).
+
+Supporting rules, each fixing a specific failure mode:
+
+- **Lapses cost one rung, not the streak.** A second lapse on the same card in the same session resets to 0. A full reset on every miss makes sessions unbounded and dominated by two hard cards, which is how people quit.
+- **The re-show after a miss is a *relearn touch*, not a rung.** Passing a card 20 seconds after seeing its answer is recognition, not recall; counting it would make the first success of every streak the least meaningful retrieval in the system.
+- **The rotation is padded with already-learned cards** when it's shorter than the gap being asked for, budgeted at `FILLER_BUDGET` per session. Without it, intervals collapse late in a session — exactly when cards are being certified. Filler verdicts are asymmetric: a hit changes nothing, a miss demotes the card back onto the ladder.
+- **A mastery round belongs to the day it started on** (`session.startedOn`). Resuming yesterday's unfinished queue would skip every cold check that came due overnight.
+- **Pre-ladder state is back-filled on read** (`schedule.ts` `normalize`). Old `known` ids become provisional-and-immediately-due rather than mastered, since a single Know It in the old one-pass mode is a much weaker claim than three in a row.
+
+**Deletion lifecycle:** `Storage.deleteFile(title)` removes the entry from `studydeck_history` AND deletes the corresponding `studydeck_flash_{id}` key (plus any pre-migration `studydeck_flash_{title}` key) in one atomic operation. This keeps localStorage clean and prevents orphaned card data accumulating over time.
+
+**Key migration:** state written before decks had ids lives under the title. The first `getFlashState(deckId)` for a deck *moves* it to the id key and removes the old one — a move, not a copy, since two live copies of one deck's progress would diverge silently.
 
 **Quota safety:** All `localStorage.setItem()` calls are wrapped in try/catch. On `QuotaExceededError`, surface a user-facing warning ("Storage full — oldest file removed") and remove the oldest history entry before retrying.
 
 **Supabase mirror (optional, see `docs/auth/PRD.md`/`docs/auth/design-doc.md`):** `localStorage` remains the source of truth for every synchronous read in the app, logged in or not — `Storage`'s public surface never becomes `Promise`-based. When a session is active, `Storage.saveFile`/`deleteFile`/`setFlashState` additionally fire a best-effort, non-blocking async mirror of the same write to two Supabase tables (`decks`, `flash_state`, both RLS-scoped to `auth.uid()`) via `src/lib/SupabaseClient.ts`, the only module that imports `@supabase/supabase-js`. On login, `src/features/auth/migration.ts` uploads any existing local decks to a brand-new (empty) account, or downloads an existing account's cloud data back into the local cache — never both directions for the same login, to avoid an incomplete upload clobbering local-only data on retry. A `Storage.subscribe()` listener bus (modeled on `toast.ts`) notifies mounted screens after such a bulk local-cache overwrite.
+
+**Mastery records are device-local.** The `flash_state` table still has only `deck_title`, `known` and `learning` columns, so `setFlashState`'s mirror resolves the deck's title and sends the derived piles — the `cards` records don't leave the device. Studying the same deck on a second device therefore restarts its ladder there. Deliberate (Davis, 2026-08-17: get the ladder's shape right in real use before freezing it into a schema). Closing this means adding `cards jsonb` + `schema_version` to `flash_state` and keeping the two pile columns written in parallel for a release.
 
 ## Graph Rendering Notes
 
