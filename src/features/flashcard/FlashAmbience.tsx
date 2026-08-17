@@ -26,7 +26,7 @@ interface FlashAmbienceProps {
   /** Mastery only: 0–1 share of the working set already mastered. */
   intensity: number;
   /**
-   * Freeze the field on one composed still frame — the default. This stops the
+   * Freeze the field where it currently is — the default. This stops the
    * ambient clock (breathing, orbiting, twinkle), NOT the mode crossfade: a
    * paused switch still flies the dots from one form into the other, it just
    * does so on a frozen clock so the two endpoints are the two still frames.
@@ -39,6 +39,13 @@ const TAU = Math.PI * 2;
 const MAX_PARTICLES = 160;
 const BLEND_MS = 700;
 const PULSE_MS = 900;
+// Where the ambient clock starts on a fresh mount: a composed frame, so the
+// field's default (paused) still is an arranged one rather than t=0.
+const CLOCK_START = 6;
+// Largest slice of real time one frame may advance the clock. Any longer gap —
+// a hidden tab, the field scrolled out of view, a stalled main thread — is a
+// gap nobody watched, so it advances nothing instead of teleporting the field.
+const MAX_STEP = 0.05;
 
 // Same fixed-seed generator Starfield uses: the field must be identical on
 // every mount, or leaving and re-entering a deck reshuffles the sky.
@@ -211,6 +218,12 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
       let count = 0;
       let raf = 0;
       let visible = true;
+      // The ambient clock is accumulated from frame deltas rather than read off
+      // `now`, which is what makes pause/play continuous: a paused frame adds
+      // nothing, so the field resumes from the exact phase it froze at instead
+      // of snapping to wherever wall-clock time had wandered off to.
+      let clock = CLOCK_START;
+      let clockAt = 0; // `now` of the last frame that advanced the clock
 
       function resize() {
         const rect = canvas!.getBoundingClientRect();
@@ -252,7 +265,9 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
         // deliberately not frozen with it: a paused switch travels between the
         // two modes' still frames, it just doesn't drift once it arrives.
         const still = pausedRef.current || reduced.matches;
-        const t = still ? 6 : now / 1000;
+        if (!still) clock += Math.min(Math.max(now - clockAt, 0) / 1000, MAX_STEP);
+        clockAt = now;
+        const t = clock;
 
         const cFrom = colorsRef.current[fromMode];
         const cTo = colorsRef.current[toMode];
