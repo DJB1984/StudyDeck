@@ -9,6 +9,7 @@ import * as SupabaseClient from './SupabaseClient';
 
 const HISTORY_KEY = 'studydeck_history';
 const FLASH_PREFIX = 'studydeck_flash_';
+const MOTION_KEY = 'studydeck_ambient_motion';
 
 function flashKey(title: string): string {
   return FLASH_PREFIX + title;
@@ -178,6 +179,23 @@ export const Storage = {
   // R7: default pile state when absent.
   getFlashState(title: string): FlashState {
     return this.get<FlashState>(flashKey(title)) || { known: [], learning: [] };
+  },
+
+  // Whether the decorative ambient motion (Flashcards' mode atmosphere) is
+  // allowed to animate. Off unless explicitly turned on — decoration should be
+  // opt-in, and a study screen is the wrong place to make someone opt out of
+  // movement they didn't ask for.
+  //
+  // Deliberately NOT mirrored to Supabase and deliberately NOT cleared by
+  // clearLocal(): motion tolerance belongs to the device you're sitting at, not
+  // to the account, and logout exists to scrub the previous user's content off
+  // a shared machine — not their comfort settings.
+  getAmbientMotion(): boolean {
+    return this.get<boolean>(MOTION_KEY) === true;
+  },
+
+  setAmbientMotion(on: boolean): boolean {
+    return this.set(MOTION_KEY, on);
   },
 
   // R8: persist piles (inherits R3 quota handling via set).

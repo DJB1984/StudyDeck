@@ -176,13 +176,18 @@ export interface QuizSession {
  * entry starts fresh.
  */
 export interface FlashSession {
-  /** Card ids in this round's order (linear mode). */
+  /** Card ids in this round's order (Standard mode). */
   order: string[];
-  /** Mastery-mode working queue (added in a later phase; unused in linear mode). */
+  /** Mastery-mode working queue; unused in Standard mode. */
   queue?: string[];
   /** Position within `order`; unused in mastery mode. */
   currentIdx: number;
-  drillMode: 'all' | 'learning';
+  /**
+   * Legacy, never written any more: the removed Piles mode saved `'learning'`
+   * here to mean "this round runs over the Still Learning subset". Read only so
+   * restoreSession can reject such a session instead of resuming it.
+   */
+  drillMode?: 'all' | 'learning';
   randomOrder: boolean;
   masteryMode: boolean;
 }

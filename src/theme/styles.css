@@ -1480,6 +1480,72 @@ button { font-family: inherit; cursor: pointer; }
 .review-nav-next { grid-column: 3; justify-self: end; }
 
 /* Flashcard screen */
+
+/* --- Mode atmospheres -----------------------------------------------------
+   The three study modes are three places in the same void, so the screen —
+   not the controls — carries the mode's hue. Registered as <color> rather
+   than left as plain custom properties because an unregistered property snaps
+   between values, and a veil that snaps next to a 700ms canvas crossfade reads
+   as a bug rather than as a transition. Browsers without @property still get
+   every color, just without the interpolation. */
+@property --mode-tint {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3093ec;
+}
+@property --mode-light {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #63b3ff;
+}
+@property --mode-fill {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1673cf;
+}
+@property --mode-veil {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(20, 38, 66, 0.55);
+}
+
+#flashcard-screen {
+  /* The one screen in the app with a single object on it, and nothing below the
+     fold to scroll to — so it claims the viewport as a stage rather than
+     stacking its content at the top and leaving the rest as void. The card then
+     takes every pixel the chrome doesn't (see #flash-card-wrap).
+     168px = #app's own 32px top + 64px bottom padding, plus the 72px the
+     ambience canvas hangs below the active area. That canvas is absolutely
+     positioned, so it still counts toward document height — reserving it is
+     what keeps an exactly-filled viewport from gaining a stray scrollbar. */
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 168px);
+  min-height: calc(100dvh - 168px);
+  --mode-tint: var(--mode-standard-tint);
+  --mode-light: var(--mode-standard-light);
+  --mode-fill: var(--mode-standard-fill);
+  --mode-veil: var(--mode-standard-veil);
+  /* Matches FlashAmbience's BLEND_MS so the painted field and the CSS chrome
+     land on the new mode together. */
+  transition: --mode-tint 700ms ease, --mode-light 700ms ease,
+    --mode-fill 700ms ease, --mode-veil 700ms ease;
+}
+#flashcard-screen[data-mode="mastery"] {
+  --mode-tint: var(--mode-mastery-tint);
+  --mode-light: var(--mode-mastery-light);
+  --mode-fill: var(--mode-mastery-fill);
+  --mode-veil: var(--mode-mastery-veil);
+}
+/* Deliberately NOT disabled by [data-motion="off"]: pausing stops the field's
+   ambient drift, not the switch between modes. The dots still morph across
+   BLEND_MS while paused, so the chrome has to travel with them or the hues snap
+   out from under a field that's still moving. Reduced motion is the real opt
+   out — there the canvas snaps too, and these must snap with it. */
+@media (prefers-reduced-motion: reduce) {
+  #flashcard-screen { transition: none; }
+}
+
 /* The mode pill plus the random toggle don't fit one line on a phone — wrap
    rather than squeeze, with a tighter row gap so a wrapped row still reads as
    one group. */
@@ -1491,7 +1557,7 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 10px;
 }
 
-/* Segmented pill — three mutually exclusive modes with a thumb that slides
+/* Segmented pill — two mutually exclusive modes with a thumb that slides
    between them. Sized off the toggle track's 22px height family so it sits on
    the same row as the checkbox without dominating it. */
 .mode-pill {
@@ -1499,33 +1565,33 @@ button { font-family: inherit; cursor: pointer; }
   display: inline-flex;
   padding: 3px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--mode-tint) 22%, var(--border));
   border-radius: 999px;
 }
 /* Width is one segment: the track's inner width (100% less the 3px padding on
-   each side) split three ways — so translateX(100%/200%) lands the thumb
-   exactly on the second and third labels. */
+   each side) split in half — so translateX(100%) lands the thumb exactly on
+   the second label. */
 .mode-pill-thumb {
   position: absolute;
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 6px) / 3);
-  background: var(--accent);
+  width: calc((100% - 6px) / 2);
+  /* The one control that takes the mode's own hue — it's the thing that names
+     the mode. Deeper than the ambience tint so the white label on top clears
+     4.5:1 in both modes. */
+  background: var(--mode-fill);
   border-radius: 999px;
   transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-.mode-pill-thumb[data-mode="piles"] {
-  transform: translateX(100%);
-}
 .mode-pill-thumb[data-mode="mastery"] {
-  transform: translateX(200%);
+  transform: translateX(100%);
 }
 .mode-pill-option {
   position: relative; /* above the thumb */
   cursor: pointer;
   user-select: none;
-  /* Equal widths, so the one-third thumb lands exactly on any label. */
+  /* Equal widths, so the half-width thumb lands exactly on either label. */
   flex: 1 0 0;
   min-width: 78px;
   text-align: center;
@@ -1564,23 +1630,172 @@ button { font-family: inherit; cursor: pointer; }
   .mode-pill-thumb { transition: none; }
 }
 
+/* Sits at the far end of the options row, past the two study options — it's a
+   display preference, not a choice about the round, and the gap says so. */
+.flash-motion-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+.flash-motion-btn svg { flex: none; }
+
 .flash-mode-hint {
   color: var(--text-secondary);
   font-size: 0.82rem;
   margin: 0 0 16px;
 }
+/* Ties the sentence describing the mode to the color the screen just became —
+   without it the atmosphere and the copy read as two unrelated changes. */
+.flash-mode-hint::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 9px;
+  border-radius: 50%;
+  background: var(--mode-tint);
+  vertical-align: 0.08em;
+}
 
-#flash-card-wrap {
+/* The mastery tally ("8 mastered · 4 left") is mode-specific information, so it
+   reads in the mode's own light. */
+.flash-progress-text { color: var(--mode-light); }
+
+/* Stacking context for the ambience canvas, which spans the card, the hint and
+   the sort buttons — Mastery's disc is centred on the whole region, not on the
+   card alone. Also the screen's growing region: it absorbs whatever height the options and
+   the mode hint above it didn't need, and hands it to the card. */
+#flash-active-area {
+  position: relative;
   display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+/* Sized at 46%/44% rather than left to the default farthest-corner: a radial
+   gradient that hasn't reached its transparent stop by the box edge gets cut
+   there, and the cut shows up as a lit rectangle floating in the void. The
+   negative insets stop at 24px — the app column's own side padding — so the
+   wash never widens the page on a phone. */
+#flash-active-area::before {
+  content: '';
+  position: absolute;
+  inset: -40px -24px -64px;
+  background: radial-gradient(
+    ellipse 46% 44% at 50% 50%,
+    var(--mode-veil),
+    transparent 100%
+  );
+  pointer-events: none;
+}
+/* The canvas reads these two off its own computed style, so tokens.css stays
+   the only place a mode hue is written down. They are the light variants: on a
+   near-black field the tint alone reads as mud. */
+.flash-ambience {
+  --amb-standard: var(--mode-standard-light);
+  --amb-mastery: var(--mode-mastery-light);
+  position: absolute;
+  /* Overhangs the active area so the field's light has somewhere to fall off
+     into; the vignette mask below then guarantees no edge of this box is ever
+     visible as a line. Side overhang matches the app column's padding so a
+     phone never gains a horizontal scrollbar. */
+  top: -32px;
+  left: -24px;
+  /* Sized explicitly to match those offsets rather than by `inset` + `auto`:
+     a canvas is a replaced element, so `width: auto` resolves to its intrinsic
+     attribute size — which this component sets from the measured box, and the
+     two then chase each other until the canvas blows past its max size. */
+  width: calc(100% + 48px);
+  height: calc(100% + 104px);
+  pointer-events: none;
+  /* Vignette, so no edge of the overhanging box can ever show as a line. The
+     #000 here is an alpha stop, not paint — in a mask the color channel is
+     ignored and only opacity is read, so this is "fully visible", not a
+     palette value. */
+  -webkit-mask-image: radial-gradient(ellipse 78% 82% at 50% 50%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 78% 82% at 50% 50%, #000 55%, transparent 100%);
+  /* Held below full strength so a star passing behind the hint line never
+     competes with the text. */
+  opacity: 0.85;
+}
+/* On a phone the card fills nearly the whole column, so a field sized to the
+   active area is entirely behind it. Both layers grow downward instead, giving
+   the atmosphere somewhere to actually be seen. */
+@media (max-width: 560px) {
+  .flash-ambience { height: calc(100% + 200px); }
+  #flash-active-area::before { inset: -32px -24px -160px; }
+  /* Mastery's tally is long enough to wrap on a phone, which was squeezing the
+     Back button into two lines beside it. Give it its own row instead. */
+  #flashcard-screen .screen-header { flex-wrap: wrap; row-gap: 6px; }
+  #flashcard-screen .flash-progress-text {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
+/* The card is the screen's whole subject, so it takes the leftover height
+   rather than a fixed 280px: flex:1 against the active area's growing region,
+   floored so a short laptop viewport still gets a card and not a letterbox,
+   capped so a tall monitor gets a card and not a billboard. The 500px cap puts
+   a full-width card at roughly 3:2 — a 6×4 index card — which is the ratio a
+   one-word front reads as generous in rather than as empty. */
+#flash-card-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
   justify-content: center;
-  margin: 32px 0 16px;
+  min-height: 280px;
+  max-height: 500px;
+  margin: 28px 0 20px;
 }
 #flash-card {
   width: 100%;
-  max-width: 480px;
-  height: 280px;
-  perspective: 1000px;
+  /* Room to breathe on either side inside the 912px column — the ambience needs
+     somewhere to be seen, and past ~760px the front's reading measure starts
+     working against it. */
+  max-width: 760px;
+  /* Stretch, not height:100% — the wrap's height comes from flex-grow, which a
+     percentage can't resolve against, and the card's faces are absolutely
+     positioned, so the failed percentage collapses it to zero. */
+  align-self: stretch;
+  perspective: 1400px;
   cursor: pointer;
+}
+/* Both of these have to sit after the base rule above — a media query adds no
+   specificity, so source order is the only thing that decides. */
+@media (max-width: 560px) {
+  /* The header, the options row and the mode hint all wrap here, so there is
+     far less leftover height to hand the card, and a phone-width card allowed
+     to reach the desktop cap becomes a portrait slab. Floor and cap both come
+     down, and the wrap's margins tighten to spend that height on the card. */
+  #flash-card-wrap {
+    min-height: 300px;
+    max-height: 420px;
+    margin: 20px 0 16px;
+  }
+  /* The phone ambience hangs 168px below the active area (see above), which no
+     amount of reserving would fit — so this viewport keeps the full stage and
+     accepts the field trailing off past the fold, exactly as it did before. */
+  #flashcard-screen { min-height: calc(100dvh - 96px); }
+}
+/* Width follows the height that's actually available. The card's floor is a
+   fixed 280px, so on a short viewport a full 760px card would flatten into a
+   letterbox — narrowing it instead keeps the proportions of a card at every
+   window size, which is the thing that made the old 480×280 read as one. */
+@media (max-height: 820px) {
+  #flash-card { max-width: 640px; }
+}
+/* Shorter still — a landscape phone, or a laptop with a toolbar-heavy browser.
+   The screen stops claiming a full viewport here: there is no leftover height
+   to hand out, and insisting on one would only push the sort buttons under the
+   fold. */
+@media (max-height: 680px) {
+  #flashcard-screen { min-height: 0; }
+  #flash-card { max-width: 560px; }
+  #flash-card-wrap { margin: 20px 0 16px; }
 }
 .card-inner {
   position: relative;
@@ -1599,17 +1814,28 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px;
+  /* Both scale with the card. A bigger panel at the old 1.3rem/32px would just
+     be more empty surface — the type has to grow with the frame or the card
+     reads as under-filled rather than as generous. Capped at 1.75rem: past that
+     a two-line definition starts breaking across the card awkwardly. */
+  padding: clamp(32px, 4.5vw, 56px);
   text-align: center;
-  font-size: 1.3rem;
-  line-height: 1.6;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  font-size: clamp(1.3rem, 1.05rem + 0.85vw, 1.75rem);
+  line-height: 1.55;
+  /* A tonal cast off the mode hue, not a wash — the panel is still Surface,
+     lifted a few percent toward the atmosphere it's floating in. Depth stays
+     tonal; no shadow is added at rest. */
+  background: linear-gradient(
+    158deg,
+    color-mix(in srgb, var(--mode-tint) 9%, var(--surface)) 0%,
+    var(--surface) 62%
+  );
+  border: 1px solid color-mix(in srgb, var(--mode-tint) 32%, var(--border));
   border-radius: var(--radius);
 }
 .card-back {
   transform: rotateY(180deg);
-  color: var(--accent-light);
+  color: var(--mode-light);
 }
 #flash-card.sort-known {
   animation: flash-slide-out 350ms ease forwards;
@@ -1617,8 +1843,11 @@ button { font-family: inherit; cursor: pointer; }
 #flash-card.sort-learning {
   animation: flash-shake 350ms ease;
 }
+/* Ends low and to the right rather than straight out the side, and tips as it
+   goes: the card is dismissed toward the Know It button under it, so it reads
+   as being filed rather than as merely leaving the screen. */
 @keyframes flash-slide-out {
-  to { transform: translateX(120%) rotate(8deg); opacity: 0; }
+  to { transform: translate(120%, 12%) rotate(8deg); opacity: 0; }
 }
 @keyframes flash-shake {
   0%, 100% { transform: translateX(0); }
@@ -1626,12 +1855,14 @@ button { font-family: inherit; cursor: pointer; }
   75% { transform: translateX(10px); }
 }
 .flash-hint {
+  position: relative;
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.85rem;
   margin: 0 0 24px;
 }
 .flash-actions {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1657,7 +1888,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .flash-nav-btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--surface-hover) 88%, #fff);
-  border-color: var(--border-strong);
+  border-color: color-mix(in srgb, var(--mode-tint) 45%, var(--border-strong));
 }
 .flash-nav-btn:active:not(:disabled) { transform: scale(0.96); }
 .flash-nav-btn:disabled {
@@ -1679,11 +1910,23 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-secondary);
   border-color: transparent;
 }
+/* The end of a round is a moment, and the screen is now full-height — so the
+   card sits in the middle of the stage the flashcard just left rather than
+   clinging to the top with the void below it. */
+#flash-complete-area {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+}
 .flash-complete-card {
   padding: 32px;
   text-align: center;
   max-width: 420px;
-  margin: 40px auto 0;
+  /* The round ends in the mode it ran in — the card keeps the atmosphere's edge
+     rather than reverting to a neutral panel the moment the field disappears. */
+  border-color: color-mix(in srgb, var(--mode-tint) 28%, var(--border));
 }
 .flash-complete-card h3 { margin-bottom: 12px; }
 .flash-complete-card p { color: var(--text-secondary); margin-bottom: 20px; }

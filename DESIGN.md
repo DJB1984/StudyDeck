@@ -11,6 +11,10 @@ colors:
   starlight-blue-deep: "#0267c7"
   nebula-ember: "#ef852e"
   nebula-pink: "#c841a5"
+  mode-standard-fill: "#1673cf"
+  mode-mastery-tint: "#a2519a"
+  mode-mastery-light: "#d68cc9"
+  mode-mastery-fill: "#8f4489"
   text-primary: "#e1e5eb"
   text-muted: "#79818d"
   on-accent: "#ffffff"
@@ -104,10 +108,10 @@ Typography moved from a zero-webfont, borrowed-OS-font system to three purposefu
 
 **Key Characteristics:**
 - Solid tonal-layered panels on a deep-space navy void — no blur, no translucency anywhere
-- One accent (Starlight Blue) for everyday interactive/selected state; one reserved gradient (Nebula) for exactly one place: Home's hero
+- One accent (Starlight Blue) for everyday interactive/selected state; Nebula reserved to two places — Home's hero gradient, and the muted per-mode casts of the two Flashcard atmospheres
 - Three purposeful webfonts (Inter / Space Grotesk / JetBrains Mono), replacing the prior system-font-only rule
 - Correct/incorrect green and red are feedback-only, never decorative (carried over unchanged)
-- A procedural starfield (small twinkling dots) decorates Home's header only — nowhere else in the app
+- Procedural star fields appear in exactly two places: the static decoration behind Home's header, and Flashcards' live per-mode atmosphere
 
 ## Colors
 
@@ -120,6 +124,14 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 
 ### Nebula (reserved — see Named Rules)
 - **Nebula Ember** (`#ef852e`) / **Nebula Pink** (`#c841a5`): combine with Starlight Blue in a conic gradient (`--nebula-gradient`) used by exactly one thing: the radial glow behind Home's hero header. Never appears on interactive chrome.
+
+### Flashcard Mode Atmospheres (Nebula's one other home)
+Nebula's second sanctioned appearance, and its only one outside Home: the two Flashcard study modes. Each mode owns a four-token family (`--mode-{name}-tint / -light / -fill / -veil`), projected onto the screen through four scoped properties (`--mode-tint`, `--mode-light`, `--mode-fill`, `--mode-veil`) that `#flashcard-screen[data-mode]` reassigns.
+
+- **Standard** — Starlight Blue (`#3093ec` / `#63b3ff` / fill `#1673cf`): the system's everyday accent, unchanged. The mode that adds nothing also changes nothing.
+- **Mastery** — muted Pink (`#a2519a` / `#d68cc9` / fill `#8f4489`): Nebula Pink pulled far down in saturation into a deep-space cast.
+
+`-tint` is the identity hue (rims, the card's tonal cast, the hint dot); `-light` is the readable-on-void variant (flipped-card answer text, the progress tally, the ambient particles); `-fill` is a deliberately deeper tone used only where white sits on top, so every mode's pill label clears 4.5:1; `-veil` is the radial ground wash. All four are registered via `@property` as `<color>`, so switching modes interpolates the hue over 700ms instead of snapping.
 
 ### Neutral
 - **Void Navy** (`#080d16`): the page background — a near-black with a cool navy undertone, never pure `#000`.
@@ -136,7 +148,9 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 ### Named Rules
 **The Signal Rule.** Starlight Blue is the only color that means "you can act on this" or "this is selected." It appears on exactly one thing per view — the current primary action, the active selection, or the in-progress fill — and never as decoration.
 
-**The Nebula-Is-Rare Rule.** The Nebula gradient exists in exactly one place system-wide: Home's hero glow. It is never a button fill, a selection state, or chart/decoration color — diluting it past that one spot breaks both its own impact and Starlight Blue's claim to "interactive."
+**The Nebula-Is-Rare Rule.** Nebula has exactly two sanctioned homes system-wide: the full-saturation conic gradient behind Home's hero, and the deeply muted cast of Flashcards' Mastery atmosphere. Nowhere else — never a button fill, never a chart or decoration color. Anything beyond those two breaks both Nebula's own impact and Starlight Blue's claim to "interactive."
+
+**The Atmosphere-Is-Not-A-Control Rule.** A mode's hue describes the round the student is in; it never says "act here." Ambience, rims, tonal casts and the mode pill's own thumb (the one control whose entire job is naming the mode) take the mode color. Every other control on the screen — the primary button, ghost buttons, focus rings — stays Starlight Blue. This is what lets a whole screen turn nebula pink without Starlight Blue losing its meaning.
 
 **The Feedback-Only Rule.** Success Green and Alert Red exist solely to answer "was this right or wrong." They never appear as generic UI accents, chart colors, or decoration outside a quiz-feedback context.
 
@@ -151,7 +165,7 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 ### Hierarchy
 - **Display** (700, `2rem`, `1.25` line-height, Space Grotesk): `h1` only — currently just Home's "StudyDeck" hero wordmark, rendered with the gradient-text treatment (see Components).
 - **Heading** (700, `1.4rem`/`1.1rem`, Space Grotesk): `h2`/`h3` — screen titles ("Results", "Flashcards"), modal titles, mode-card names.
-- **Question** (400, `1.2rem`, `1.7` line-height, Inter): the primary reading role — quiz question text and flashcard front/back copy (flashcard runs marginally larger, `1.3rem`/`1.6`).
+- **Question** (400, `1.2rem`, `1.7` line-height, Inter): the primary reading role — quiz question text and flashcard front/back copy. Flashcard copy is the one fluid role in the system: `clamp(1.3rem, 1.05rem + 0.85vw, 1.75rem)` at `1.55`, because the card it sits in is itself sized off the viewport (see Flashcard, below) and fixed type in a growing frame reads as an under-filled card rather than a generous one.
 - **Body** (400, `1rem`, Inter): default UI copy, answer-button and button label text.
 - **Label** (400, `0.72–0.9rem`, usually Text Muted, Inter): the workhorse size for surrounding chrome — meta text, progress labels, hints, breakdown rows, form descriptions.
 - **Mono** (400, `0.85rem`, JetBrains Mono): the deck-JSON paste textarea and the quiz session timer; never used for prose.
@@ -162,6 +176,8 @@ A near-black navy canvas with tonal-layered solid panels, one confident blue acc
 ## Layout
 
 Unchanged from the prior system: a single centered column, `max-width: 960px`, with `32px` top / `24px` side / `64px` bottom padding. No sidebar, no multi-column dashboard, no persistent chrome outside that column. One full-page screen mounts at a time and fades/slides in (150ms). Responsive behavior comes from CSS Grid `auto-fill`/`auto-fit` + `minmax()` rather than explicit breakpoints. The spacing scale (`8 / 12 / 16 / 24 / 32px`) governs gaps and internal padding consistently.
+
+Every screen is a top-anchored document inside that column, with one exception: Flashcards fills the viewport height and sizes its card off the leftover space (see Components → Flashcard). It qualifies because the card is the screen's entire content; a screen with a list, a form, or a results breakdown on it does not, however much void sits under it.
 
 ## Elevation & Depth
 
@@ -205,7 +221,21 @@ No persistent top nav — each screen is a full-page state. Practice, Test, and 
 Home's header sits inside `.home-hero`: a radial navy glow plus a static procedural starfield (`Starfield.tsx` — ~48 small dots at fixed pseudo-random positions, gently twinkling, `prefers-reduced-motion`-aware) behind the title row only. The "StudyDeck" `h1` renders with a top-to-bottom white-to-Text-Hero-End (`#abbfdf`) gradient-text treatment, standing alone as the wordmark. This is the only screen with either the starfield or the gradient text; everywhere else stays on the plain Void Navy background with solid Text Primary type.
 
 ### Flashcard (signature interaction)
-Unchanged from the prior system: a real 3D CSS flip (`perspective: 1000px`, `rotateY(180deg)`, `400ms ease`) reveals the answer in Starlight Blue Light text. "Know It" slides the card off-screen with rotation and fade; "Still Learning" shakes it in place.
+A real 3D CSS flip (`perspective: 1400px`, `rotateY(180deg)`, `400ms ease`) reveals the answer in the mode's own light. "Know It" slides the card off-screen with rotation and fade; "Still Learning" shakes it in place.
+
+**The card is sized as a stage, not as a panel.** Flashcards is the one screen in the app with a single object on it and nothing below the fold, so `#flashcard-screen` is a full-height flex column (`100dvh` less `#app`'s padding and the ambience canvas's bottom overhang) and the card takes every pixel the chrome above it doesn't — `flex: 1` between a `280px` floor and a `500px` ceiling, `760px` wide at most. That puts a full-size card at roughly 3:2, the proportions of a 6×4 index card, which is what lets a one-word front read as generous rather than as empty. Because the floor is fixed, the width steps down with the viewport height (`640px` under `820px` tall, `560px` under `680px`) so a short window gets a smaller card instead of a letterboxed one. Padding and type scale with the frame.
+
+This is the only screen permitted to claim the viewport this way. Every other screen stays a top-anchored document in the standard column — the flashcard earns it by being the entire content of its screen.
+
+### Flashcard Atmosphere (second signature moment)
+Behind the flashcard sits `FlashAmbience.tsx`, a Canvas 2D field that gives each study mode its own physics — the visible difference between the two modes, and the only animated decoration in the app outside Home's starfield.
+
+- **Standard** — stars breathe in place around fixed homes and twinkle out of phase. Nothing travels, because nothing is at stake.
+- **Mastery** — an accretion disc: inner particles sweep faster than outer ones around a foreshortened ellipse, with a central core whose brightness scales with the share of the deck already mastered.
+
+Both are pure functions of `(particle, time)` over one fixed pool, so a mode switch **crossfades by lerping each particle between its two mode positions** — the field physically flies from one behavior into the other over 700ms, matched to the CSS `@property` hue transition. Sorting a card fires a small expanding ring off the Mastery core. The canvas overhangs the active area and carries a radial vignette mask so no edge of it is ever visible as a line; it pauses when the tab is hidden or it scrolls out of view, and under `prefers-reduced-motion` it renders one composed still frame per mode.
+
+**It is frozen by default.** Decoration is opt-in on a study screen — a compact "Play motion" button in the options row starts it, the label names the action it will take rather than asking anyone to read state off a switch, and the choice is remembered per device. The atmosphere survives the freeze intact: hue, card rim, tonal cast and a composed still frame all read exactly as they do in motion, so the default costs the mode nothing. Motion off also suppresses the 700ms hue interpolation — the effect is one thing, and half of it left running on a screen someone asked to hold still is worse than none of it.
 
 ### Mode Icons
 Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `1.6` stroke width, no fill) instead of color emoji — Text Muted at rest, Starlight Blue Light when the card is selected. Replaces the prior full-color-emoji icons, which were the one ornamental element left over from before this redesign.
@@ -215,7 +245,7 @@ Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `
 
 ### Segmented Pill
 - **Style:** a fully-rounded track (Panel fill, Border Hairline, `3px` padding) holding equal-width labels, with a Starlight Blue thumb one segment wide (`calc((100% - 6px) / n)`) that slides between them by `translateX(100% × index)` (`220ms`, `cubic-bezier(0.4, 0, 0.2, 1)`, suppressed under `prefers-reduced-motion`). The selected label turns white; unselected stay Text Muted.
-- **Use for:** picking between two or three named, mutually exclusive modes of the same activity (Flashcards' Standard / Piles / Mastery). Use the Toggle instead for an on/off option layered on top of a default — a toggle leaves its off state unnamed, which is exactly wrong when the choices are all real modes. Cap it at three: past that the labels get too narrow to read at this size, and it wants a dropdown.
+- **Use for:** picking between two or three named, mutually exclusive modes of the same activity (Flashcards' Standard / Mastery). Use the Toggle instead for an on/off option layered on top of a default — a toggle leaves its off state unnamed, which is exactly wrong when the choices are all real modes. Cap it at three: past that the labels get too narrow to read at this size, and it wants a dropdown.
 - **Markup:** visually-hidden radios inside the labels (same hidden-input treatment as Toggle) so the group is keyboard-operable and announces as one control.
 
 ## Do's and Don'ts
@@ -228,7 +258,8 @@ Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `
 
 ### Don't:
 - **Don't** add `backdrop-filter`/blur anywhere — this system is solid, tonal-layered panels, not glass.
-- **Don't** use the Nebula gradient on anything interactive — it lives on Home's hero only (The Nebula-Is-Rare Rule).
+- **Don't** use the Nebula gradient on anything interactive, or take its hues anywhere beyond Home's hero and the Flashcard mode atmospheres (The Nebula-Is-Rare Rule).
+- **Don't** let a mode's hue reach a control that isn't the mode pill's thumb — Starlight Blue owns every action on the screen, whatever color the atmosphere is (The Atmosphere-Is-Not-A-Control Rule).
 - **Don't** add drop shadows to static, at-rest surfaces — depth comes from tonal layering, not elevation (The Shadow-Is-Motion Rule).
 - **Don't** add bright, multi-color, gamified educational-app styling — badges, confetti, mascots, cheerful illustration, color emoji icons. The project is explicitly "not a Quizlet clone."
 - **Don't** style focus states with a glow or ring. The established cue is a border-color shift to Starlight Blue Light only.

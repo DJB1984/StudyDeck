@@ -173,7 +173,7 @@ studydeck.html
                        getAnswerRecord(). Tracks first-attempt correctness only — retries invisible to stats.
                        Owns session timer (start/stop). Test mode tracks per-question time.
 
-    const FlashEngine — startFlash(questions, options), flip(), sortCard(pile), drillPile(pile).
+    const FlashEngine — start(options), flip(), sortCard(pile), stepBack()/stepForward(), goBack().
                         Pile state (known/learning by question id) read/written via Storage.
                         Organized so a future spaced-repetition scheduler can replace sortCard()
                         without touching the rest of the module.
@@ -208,13 +208,15 @@ Home → Mode Select → Quiz/Flashcard → Stats → Home
 
 **Stats screen:** Pie chart (correct/incorrect, purple/dark). Score text. Session duration displayed. Scrollable question list — correct ones collapsed to a single line, wrong ones expanded showing chosen answer (or "You didn't answer this one") vs correct answer + copy-to-AI button. Two buttons: Retake / Review. Retake restarts immediately in the same question order.
 
-**Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Progress counter. Options row: a Standard | Piles | Mastery segmented pill (sliding thumb; Standard default) with a hint line describing the selected mode, plus a random-order toggle. Standard = a browse over the whole deck, marking nothing; Piles = one sorting pass over the Still Learning subset (`drillMode: 'learning'`); Mastery = whole deck, sorted, with missed cards requeued until all are known.
+**Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Progress counter. Options row: a Standard | Mastery segmented pill (sliding thumb; Standard default) with a hint line describing the selected mode, plus a random-order toggle. Standard = a browse over the whole deck, marking nothing; Mastery = whole deck, sorted into piles, with missed cards requeued until all are known. (A third mode, Piles — one sorting pass over the Still Learning subset — was removed 2026-08-16; sessions saved by it are rejected on restore rather than resumed.)
 
-Bottom controls follow the mode. Standard shows only two icon-only arrow buttons (previous / next card) — it has no verdict to record, so the pile buttons would have nothing to write. Piles and Mastery show Undo / Still Learning / Know It. Keyboard splits by axis in all three modes: ↑/↓ flip the card (as do Space and Enter), while ←/→ move the round on — stepping between cards in Standard, and undo / Know It in the sorting modes. Still Learning is button-only; the axis rule leaves it no direction. Standard is `!masteryMode && drillMode === 'all'` (`FlashEngine.isBrowseMode()`) — no separate stored flag, so a resumed session and the mode pill can't disagree. Its cursor moves via `stepBack()` / `stepForward()`, which touch neither pile nor the undo stack; stepping off the last card ends the round.
+The card is sized off the viewport, not off a fixed box. `#flashcard-screen` is a full-height flex column (`min-height: calc(100dvh - 168px)` — `#app`'s 32px/64px vertical padding plus the 72px the ambience canvas hangs below the active area, which is absolutely positioned and so still counts toward document height). `#flash-active-area` and `#flash-card-wrap` both `flex: 1`, so the card absorbs whatever height the header, options row and mode hint leave: `280px` floor, `500px` ceiling, `760px` max width. `#flash-card` uses `align-self: stretch` rather than `height: 100%` — the wrap's height comes from flex-grow, which a percentage can't resolve against, and the faces are `position: absolute`, so a failed percentage collapses the card to zero. Because the floor is fixed, max width steps down with viewport height (`640px` under 820px tall, `560px` under 680px, where the screen also stops claiming a full viewport) so short windows get a smaller card rather than a letterboxed one; face padding and font-size are `clamp()`ed to the same curve. Round-complete centers its card in the same stage.
+
+Bottom controls follow the mode. Standard shows only two icon-only arrow buttons (previous / next card) — it has no verdict to record, so the pile buttons would have nothing to write. Mastery shows Undo / Still Learning / Know It. Keyboard splits by axis in both modes: ↑/↓ flip the card (as do Space and Enter), while ←/→ move the round on — stepping between cards in Standard, and undo / Know It in Mastery. Still Learning is button-only; the axis rule leaves it no direction. Standard is `!masteryMode` (`FlashEngine.isBrowseMode()`) — no separate stored flag, so a resumed session and the mode pill can't disagree. Its cursor moves via `stepBack()` / `stepForward()`, which touch neither pile nor the undo stack; stepping off the last card ends the round.
 
 ## Visual Design
 
-**Design language:** "Starfield" — a deep-space navy system. Solid, tonal-layered panels (no `backdrop-filter`/glass). One restrained accent (Starlight Blue) for everyday interactive/selected state; a reserved multi-hue "Nebula" gradient held back for exactly Home's hero. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
+**Design language:** "Starfield" — a deep-space navy system. Solid, tonal-layered panels (no `backdrop-filter`/glass). One restrained accent (Starlight Blue) for everyday interactive/selected state; the multi-hue "Nebula" palette held back to two places — Home's hero gradient, and the deeply muted cast of Flashcards' Mastery atmosphere, where the hue describes the round but never a control. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
 
 **Color tokens:**
 ```css
@@ -226,6 +228,10 @@ Bottom controls follow the mode. Standard shows only two icon-only arrow buttons
 --accent-light: #63b3ff;              /* hover/focus/text-on-dark */
 --accent-deep: #0267c7;               /* button gradient base */
 --nebula-gradient: conic-gradient(from 200deg, #ef852e, #c841a5, #3093ec, #ef852e); /* mark + Home hero only */
+/* Flashcard mode atmospheres — Nebula's one other sanctioned home. Each mode
+   owns tint / light / fill / veil; #flashcard-screen[data-mode] projects the
+   chosen family onto --mode-tint/-light/-fill/-veil. */
+--mode-mastery-tint: #a2519a; --mode-mastery-light: #d68cc9; --mode-mastery-fill: #8f4489;
 --text-primary: #e1e5eb;
 --text-secondary: #79818d;
 --correct: #5dc879;
@@ -249,8 +255,9 @@ border-radius: var(--radius);
 - Screen transitions: fade + 4px vertical slide (150ms ease-out)
 - Answer button select: scale(0.97) on press, color fill on result
 - Flashcard flip: CSS 3D rotateY 180deg (400ms ease, preserve-3d)
-- Card sort (Know It): slide right + fade; Still Learning: brief shake + return
+- Card sort (Know It): slide right and down + fade; Still Learning: brief shake + return
 - Stats pie chart: Chart.js animates on mount
+- Flashcard mode atmosphere (`FlashAmbience.tsx`): a Canvas 2D field behind the card with per-mode physics — Standard breathes in place, Mastery orbits a core that brightens with progress. Both sample one fixed particle pool, so a mode switch lerps each particle between its two mode positions (700ms, matched to the `@property` hue transition). **Frozen by default** — a "Play motion" / "Pause motion" button in the options row starts it, and the choice persists per device via `Storage.getAmbientMotion()`. Paused is treated identically to `prefers-reduced-motion`: same frozen clock, same snap instead of a crossfade, one still-frame code path. Also pauses when the tab is hidden or the canvas scrolls out of view.
 
 **Flashcard flip implementation:**
 ```css
@@ -293,6 +300,12 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
   "known": ["q1", "q3", "q7"],       // question ids in Know It pile
   "learning": ["q2", "q4", "q5"]    // question ids in Still Learning pile
 }
+
+// Whether Flashcards' decorative ambient motion may animate. Absent = off:
+// decoration is opt-in. A device preference, not deck data — never mirrored to
+// Supabase, and not cleared on logout (clearLocal scrubs content, not comfort
+// settings).
+"studydeck_ambient_motion": true
 ```
 
 Piles use question `id` fields (not array indices) so state survives question reordering.
