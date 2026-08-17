@@ -1537,13 +1537,14 @@ button { font-family: inherit; cursor: pointer; }
   --mode-fill: var(--mode-mastery-fill);
   --mode-veil: var(--mode-mastery-veil);
 }
-/* Motion off means off: the 700ms hue interpolation is part of the same effect
-   as the moving field, so it snaps with it rather than surviving as a stray
-   animated thing on a screen the student asked to hold still. */
+/* Deliberately NOT disabled by [data-motion="off"]: pausing stops the field's
+   ambient drift, not the switch between modes. The dots still morph across
+   BLEND_MS while paused, so the chrome has to travel with them or the hues snap
+   out from under a field that's still moving. Reduced motion is the real opt
+   out — there the canvas snaps too, and these must snap with it. */
 @media (prefers-reduced-motion: reduce) {
   #flashcard-screen { transition: none; }
 }
-#flashcard-screen[data-motion="off"] { transition: none; }
 
 /* The mode pill plus the random toggle don't fit one line on a phone — wrap
    rather than squeeze, with a tighter row gap so a wrapped row still reads as

@@ -26,9 +26,11 @@ interface FlashAmbienceProps {
   /** Mastery only: 0–1 share of the working set already mastered. */
   intensity: number;
   /**
-   * Freeze the field on one composed still frame — the default. Treated
-   * exactly like `prefers-reduced-motion`: same frozen clock, same snap
-   * instead of a crossfade, so there is only one still-frame code path.
+   * Freeze the field on one composed still frame — the default. This stops the
+   * ambient clock (breathing, orbiting, twinkle), NOT the mode crossfade: a
+   * paused switch still flies the dots from one form into the other, it just
+   * does so on a frozen clock so the two endpoints are the two still frames.
+   * `prefers-reduced-motion` is the stricter case and snaps instead.
    */
   paused: boolean;
 }
@@ -43,6 +45,12 @@ const PULSE_MS = 900;
 function pseudoRandom(seed: number): number {
   const x = Math.sin(seed) * 43758.5453;
   return x - Math.floor(x);
+}
+
+// The one preference that suppresses the crossfade itself. Read live rather
+// than captured: it can change mid-session.
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 interface Particle {
@@ -171,13 +179,13 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
       if (toRef.current === mode) return;
       fromRef.current = blendRef.current >= 1 ? toRef.current : fromRef.current;
       toRef.current = mode;
-      // Paused: no crossfade to run, so land on the new mode's still frame
-      // directly rather than freezing halfway through a morph.
-      blendRef.current = paused ? 1 : 0;
+      // Paused still crossfades — the dots morph between the two modes' still
+      // frames. Only reduced motion lands on the new frame directly.
+      blendRef.current = prefersReducedMotion() ? 1 : 0;
       blendStartRef.current = performance.now();
       pulsesRef.current = [];
       syncRef.current?.();
-    }, [mode, paused]);
+    }, [mode]);
 
     // Redraws the frozen frame when something it depends on changes while the
     // loop is stopped, and starts/stops the loop when motion is toggled.
@@ -240,8 +248,9 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
             : Math.min(1, (now - blendStartRef.current) / BLEND_MS);
         blendRef.current = raw;
         const k = easeInOut(raw);
-        // Frozen clock when paused or under reduced motion: one composed still
-        // frame, which is still a different picture per mode.
+        // Frozen clock when paused or under reduced motion. The blend above is
+        // deliberately not frozen with it: a paused switch travels between the
+        // two modes' still frames, it just doesn't drift once it arrives.
         const still = pausedRef.current || reduced.matches;
         const t = still ? 6 : now / 1000;
 
@@ -316,17 +325,23 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
 
       function frame(now: number) {
         draw(now);
-        raf = requestAnimationFrame(frame);
+        // draw() advances the blend, so a paused crossfade ends here: the frame
+        // that lands on k=1 is the last one scheduled.
+        raf = shouldAnimate() ? requestAnimationFrame(frame) : 0;
       }
 
       function shouldAnimate() {
-        return !pausedRef.current && !reduced.matches && visible && !document.hidden;
+        if (reduced.matches || !visible || document.hidden) return false;
+        // Paused freezes the ambient clock, but an unfinished mode crossfade
+        // still needs frames — that morph is motion the student asked for.
+        return !pausedRef.current || blendRef.current < 1;
       }
 
       // The single place that decides whether frames are being produced. Every
       // input that can change that answer — the motion toggle, reduced-motion,
-      // tab visibility, scrolling out of view — routes here, so there is one
-      // rule rather than four overlapping ones.
+      // tab visibility, scrolling out of view, a mode switch opening a
+      // crossfade — routes here, so there is one rule rather than five
+      // overlapping ones.
       function sync() {
         if (shouldAnimate()) {
           if (!raf) raf = requestAnimationFrame(frame);
