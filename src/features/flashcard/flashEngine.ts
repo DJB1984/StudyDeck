@@ -9,11 +9,9 @@ import { Storage } from '../../lib/Storage';
 import { shuffleArray } from '../../lib/shuffle';
 
 export interface FlashStartOptions {
-  drillMode?: 'all' | 'learning';
   randomOrder?: boolean;
   /** Interleave Still Learning cards back into the rotation until all are Known. */
   masteryMode?: boolean;
-  customDeck?: FlashCard[];
   /** Skip the saved-session resume and start a fresh round from the top. */
   forceRestart?: boolean;
 }
@@ -52,7 +50,6 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
     roundKnown: new Set<string>(),
     roundLearning: new Set<string>(),
     flipped: false,
-    drillMode: 'all' as 'all' | 'learning',
     randomOrder: false,
     masteryMode: false,
     // One entry per sort this session, recording the pile AND round-tally
@@ -66,13 +63,12 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
       wasRoundLearning: boolean;
     }[],
 
-    // A "round" is one pass through `order`; Know It and Still Learning both just
-    // advance currentIdx. The round-complete screen then offers a new round
-    // limited to whatever got marked Still Learning this time. In mastery mode
-    // the round instead runs until `queue` empties.
+    // A "round" is one pass through `order`: Standard walks it a card at a time
+    // and ends by stepping off the last one. Mastery instead runs until `queue`
+    // empties, which only happens once every card has been marked Know It.
     //
     // R12: entry resumes a saved unfinished session (a reload or a Back-then-
-    // reopen lands on the same card with the same toggles); only an explicit
+    // reopen lands on the same card with the same options); only an explicit
     // restart (forceRestart) or a finished/stale session starts fresh.
     start(options: FlashStartOptions = {}) {
       const state = Storage.getFlashState(this.title);
@@ -80,22 +76,13 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
       this.learning = new Set(state.learning);
       this.undoStack = [];
 
-      if (!options.forceRestart && !options.customDeck && state.session) {
+      if (!options.forceRestart && state.session) {
         if (this.restoreSession(state.session)) return;
       }
 
-      this.drillMode = options.drillMode ?? 'all';
       this.randomOrder = !!options.randomOrder;
       this.masteryMode = !!options.masteryMode;
-
-      if (options.customDeck) {
-        this.deck = options.customDeck;
-      } else if (this.drillMode === 'learning') {
-        // "Still Learning" = not yet marked Know It — includes never-seen cards.
-        this.deck = this.allQuestions.filter((q) => !this.known.has(q.id));
-      } else {
-        this.deck = this.allQuestions;
-      }
+      this.deck = this.allQuestions;
 
       const ids = shuffleIfRandom(
         this.deck.map((q) => q.id),
@@ -120,13 +107,16 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
     // start() falls through to its fresh-start path.
     restoreSession(session: FlashSession): boolean {
       if (sessionIsFinished(session)) return false;
+      // Saved by the removed Piles mode: its `order` is a narrowed working set
+      // (Still Learning only), and neither surviving mode walks a subset of the
+      // deck. Start fresh rather than resume a round nothing can run.
+      if (session.drillMode === 'learning') return false;
       const cards = session.order.map((id) => this.allQuestions.find((q) => q.id === id));
       if (cards.some((c) => !c)) return false; // deck edited under the saved order
 
       const queue = session.queue ?? [];
       if (session.masteryMode && queue.some((id) => !session.order.includes(id))) return false;
 
-      this.drillMode = session.drillMode;
       this.randomOrder = session.randomOrder;
       this.masteryMode = session.masteryMode;
       this.deck = cards as FlashCard[];
@@ -135,6 +125,9 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
       this.queue = session.masteryMode ? queue.slice() : [];
 
       // The round tallies aren't persisted — derive them from the piles instead.
+      // Only mastery has any to derive: a browse round marks nothing, and the
+      // piles its cards sit in came from earlier sessions, so crediting them
+      // here would invent a tally the student never made.
       this.roundKnown = new Set();
       this.roundLearning = new Set();
       if (this.masteryMode) {
@@ -147,17 +140,6 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
           } else if (this.learning.has(id)) {
             this.roundLearning.add(id);
           }
-        }
-      } else if (!this.isBrowseMode()) {
-        // Every card before currentIdx was sorted in this round, and its pile
-        // membership is exactly the pile it was sorted into. Skipped for a
-        // browse round, where the cards behind the cursor were only looked at —
-        // any pile they sit in came from an earlier session, and crediting it to
-        // this round would invent a tally the student never made.
-        for (let i = 0; i < this.currentIdx; i++) {
-          const id = this.order[i];
-          if (this.known.has(id)) this.roundKnown.add(id);
-          else if (this.learning.has(id)) this.roundLearning.add(id);
         }
       }
       this.flipped = false;
@@ -176,13 +158,11 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
     },
 
     // Standard mode = the whole deck, walked one card at a time, with no pile
-    // sorting at all — the student just flips through. It's the projection of
-    // these two fields rather than a third stored flag, so a resumed session
-    // (and the UI's mode pill) can't disagree about which mode is running.
-    // A continue-with-Still-Learning round runs over a custom deck but keeps
-    // drillMode 'learning', so it sorts like the Piles round it came from.
+    // sorting at all — the student just flips through. Kept as a named check
+    // rather than `!masteryMode` at each call site because the callers care
+    // about "does this round record verdicts?", not about which flag says so.
     isBrowseMode(): boolean {
-      return !this.masteryMode && this.drillMode === 'all';
+      return !this.masteryMode;
     },
 
     // Standard mode's navigation. Deliberately separate from sortCard(): a
@@ -224,35 +204,10 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
       this.flipped = !this.flipped;
     },
 
-    // The only method that decides pile assignment (keep it that way). The two
-    // bodies below differ ONLY in how they advance — pile membership is still
-    // decided in exactly one place per mode, and nothing outside here writes the
-    // piles, so the spaced-repetition seam stays intact.
+    // The only method that decides pile assignment (keep it that way) — the seam
+    // a spaced-repetition scheduler would replace. Mastery mode is the only
+    // round that gives verdicts; Standard browses and records nothing.
     sortCard(pile: 'known' | 'learning') {
-      if (this.masteryMode) this.sortCardMastery(pile);
-      else this.sortCardLinear(pile);
-    },
-
-    sortCardLinear(pile: 'known' | 'learning') {
-      const id = this.order[this.currentIdx];
-      this.pushUndo(id);
-      if (pile === 'known') {
-        this.known.add(id);
-        this.learning.delete(id);
-        this.roundKnown.add(id);
-      } else {
-        this.learning.add(id);
-        this.known.delete(id);
-        this.roundLearning.add(id);
-      }
-      // Advance BEFORE persisting: the saved session must point at the next
-      // unsorted card, or a reload re-serves the card just sorted.
-      this.currentIdx++;
-      this.persist();
-      this.flipped = false;
-    },
-
-    sortCardMastery(pile: 'known' | 'learning') {
       const id = this.queue.shift();
       if (id === undefined) return;
       this.pushUndo(id);
@@ -260,9 +215,9 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
         this.known.add(id);
         this.learning.delete(id);
         this.roundKnown.add(id);
-        // Mastered now, so it no longer counts as missed: this is what keeps the
-        // completion screen from offering "Continue with Still Learning" for
-        // cards the student just finished mastering.
+        // Mastered now, so it no longer counts as missed — which is what keeps
+        // the completion screen from reporting cards the student just finished
+        // mastering as still outstanding.
         this.roundLearning.delete(id);
         // Not requeued — Know It removes the card for good, which is why a known
         // card can never resurface and get double-counted.
@@ -299,16 +254,14 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
 
     // Undoes the LAST sort only — one step per call, not a history browser.
     // Restores the card's exact prior pile membership (which may be neither pile,
-    // for a card seen for the first time) and steps back onto it.
+    // for a card seen for the first time) and puts it back at the front.
     goBack(): boolean {
       const prev = this.undoStack.pop();
       if (!prev) return false;
 
       // Restore all four sets from the snapshot rather than just clearing the
-      // round tallies: in mastery mode a card can be sorted several times in one
-      // round, so "it's in roundLearning" doesn't imply the sort being undone put
-      // it there. In linear mode a card is sorted at most once per round, so the
-      // snapshot's round flags are always false and this behaves as before.
+      // round tallies: a card can be sorted several times in one mastery round,
+      // so "it's in roundLearning" doesn't imply the sort being undone put it there.
       if (prev.wasKnown) this.known.add(prev.id);
       else this.known.delete(prev.id);
       if (prev.wasLearning) this.learning.add(prev.id);
@@ -318,37 +271,16 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
       if (prev.wasRoundLearning) this.roundLearning.add(prev.id);
       else this.roundLearning.delete(prev.id);
 
-      if (this.masteryMode) {
-        // Drop the requeued copy a Still Learning sort left further down the
-        // queue before putting the card back at the front — unshifting alone
-        // would leave the same id in the rotation twice.
-        const requeued = this.queue.indexOf(prev.id);
-        if (requeued !== -1) this.queue.splice(requeued, 1);
-        this.queue.unshift(prev.id);
-      } else {
-        this.currentIdx = Math.max(0, this.currentIdx - 1);
-      }
+      // Drop the requeued copy a Still Learning sort left further down the queue
+      // before putting the card back at the front — unshifting alone would leave
+      // the same id in the rotation twice.
+      const requeued = this.queue.indexOf(prev.id);
+      if (requeued !== -1) this.queue.splice(requeued, 1);
+      this.queue.unshift(prev.id);
+
       this.persist();
       this.flipped = false;
       return true;
-    },
-
-    // Fresh round using only the cards marked Still Learning in the round that
-    // just finished — the "continue with what I missed" step.
-    continueWithRoundLearning() {
-      const cards = this.allQuestions.filter((q) => this.roundLearning.has(q.id));
-      this.start({
-        customDeck: cards,
-        // customDeck already narrows the working set, so drillMode isn't doing
-        // any filtering here — it's carried so the new round is still a sorting
-        // round. Left at 'all' it would read as Standard (isBrowseMode), and
-        // "continue with what I missed" would hand back a deck you can only
-        // flip through.
-        drillMode: 'learning',
-        randomOrder: this.randomOrder,
-        masteryMode: this.masteryMode,
-        forceRestart: true,
-      });
     },
 
     // Piles + the in-progress session, written together on every sort (and on
@@ -361,7 +293,6 @@ export function createFlashEngine(title: string, allQuestions: FlashCard[]) {
           order: this.order,
           queue: this.masteryMode ? this.queue.slice() : undefined,
           currentIdx: this.currentIdx,
-          drillMode: this.drillMode,
           randomOrder: this.randomOrder,
           masteryMode: this.masteryMode,
         },

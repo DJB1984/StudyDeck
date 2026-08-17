@@ -24,7 +24,7 @@ Primary: Davis and college friends sharing `.json` study sets. Secondary: anyone
 
 **Quiz — Test.** Same flow, no feedback until the end. No retries. Stats screen shows collapsed correct answers and expanded wrong ones so the student can review what they missed.
 
-**Flashcard.** Front = question, back = correct answer only (no multiple choice options). Quizlet-style flip animation. Cards are sorted into Know It / Still Learning piles. Student can drill the Still Learning pile or all cards. Pile state persists in localStorage per file between sessions.
+**Flashcard.** Front = question, back = correct answer only (no multiple choice options). Quizlet-style flip animation. Two study modes: Standard browses the whole deck marking nothing, Mastery sorts cards into Know It / Still Learning piles and requeues missed ones until every card is known. Pile state persists in localStorage per file between sessions.
 
 ## Core Features
 

@@ -14,29 +14,22 @@ interface FlashcardScreenProps {
   onBack: () => void;
 }
 
-// The three ways a round can run, as one exclusive choice. Standard just walks
-// the deck; Piles narrows the working set and sorts; Mastery sorts and requeues.
-type StudyMode = 'standard' | 'piles' | 'mastery';
+// The two ways a round can run, as one exclusive choice. Standard just walks
+// the deck; Mastery sorts into piles and requeues what was missed.
+type StudyMode = 'standard' | 'mastery';
 
 const MODE_LABEL: Record<StudyMode, string> = {
   standard: 'Standard',
-  piles: 'Piles',
   mastery: 'Mastery',
 };
 
 const MODE_HINT: Record<StudyMode, string> = {
   standard: 'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
-  piles: 'One pass through your Still Learning pile only — cards already marked Know It sit it out.',
   mastery: 'The whole deck, and missed cards come back later in the round until every one is marked Know It.',
 };
 
-// Projects the engine's two independent fields onto the pill. Mastery wins when
-// a session somehow carries both (a session saved by the older two-checkbox UI
-// could): the pill reads Mastery while that round finishes over the narrower
-// working set, and the next explicit mode pick resolves it.
 function modeOf(eng: FlashEngine): StudyMode {
-  if (eng.masteryMode) return 'mastery';
-  return eng.drillMode === 'learning' ? 'piles' : 'standard';
+  return eng.masteryMode ? 'mastery' : 'standard';
 }
 
 // Drawn rather than typed: DESIGN.md's icon rule is authored SVG at a single
@@ -74,16 +67,12 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     // unfinished session (same card, same toggles), else a fresh full-deck
     // session with drill off and random off.
     engineRef.current = createFlashEngine(deck.title, deck.questions as FlashCard[]);
-    engineRef.current.start({ drillMode: 'all', randomOrder: false, masteryMode: false });
+    engineRef.current.start({ randomOrder: false, masteryMode: false });
   }
   const eng = engineRef.current;
 
   const [, force] = useReducer((x: number) => x + 1, 0);
-  // Seeded from the engine so a resumed session shows the mode it was started
-  // with. The engine still stores drill and mastery as two independent fields
-  // (they're separate concerns down there — which cards are in the working set
-  // vs. how the round walks it); the pill is the UI's three-way projection of
-  // the two combinations that are actually worth studying in.
+  // Seeded from the engine so a resumed session shows the mode it was started with.
   const [mode, setMode] = useState<StudyMode>(() => modeOf(eng));
   const [randomOn, setRandomOn] = useState(() => eng.randomOrder);
   // Off unless the student turned it on, and remembered per device. The
@@ -101,7 +90,6 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   function onModeSelect(next: StudyMode) {
     setMode(next);
     eng.start({
-      drillMode: next === 'piles' ? 'learning' : 'all',
       randomOrder: eng.randomOrder,
       masteryMode: next === 'mastery',
       forceRestart: true,
@@ -111,7 +99,6 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   function onRandomToggle(checked: boolean) {
     setRandomOn(checked);
     eng.start({
-      drillMode: eng.drillMode,
       randomOrder: checked,
       masteryMode: eng.masteryMode,
       forceRestart: true,
@@ -132,9 +119,9 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     sortingRef.current = true;
     setSortAnim(pile);
     // Fired with the card animation, not after it: the ripple has to leave the
-    // well while the card is still travelling toward it, or the two read as two
-    // separate events instead of one.
-    ambienceRef.current?.pulse(pile);
+    // core while the card is still moving, or the two read as two separate
+    // events instead of one.
+    ambienceRef.current?.pulse();
     window.setTimeout(() => {
       eng.sortCard(pile);
       setSortAnim(null);
@@ -173,13 +160,9 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
-  // Restarts over the whole deck, so it drops out of Piles (whose whole
-  // definition is "the Still Learning subset") while leaving Mastery alone — it
-  // describes how the round walks, which still applies to the full deck.
+  // Restarts the same mode over the whole deck from the top.
   function restartAll() {
-    setMode((m) => (m === 'piles' ? 'standard' : m));
     eng.start({
-      drillMode: 'all',
       randomOrder: eng.randomOrder,
       masteryMode: eng.masteryMode,
       forceRestart: true,
@@ -187,21 +170,13 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
-  // No setMode here: this button only appears when the round marked cards Still
-  // Learning, which only Piles and Mastery can do, and the continued round stays
-  // in whichever of those it came from.
-  function continueLearning() {
-    eng.continueWithRoundLearning();
-    force();
-  }
-
   // Keyboard: the arrows split by axis, which is what makes the scheme learnable
-  // across the three modes. Vertical is always the card itself — ↑/↓ flip it,
-  // same as Space and Enter (R1), in every mode. Horizontal is always the round
-  // moving on: Standard steps between cards, Piles and Mastery undo the last
-  // sort (R17) and mark Know It. Still Learning has no key as a result; it's the
-  // one action whose direction the axis rule doesn't have a slot for, so it
-  // stays button-only rather than getting an arbitrary binding.
+  // across both modes. Vertical is always the card itself — ↑/↓ flip it, same as
+  // Space and Enter (R1), in either mode. Horizontal is always the round moving
+  // on: Standard steps between cards, Mastery undoes the last sort (R17) and
+  // marks Know It. Still Learning has no key as a result; it's the one action
+  // whose direction the axis rule doesn't have a slot for, so it stays
+  // button-only rather than getting an arbitrary binding.
   //
   // Every branch funnels through the same handler as its button, so they share
   // the debounce lock, the end guards and the complete-screen guard.
@@ -234,7 +209,6 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   useEffect(() => {
     return Storage.subscribe(() => {
       eng.start({
-        drillMode: eng.drillMode,
         randomOrder: eng.randomOrder,
         masteryMode: eng.masteryMode,
       });
@@ -252,8 +226,6 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   const mastery = eng.progressMastery();
 
   const total = eng.order.length;
-  const knownCount = eng.roundKnown.size;
-  const learningCount = eng.roundLearning.size;
 
   const cardClass =
     (eng.flipped ? 'flipped ' : '') +
@@ -287,13 +259,13 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
       </div>
 
       <div className="flash-options">
-        {/* These are three whole ways a round runs, not add-ons to a default —
-            a sliding pill states all three names at once, where the old
-            checkboxes left the unchecked modes unnamed. Radios (not buttons) so
-            arrow keys move between them and the group announces as one control. */}
+        {/* These are two whole ways a round runs, not an add-on to a default —
+            a sliding pill states both names at once, where the old checkbox
+            left the unchecked mode unnamed. Radios (not buttons) so arrow keys
+            move between them and the group announces as one control. */}
         <div className="mode-pill" role="radiogroup" aria-label="Study mode">
           <span className="mode-pill-thumb" data-mode={mode} aria-hidden="true" />
-          {(['standard', 'piles', 'mastery'] as const).map((m) => (
+          {(['standard', 'mastery'] as const).map((m) => (
             <label className="mode-pill-option" key={m}>
               <input
                 type="radio"
@@ -341,9 +313,9 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
 
       {!showComplete && card && (
         <div id="flash-active-area">
-          {/* Sits behind the card, the hint and the buttons — the wells it
-              draws are positioned to land on the two sort buttons, so it has to
-              span the whole active area rather than just the card. */}
+          {/* Sits behind the card, the hint and the buttons — Mastery's core and
+              its sort ripples are centred on the whole active area, so the
+              canvas has to span it rather than just the card. */}
           <FlashAmbience
             ref={ambienceRef}
             mode={mode}
@@ -369,9 +341,9 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
 
           {/* Standard mode has no verdict to give, only a direction to move, so
               its controls are the two arrows and nothing else — a labelled
-              button pair would be naming the same thing twice. Piles and Mastery
-              keep words, because there the two choices mean different things and
-              a bare arrow couldn't say which. */}
+              button pair would be naming the same thing twice. Mastery keeps
+              words, because there the two choices mean different things and a
+              bare arrow couldn't say which. */}
           {mode === 'standard' ? (
             <div className="flash-actions">
               <button
@@ -421,45 +393,32 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
         <div id="flash-complete-area">
           <div className="glass-card flash-complete-card">
             {emptyFromStart ? (
+              // Validation rejects a deck with no questions, so this is a guard
+              // rather than a state the app can normally reach.
               <>
-                <h3>All Caught Up!</h3>
-                <p>Every card in this deck is already marked Know It — nothing left to drill.</p>
+                <h3>Nothing to Study</h3>
+                <p>This deck has no cards in it.</p>
               </>
             ) : eng.isBrowseMode() ? (
-              // Standard marks nothing, so the known/learning tallies below
-              // would report zeros for a round that had no verdicts in it.
+              // Standard marks nothing, so a known/learning tally here would
+              // report zeros for a round that had no verdicts in it.
               <>
                 <h3>End of Deck</h3>
                 <p>You've been through all {total} card(s).</p>
               </>
-            ) : eng.masteryMode ? (
+            ) : (
               // Mastery mode only ends when the queue empties, i.e. every card
-              // was marked Know It — so the generic "nailed every card this
-              // round" line would read as praise for a round that may have taken
-              // several passes.
+              // was marked Know It — so a "nailed every card this round" line
+              // would read as praise for a round that may have taken several passes.
               <>
                 <h3>Deck Mastered</h3>
                 <p>All {total} card(s) marked Know It — nothing left in the rotation.</p>
-              </>
-            ) : (
-              <>
-                <h3>Round Complete</h3>
-                <p>
-                  {learningCount > 0
-                    ? `${knownCount} / ${total} known. ${learningCount} card(s) marked Still Learning this round.`
-                    : `${knownCount} / ${total} known — nailed every card this round!`}
-                </p>
               </>
             )}
             <div className="stats-actions" style={{ justifyContent: 'center' }}>
               <button className="btn-ghost" onClick={restartAll}>
                 Restart All
               </button>
-              {!emptyFromStart && learningCount > 0 && (
-                <button className="btn" onClick={continueLearning}>
-                  Continue with Still Learning
-                </button>
-              )}
             </div>
           </div>
         </div>

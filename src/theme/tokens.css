@@ -28,19 +28,14 @@
   --hero-pink-glow: rgba(81, 8, 64, 0.4);
 
   /* Flashcard mode atmospheres — Nebula's second sanctioned home (see
-     DESIGN.md). Ember and pink appear here only as deep-space casts: ambience,
-     rims and the mode pill's own thumb. Every control on the screen stays
-     Starlight Blue, so "blue means act" survives the theme. Each `-fill` is
-     dark enough to clear 4.5:1 against the white label it carries. */
+     DESIGN.md). Pink appears here only as a deep-space cast: ambience, rims and
+     the mode pill's own thumb. Every control on the screen stays Starlight
+     Blue, so "blue means act" survives the theme. Each `-fill` is dark enough
+     to clear 4.5:1 against the white label it carries. */
   --mode-standard-tint: #3093ec;
   --mode-standard-light: #63b3ff;
   --mode-standard-fill: #1673cf;
   --mode-standard-veil: rgba(20, 38, 66, 0.55);
-
-  --mode-piles-tint: #c2762f;
-  --mode-piles-light: #e8a86a;
-  --mode-piles-fill: #96551d;
-  --mode-piles-veil: rgba(58, 28, 8, 0.55);
 
   --mode-mastery-tint: #a2519a;
   --mode-mastery-light: #d68cc9;

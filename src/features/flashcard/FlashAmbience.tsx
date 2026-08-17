@@ -1,9 +1,8 @@
 // FlashAmbience — the per-mode particle field behind the flashcard.
 //
-// The three study modes are three places in the same deep-space void, and this
-// is what makes them feel like different places: Standard breathes in place,
-// Piles falls toward two gravity wells sitting under the Still Learning / Know
-// It buttons, Mastery orbits a core that brightens as cards are mastered.
+// The two study modes are two places in the same deep-space void, and this is
+// what makes them feel like different places: Standard breathes in place,
+// Mastery orbits a core that brightens as cards are mastered.
 //
 // Every mode is a pure function of (particle, time) over the SAME fixed pool —
 // no per-mode spawning, no wrapping. That's deliberate: switching modes then
@@ -15,11 +14,11 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
-export type AmbienceMode = 'standard' | 'piles' | 'mastery';
+export type AmbienceMode = 'standard' | 'mastery';
 
 export interface FlashAmbienceHandle {
-  /** Ripple the well (or the mastery core) a sort just went into. */
-  pulse(pile: 'known' | 'learning'): void;
+  /** Ripple the mastery core a sort just went into. */
+  pulse(): void;
 }
 
 interface FlashAmbienceProps {
@@ -39,14 +38,6 @@ const MAX_PARTICLES = 160;
 const BLEND_MS = 700;
 const PULSE_MS = 900;
 
-// Normalized well positions. Wide apart and low, so the two destinations read
-// as two separate piles — deliberately NOT pinned under the two sort buttons,
-// which sit as a centred cluster only a couple of hundred pixels apart and
-// would collapse the streams into one blur. Not flush to the bottom either:
-// the canvas overhangs the active area (see .flash-ambience).
-const WELL_LEARNING = { x: 0.24, y: 0.86 };
-const WELL_KNOWN = { x: 0.76, y: 0.86 };
-
 // Same fixed-seed generator Starfield uses: the field must be identical on
 // every mount, or leaving and re-entering a deck reshuffles the sky.
 function pseudoRandom(seed: number): number {
@@ -60,9 +51,6 @@ interface Particle {
   phase: number;
   depth: number; // parallax + size
   wobble: number;
-  speed: number;
-  curve: number;
-  well: 0 | 1;
   orbit: number;
   base: number; // base alpha
 }
@@ -77,9 +65,6 @@ const POOL: Particle[] = Array.from({ length: MAX_PARTICLES }, (_, i) => {
     phase: c,
     depth: 0.35 + c * 0.65,
     wobble: 0.18 + b * 0.3,
-    speed: 0.55 + a * 0.9,
-    curve: 0.4 + b * 0.8,
-    well: a < 0.5 ? 0 : 1,
     orbit: 0.2 + b * 0.8,
     base: 0.26 + c * 0.5,
   };
@@ -124,27 +109,6 @@ function sampleStandard(p: Particle, t: number, out: Sample) {
   out.a = p.base * (0.55 + 0.45 * Math.sin(t * 0.8 + p.phase * TAU * 3));
 }
 
-// Piles: a one-way fall. Each particle rides a quadratic bezier from the upper
-// field into its assigned well on a squared parameter, so it accelerates the
-// way something falling does, then fades as it arrives.
-function samplePiles(p: Particle, t: number, out: Sample) {
-  const well = p.well === 0 ? WELL_LEARNING : WELL_KNOWN;
-  const u = (((t * 0.13 * p.speed + p.phase) % 1) + 1) % 1;
-  const e = u * u;
-  const sx = p.hx;
-  const sy = p.hy * 0.5;
-  const cx = (sx + well.x) / 2 + (p.well === 0 ? -0.18 : 0.18) * p.curve;
-  const cy = 0.3 + p.phase * 0.2;
-  const m = 1 - e;
-  out.x = m * m * sx + 2 * m * e * cx + e * e * well.x;
-  out.y = m * m * sy + 2 * m * e * cy + e * e * well.y;
-  // Held bright almost the whole way down and snuffed only in the last tenth,
-  // so the streams visibly ARRIVE at the wells. A symmetric fade peaks
-  // mid-flight instead, which reads as two glowing clouds beside the card
-  // rather than as anything falling into the piles.
-  out.a = p.base * Math.min(1, u / 0.08) * Math.min(1, (1 - u) / 0.1);
-}
-
 // Mastery: an accretion disc. Inner particles sweep faster than outer ones and
 // the ellipse is foreshortened, so the field reads as a disc seen at an angle
 // rather than as a flat ring.
@@ -157,21 +121,18 @@ function sampleMastery(p: Particle, t: number, out: Sample) {
 
 const SAMPLERS: Record<AmbienceMode, (p: Particle, t: number, out: Sample) => void> = {
   standard: sampleStandard,
-  piles: samplePiles,
   mastery: sampleMastery,
 };
 
 const FALLBACK: Record<AmbienceMode, RGB> = {
   standard: [99, 179, 255],
-  piles: [232, 168, 106],
   mastery: [214, 140, 201],
 };
 
+// Only the birth time: every ripple rises from the mastery core at the centre,
+// so there is no per-pulse position left to carry.
 interface Pulse {
-  x: number;
-  y: number;
   start: number;
-  mode: AmbienceMode;
 }
 
 export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>(
@@ -196,17 +157,10 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
     pausedRef.current = paused;
 
     useImperativeHandle(ref, () => ({
-      pulse(pile) {
+      pulse() {
         if (paused) return; // a frozen field has nothing to ripple
-        const target = toRef.current;
-        if (target === 'standard') return; // browse mode sorts nothing
-        const at =
-          target === 'mastery'
-            ? { x: 0.5, y: 0.5 }
-            : pile === 'known'
-              ? WELL_KNOWN
-              : WELL_LEARNING;
-        pulsesRef.current.push({ x: at.x, y: at.y, start: performance.now(), mode: target });
+        if (toRef.current === 'standard') return; // browse mode sorts nothing
+        pulsesRef.current.push({ start: performance.now() });
       },
     }));
 
@@ -240,7 +194,6 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
       const styles = getComputedStyle(canvas);
       colorsRef.current = {
         standard: parseColor(styles.getPropertyValue('--amb-standard'), FALLBACK.standard),
-        piles: parseColor(styles.getPropertyValue('--amb-piles'), FALLBACK.piles),
         mastery: parseColor(styles.getPropertyValue('--amb-mastery'), FALLBACK.mastery),
       };
 
@@ -306,14 +259,8 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
         const weight = (m: AmbienceMode) =>
           (fromMode === m ? 1 - k : 0) + (toMode === m ? k : 0);
 
-        // Backdrop: the wells and the mastery core, drawn under the field so
-        // particles read as arriving somewhere rather than just moving.
-        const wPiles = weight('piles');
-        if (wPiles > 0) {
-          const r = Math.min(width, height) * 0.34;
-          glow(WELL_LEARNING.x * width, WELL_LEARNING.y * height, r, rgb, 0.11 * wPiles);
-          glow(WELL_KNOWN.x * width, WELL_KNOWN.y * height, r, rgb, 0.11 * wPiles);
-        }
+        // Backdrop: the mastery core, drawn under the field so its particles
+        // read as orbiting something rather than just moving.
         const wMastery = weight('mastery');
         if (wMastery > 0) {
           const core = 0.06 + 0.16 * intensityRef.current;
@@ -344,7 +291,7 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
           ctx!.fill();
         }
 
-        // Sort ripples: an expanding ring at the well the card just went into.
+        // Sort ripples: an expanding ring off the core the card just went into.
         const pulses = pulsesRef.current;
         for (let i = pulses.length - 1; i >= 0; i--) {
           const pulse = pulses[i];
@@ -354,13 +301,13 @@ export const FlashAmbience = forwardRef<FlashAmbienceHandle, FlashAmbienceProps>
             continue;
           }
           const ease = 1 - Math.pow(1 - age, 3);
-          // Kept small: this is a pile acknowledging a card, not an explosion.
-          // A ring wider than the button it rises from stops reading as arrival.
+          // Kept small: this is the core acknowledging a card, not an explosion.
+          // A ring that outgrows the disc it rises from stops reading as arrival.
           const r = Math.min(width, height) * (0.015 + ease * 0.13);
           ctx!.strokeStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${(0.42 * (1 - age)).toFixed(3)})`;
           ctx!.lineWidth = 1.4 * (1 - age) + 0.4;
           ctx!.beginPath();
-          ctx!.arc(pulse.x * width, pulse.y * height, r, 0, TAU);
+          ctx!.arc(width / 2, height / 2, r, 0, TAU);
           ctx!.stroke();
         }
 
