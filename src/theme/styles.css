@@ -1554,7 +1554,7 @@ button { font-family: inherit; cursor: pointer; }
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 24px;
-  margin-bottom: 10px;
+  margin-bottom: 18px;
 }
 
 /* Segmented pill — two mutually exclusive modes with a thumb that slides
@@ -1641,24 +1641,6 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.82rem;
 }
 .flash-motion-btn svg { flex: none; }
-
-.flash-mode-hint {
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  margin: 0 0 16px;
-}
-/* Ties the sentence describing the mode to the color the screen just became —
-   without it the atmosphere and the copy read as two unrelated changes. */
-.flash-mode-hint::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 9px;
-  border-radius: 50%;
-  background: var(--mode-tint);
-  vertical-align: 0.08em;
-}
 
 /* Says which KIND of card is on screen when it isn't an ordinary repeat. A
    never-seen card and a mastered one both sit at the extremes of the streak bar
@@ -1826,8 +1808,8 @@ button { font-family: inherit; cursor: pointer; }
 
 /* Stacking context for the ambience canvas, which spans the card, the hint and
    the sort buttons — Mastery's disc is centred on the whole region, not on the
-   card alone. Also the screen's growing region: it absorbs whatever height the options and
-   the mode hint above it didn't need, and hands it to the card. */
+   card alone. Also the screen's growing region: it absorbs whatever height the
+   header and the options row above it didn't need, and hands it to the card. */
 #flash-active-area {
   position: relative;
   display: flex;
@@ -1927,7 +1909,7 @@ button { font-family: inherit; cursor: pointer; }
 /* Both of these have to sit after the base rule above — a media query adds no
    specificity, so source order is the only thing that decides. */
 @media (max-width: 560px) {
-  /* The header, the options row and the mode hint all wrap here, so there is
+  /* The header and the options row both wrap here, so there is
      far less leftover height to hand the card, and a phone-width card allowed
      to reach the desktop cap becomes a portrait slab. Floor and cap both come
      down, and the wrap's margins tighten to spend that height on the card. */

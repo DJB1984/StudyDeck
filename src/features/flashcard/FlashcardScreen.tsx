@@ -32,17 +32,6 @@ const MODE_LABEL: Record<StudyMode, string> = {
   mastery: 'Mastery',
 };
 
-// Mastery's hint states the two rules students can't infer from the buttons:
-// the streak has to be unbroken, and each hit buries the card further down. Both
-// are the reason a round takes as long as it does, so saying them up front is
-// what keeps the spacing from reading as the app being slow.
-const MODE_HINT: Record<StudyMode, string> = {
-  standard:
-    'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
-  mastery:
-    'Get a card right three times in a row to master it. Each hit sends it further down the deck, so you have to recall it rather than recognise it; a miss brings it back soon and resets the streak.',
-};
-
 function modeOf(eng: FlashEngine): StudyMode {
   return eng.masteryMode ? 'mastery' : 'standard';
 }
@@ -508,11 +497,6 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
           {motionOn ? 'Pause motion' : 'Play motion'}
         </button>
       </div>
-
-      {/* One word per segment can't carry what a mode actually does, and those
-          differences (how a card is finished, and what a miss costs) are the
-          whole reason to pick one — so a line of copy tracks the selection. */}
-      <p className="flash-mode-hint">{MODE_HINT[mode]}</p>
 
       {!showComplete && card && (
         <div id="flash-active-area">
