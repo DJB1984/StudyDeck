@@ -101,6 +101,11 @@ export interface FlashCard {
   id: string;
   front: string;
   back: string;
+  /** Optional context graph, same shape quiz questions use. Context-only —
+      `answerMode`/`target`/`tolerance` stay quiz-side. */
+  graph?: GraphSpec;
+  /** Which face the graph sits on. Omitted = 'front'. */
+  graphSide?: 'front' | 'back';
 }
 
 export type DeckQuestion = QuizQuestion | FlashCard;
@@ -184,32 +189,16 @@ export interface QuizSession {
  * entry starts fresh.
  */
 export interface FlashSession {
-  /** Card ids in this round's order (Standard mode). */
+  /** Card ids in this round's working set. Mastery drops cards mastered in an
+   *  earlier session; Standard browses everything. */
   order: string[];
-  /** Mastery-mode working queue; unused in Standard mode. */
+  /**
+   * Mastery-mode live rotation; unused in Standard mode. Holds exactly the same
+   * ids as `order` for the whole round — every verdict removes a card from the
+   * front and puts it back further down, mastered or not — so a round ends on
+   * every card being mastered rather than on this emptying.
+   */
   queue?: string[];
-  /**
-   * Mastery-mode runtime that can't be re-derived from the card records,
-   * because the records only say where a card SITS, not how it got there.
-   * All unused in Standard mode.
-   */
-  /** Cards in this session's cold-check phase — one hit retires them. */
-  coldCheck?: string[];
-  /** Mastered cards pulled in for a refresher this round. */
-  refresh?: string[];
-  /** Cards awaiting a relearn touch, whose next Know It doesn't advance the ladder. */
-  relearning?: string[];
-  /** Cards already pulled in as rotation filler — each is eligible only once. */
-  fillerUsed?: string[];
-  /** Cards that reached provisional (or retired) during THIS round, for the tally. */
-  learned?: string[];
-  /**
-   * Local calendar day (YYYY-MM-DD) the mastery round was started on. A round is
-   * a day's work: resuming yesterday's unfinished queue would silently skip
-   * every cold check that came due overnight, which is the one thing the
-   * student came back for.
-   */
-  startedOn?: string;
   /** Position within `order`; unused in mastery mode. */
   currentIdx: number;
   /**
@@ -223,40 +212,35 @@ export interface FlashSession {
 }
 
 /**
- * Where one card sits on the mastery ladder. Keyed by question id (never index).
- *
- * The lifecycle is deliberately finite: three in-session successes make a card
- * *provisional*, one cold hit on a later day masters it. After that it only ever
- * returns as a refresher on a widening interval, a few per session at most —
- * "mastered" still has to be something a student can reach and be done with, so
- * the refresher is a spot-check on that claim, never a fourth rung to climb.
+ * Where one card stands in Mastery mode. Keyed by question id (never index), and
+ * persisted per deck, so mastery carries across sessions while the streak toward
+ * it is earned inside a single round.
  */
 export interface CardProgress {
   /**
-   * Ladder rung. 0 = not passed yet, 1-2 = mid-ladder, 3 = provisional: three
-   * in a row within one session, now waiting on its next-day cold check.
+   * Consecutive Know Its. 3 means mastered; a Still Learning resets it to 0. A
+   * card's first-ever Know It jumps straight to 2 — see `hit()` in
+   * features/flashcard/schedule.ts.
    */
-  step: 0 | 1 | 2 | 3;
+  streak: 0 | 1 | 2 | 3;
   /**
-   * Lapses within the CURRENT session only — reset when a session starts. The
-   * first costs one rung; the second in the same session resets to 0, because a
-   * card missed twice in one sitting genuinely isn't learned.
+   * ISO time of the last verdict given on this card, in any session. Null means
+   * never seen, which is what earns the first-attempt jump to 2.
    */
-  lapses: number;
-  /** ISO time this provisional card becomes eligible for its cold check; null unless step is 3. */
-  dueAt: string | null;
-  /** ISO time of the last verdict given on this card. */
   lastSeen: string | null;
-  /** Passed its cold check — off the ladder for good, bar the odd refresher. */
-  mastered: boolean;
-  /**
-   * Refreshers this mastered card has passed, which picks its interval out of
-   * `REFRESH_DAYS`. The refresher's own due time is derived from `lastSeen`
-   * rather than stored, so cards mastered before refreshers existed schedule
-   * themselves with no migration — which is also why this is optional: absent
-   * reads as 0.
-   */
-  refreshes?: number;
+}
+
+/**
+ * Mastery's spacing, in cards: how far down the rotation a card drops after the
+ * hit that takes it to streak 1, 2 and 3, plus how far it drops on a miss.
+ * Student-configurable and stored per device (Storage.getMasteryGaps), which is
+ * why the shape lives here rather than with the policy that interprets it —
+ * features/flashcard/schedule.ts owns the defaults, the bounds and the
+ * small-deck cropping.
+ */
+export interface MasteryGaps {
+  rungs: [number, number, number];
+  miss: number;
 }
 
 /**
@@ -264,13 +248,14 @@ export interface CardProgress {
  *
  * `cards` is the real state. `known`/`learning` are derived mirrors kept in sync
  * on every write purely for back-compat: the cloud `flash_state` table has only
- * those two columns, and Home's tally reads them. Don't write to them directly —
- * `derivePiles()` in features/flashcard/schedule.ts owns their contents.
+ * those two columns. Don't write to them directly — `derivePiles()` in
+ * features/flashcard/schedule.ts owns their contents.
  */
 export interface FlashState {
   known: string[];
   learning: string[];
   session?: FlashSession;
-  /** Absent on state written before the mastery ladder — back-filled on read. */
+  /** Absent (or in an older shape) on state written before the streak model —
+   *  back-filled by `normalize()` on read. */
   cards?: Record<string, CardProgress>;
 }

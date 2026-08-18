@@ -30,10 +30,6 @@ function today(): string {
 // rather than trusting the stored record count: a re-imported deck can leave
 // behind records for questions it no longer contains, and "12 / 8 mastered" is
 // worse than no badge at all.
-//
-// `due` is the number that earns Home's attention — it's the app's only way of
-// saying "you have something to come back for", which is the entire premise of
-// the mastery mode's next-day check.
 function masteryFor(file: HistoryEntry): MasteryTally {
   const state = normalize(Storage.getFlashState(file.id ?? ''));
   return tally(
@@ -49,18 +45,18 @@ function masteryFor(file: HistoryEntry): MasteryTally {
 // engine actually owns; never-opened decks read "0 / N mastered" via
 // getFlashState's empty default.
 //
-// The due pill leads when there is one, because it's the only thing on this
-// screen that's time-sensitive — a deck with cards due today is the deck the
-// student should open, and it stops being true if they wait.
+// Cards part-way up a streak are called out beside the mastered count: they're
+// the closest thing this mode has to unfinished business, and a deck with eight
+// cards half-learned is a more useful thing to open than one that's never been
+// touched.
 function FlashMeta({ file }: { file: HistoryEntry }) {
   const m = masteryFor(file);
   return (
     <>
-      {m.due > 0 && <span className="meta-due">{m.due} due</span>}
       <span className="meta-flash">
         {m.mastered} / {m.total} mastered
-      </span>{' '}
-      · {file.lastOpened}
+      </span>
+      {m.inProgress > 0 && <> · {m.inProgress} started</>} · {file.lastOpened}
     </>
   );
 }

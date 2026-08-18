@@ -95,7 +95,7 @@ Quiz decks and flashcard decks are structurally different — a top-level `type`
 
 ### Flashcard deck (`"type": "flashcard"`)
 
-Flashcards don't need multiple-choice distractors, so they use a different, simpler question shape — `front` / `back` instead of `question` / `answers` / `correct`. Graphs are not supported on flashcards.
+Flashcards don't need multiple-choice distractors, so they use a different, simpler question shape — `front` / `back` instead of `question` / `answers` / `correct`. A card may carry one optional `graph`, on either face.
 
 ```json
 {
@@ -111,6 +111,10 @@ Flashcards don't need multiple-choice distractors, so they use a different, simp
 
 - `questions[].front` — string, shown on the card front. LaTeX supported.
 - `questions[].back` — string, shown on the card back. LaTeX supported.
+- `questions[].graph` — optional, same `GraphSpec` shape quiz questions use (`points` or `equation`), validated by the same shared `graphErrors()` helper in `DeckValidation.ts`. Context-only: `answerMode`/`target`/`tolerance` remain quiz-side.
+- `questions[].graphSide` — optional, `"front"` (default) or `"back"`. Which face the graph is drawn on. Setting it without a `graph` is a validation error.
+
+A face carrying a graph switches from centered text to a column (`.has-graph` in `styles.css`): the plot takes the leftover flex track above, the card's text sits under it at a reduced size. `.graph-area`'s global fixed 240px height is overridden inside a card, since the card's own height floor is 280px. Text-only faces are unaffected.
 
 Mode Select reads `type` to decide what to show: a quiz deck only offers Practice/Test; a flashcard deck only offers Flashcard mode.
 
@@ -208,7 +212,7 @@ Home → Mode Select → Quiz/Flashcard → Stats → Home
 
 **Stats screen:** Pie chart (correct/incorrect, purple/dark). Score text. Session duration displayed. Scrollable question list — correct ones collapsed to a single line, wrong ones expanded showing chosen answer (or "You didn't answer this one") vs correct answer + copy-to-AI button. Two buttons: Retake / Review. Retake restarts immediately in the same question order.
 
-**Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Progress counter. Options row: a Standard | Mastery segmented pill (sliding thumb; Standard default) with a hint line describing the selected mode, plus a random-order toggle. Standard = a browse over the whole deck, marking nothing; Mastery = whole deck, sorted into piles, with missed cards requeued until all are known. (A third mode, Piles — one sorting pass over the Still Learning subset — was removed 2026-08-16; sessions saved by it are rejected on restore rather than resumed.)
+**Flashcard screen:** Single large card with flip animation (CSS 3D transform). Question on front, correct answer on back. Progress counter. Options row: a Standard | Mastery segmented pill (sliding thumb; Standard default) with a hint line describing the selected mode, plus a random-order toggle. Standard = a browse over the whole deck, marking nothing; Mastery = the deck's unmastered cards, each drilled to three Know Its in a row, with a three-segment streak bar above the card and a gear for the spacing. (A third mode, Piles — one sorting pass over the Still Learning subset — was removed 2026-08-16; sessions saved by it are rejected on restore rather than resumed.)
 
 The card is sized off the viewport, not off a fixed box. `#flashcard-screen` is a full-height flex column (`min-height: calc(100dvh - 168px)` — `#app`'s 32px/64px vertical padding plus the 72px the ambience canvas hangs below the active area, which is absolutely positioned and so still counts toward document height). `#flash-active-area` and `#flash-card-wrap` both `flex: 1`, so the card absorbs whatever height the header, options row and mode hint leave: `280px` floor, `500px` ceiling, `760px` max width. `#flash-card` uses `align-self: stretch` rather than `height: 100%` — the wrap's height comes from flex-grow, which a percentage can't resolve against, and the faces are `position: absolute`, so a failed percentage collapses the card to zero. Because the floor is fixed, max width steps down with viewport height (`640px` under 820px tall, `560px` under 680px, where the screen also stops claiming a full viewport) so short windows get a smaller card rather than a letterboxed one; face padding and font-size are `clamp()`ed to the same curve. Round-complete centers its card in the same stage.
 
@@ -299,22 +303,29 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
 
 // Flashcard state — keyed by DECK ID, indexed by question id (not position)
 "studydeck_flash_3f2b...": {
-  // The real state: where each card sits on the mastery ladder.
+  // The real state: each card's streak toward mastery. 3 = mastered.
+  // `lastSeen: null` means never seen in any session, which is what earns a
+  // first-attempt Know It the jump straight to 2.
   "cards": {
-    "q1": { "step": 3, "lapses": 0, "dueAt": "2026-08-18T00:00:00.000Z", "lastSeen": "...", "mastered": false },
-    "q2": { "step": 1, "lapses": 1, "dueAt": null, "lastSeen": "...", "mastered": false },
-    // Mastered. `refreshes` picks its refresher interval; the refresher's own
-    // due time is DERIVED from lastSeen, never stored (see refreshDueAt).
-    "q3": { "step": 3, "lapses": 0, "dueAt": null, "lastSeen": "...", "mastered": true, "refreshes": 2 }
+    "q1": { "streak": 3, "lastSeen": "..." },
+    "q2": { "streak": 1, "lastSeen": "..." },
+    "q3": { "streak": 0, "lastSeen": null }
   },
   // Derived mirrors, rewritten from `cards` on every save. They exist only
   // because the cloud `flash_state` table has just these two columns. Never
   // write them directly — schedule.ts `derivePiles()` owns their contents.
-  "known": ["q1", "q3"],
+  "known": ["q1"],
   "learning": ["q2"],
   // The in-progress round, so a reload resumes where the student left off.
-  "session": { "order": [...], "queue": [...], "coldCheck": [...], "refresh": [...], "startedOn": "2026-08-17", ... }
+  // In Mastery, `queue` holds the same ids as `order` for the round's whole
+  // life — it's a rotation, not a to-do list that drains.
+  "session": { "order": [...], "queue": [...], "currentIdx": 0, "randomOrder": false, "masteryMode": true }
 }
+
+// Mastery's spacing, in cards: how far a card drops after the hit that takes it
+// to streak 1, 2 and 3, plus how far it drops on a miss. Per device and shared by
+// every deck (see "Mastery drill" below). Absent = the 5 / 10 / 15 + 3 defaults.
+"studydeck_mastery_gaps": { "rungs": [5, 10, 15], "miss": 3 },
 
 // Whether Flashcards' decorative ambient motion may animate. Absent = off:
 // decoration is opt-in. A device preference, not deck data — never mirrored to
@@ -325,24 +336,21 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
 
 Card records use question `id` fields (not array indices) so state survives question reordering.
 
-**Mastery ladder (see `src/features/flashcard/schedule.ts`, which owns every rule below).** The mode is deliberately two-stage, and mastery is deliberately an ending rather than a rung:
+**Mastery drill (see `src/features/flashcard/schedule.ts`, which owns every rule below).** A single-session drill: a card is mastered by three Know Its **in a row**, each one burying it further down the rotation so the next retrieval is real recall rather than recognition. Mastery is the only thing that persists between sessions; the streak toward it is earned inside one round. (This replaced a two-stage cross-day ladder — next-day cold checks plus 3/7/16/35-day refreshers — on 2026-08-18 at Davis's call. Don't reintroduce day-based scheduling without asking: the mode is now deliberately something a student can finish in one sitting.)
 
-1. **In-session ladder.** Three Know Its inside one session, spaced 6 then 14 cards apart, move a card to `step: 3` — *provisional*, not mastered. It leaves the rotation with `dueAt` set to the start of the next local day (floored at 8 hours out, so studying at 11:50pm doesn't make a card due at midnight).
-2. **Cold check.** On a later session, due cards run **first**. One Know It sets `mastered: true` and takes the card off the ladder for good.
-3. **Refreshers.** A mastered card resurfaces occasionally to confirm it stuck — `REFRESH_DAYS = [3, 7, 16, 35]` calendar days after its last verdict, widening with each one passed and capping at 35 (Davis, 2026-08-17, superseding an earlier same-day call that mastery should end all scheduling). A pass keeps mastery and pushes the next one out; a **miss resets the card to `step: 0` and clears `mastered`** — failing days later is forgetting, not a slip. Constraints that keep this from becoming a fourth rung:
-   - **At most `REFRESH_LIMIT = 3` per session**, most-overdue-first. Overflow just waits; nothing about a refresher is time-sensitive, which is the point.
-   - **Due times are derived from `lastSeen`, never stored.** No migration was needed for cards mastered before refreshers existed, and there's no second due-date field to keep in step with `dueAt`.
-   - **Spread through the ladder, not run first.** Cold checks earn the student's sharpest attention; a refresher opening the round would start real work with cards they already know.
-   - Refreshers count as **mastered** in Home's tally and are excluded from `takeFiller`.
+1. **The streak.** A Know It advances the card one rung and drops it `rungs[streak]` cards down the rotation — **5, then 10, then 15** by default. The third hit sets `streak: 3`, which *is* mastery; nothing before it counts as mastered.
+2. **The first look is worth two.** A card with `lastSeen: null` — never given a verdict in any session — jumps straight to **2/3** on a Know It, so a deck full of already-known material clears in two passes instead of three. A card that has been missed is no longer fresh and climbs one rung at a time.
+3. **A miss resets the streak to 0** and brings the card back **3 cards** later. Not one rung — "three in a row" only means something if a miss breaks the run. This is also the only way a mastered card loses mastery.
+4. **The round ends when every card in the working set is mastered.** A round's working set is the deck's *unmastered* cards; cards mastered in an earlier session are left out entirely, so a later round only offers what's left. A fully mastered deck opens on the Deck Mastered screen, whose only substantive action is **Reset Progress** (`resetProgress()`, the one thing that wipes streaks).
 
 Supporting rules, each fixing a specific failure mode:
 
-- **Lapses cost one rung, not the streak.** A second lapse on the same card in the same session resets to 0. A full reset on every miss makes sessions unbounded and dominated by two hard cards, which is how people quit.
-- **The re-show after a miss is a *relearn touch*, not a rung.** Passing a card 20 seconds after seeing its answer is recognition, not recall; counting it would make the first success of every streak the least meaningful retrieval in the system.
-- **The rotation is padded with already-learned cards** when it's shorter than the gap being asked for, budgeted at `FILLER_BUDGET` per session. Without it, intervals collapse late in a session — exactly when cards are being certified. Filler verdicts are asymmetric: a hit changes nothing, a miss demotes the card back onto the ladder.
-- **A mastery round belongs to the day it started on** (`session.startedOn`). Resuming yesterday's unfinished queue would skip every cold check that came due overnight.
-- **Pre-ladder state is back-filled on read** (`schedule.ts` `normalize`). Old `known` ids become provisional-and-immediately-due rather than mastered, since a single Know It in the old one-pass mode is a much weaker claim than three in a row.
-- **"Deck Mastered" splits on the deck's standing, not on whether a due date exists.** Every mastered deck now has a refresher date ahead of it, so the finished-state screen keys off `allMastered()` — otherwise the one screen that tells a student they're done would silently become "All Caught Up".
+- **The rotation never shrinks.** Every verdict takes a card off the front and puts it back further down, mastered or not — so `queue` holds the same ids as `order` all round, and completion is "every card mastered", never "queue empty". Mastered cards circulating is what keeps the gaps honest at the end of a round, when there'd otherwise be two cards left to space a repeat against.
+- **A hit on an already-mastered card sends it to the very back**, rather than 15 down. It has nothing left to prove, so the useful thing is for it to get out of the way — and this is also what guarantees every unmastered card keeps advancing toward the front.
+- **Gaps crop to fit a small deck, keeping their 1:2:3 shape** (`cropScale`), rather than each clamping to the back of the queue. Clamping would collapse all three rungs onto the same real gap on a 6-card deck — exactly where the widening has to survive. A 12-card rotation studies at 4 / 8 / 11; 20 cards and up runs uncropped.
+  - **The longest gap crops to exactly the rotation's length**, which is load-bearing rather than cosmetic: a card only moves toward the front when another is put back *behind* it, so if every gap cropped shorter than the rotation, the tail would never be reached and the round could not end. (It did exactly that during development, on every deck of 3 or more.)
+- **The gaps are student-configurable** — a gear in the options row edits all four numbers, clamped to 1–99 by `sanitizeGaps` on the way in and out of storage. Stored **per device**, not per deck (`studydeck_mastery_gaps`): how far apart repeats must be to feel like recall is a fact about the student, not about one deck. A change applies **from the next verdict**, without rebuilding the queue — cards already placed keep their positions, so nobody loses their place mid-round to answer "these gaps are too long".
+- **Older state is back-filled on read** (`schedule.ts` `normalize`), per record rather than per deck, since a cloud merge can leave a deck holding a mix of shapes. Old two-array `known` ids and ladder-era `step` values both land on the streak they actually demonstrated: a single old Know It becomes 2/3 (what a first-attempt hit is worth now), ladder rungs map across one for one, and ladder `mastered` stays mastered.
 
 **Deletion lifecycle:** `Storage.deleteFile(title)` removes the entry from `studydeck_history` AND deletes the corresponding `studydeck_flash_{id}` key (plus any pre-migration `studydeck_flash_{title}` key) in one atomic operation. This keeps localStorage clean and prevents orphaned card data accumulating over time.
 
@@ -352,7 +360,7 @@ Supporting rules, each fixing a specific failure mode:
 
 **Supabase mirror (optional, see `docs/auth/PRD.md`/`docs/auth/design-doc.md`):** `localStorage` remains the source of truth for every synchronous read in the app, logged in or not — `Storage`'s public surface never becomes `Promise`-based. When a session is active, `Storage.saveFile`/`deleteFile`/`setFlashState` additionally fire a best-effort, non-blocking async mirror of the same write to two Supabase tables (`decks`, `flash_state`, both RLS-scoped to `auth.uid()`) via `src/lib/SupabaseClient.ts`, the only module that imports `@supabase/supabase-js`. On login, `src/features/auth/migration.ts` uploads any existing local decks to a brand-new (empty) account, or downloads an existing account's cloud data back into the local cache — never both directions for the same login, to avoid an incomplete upload clobbering local-only data on retry. A `Storage.subscribe()` listener bus (modeled on `toast.ts`) notifies mounted screens after such a bulk local-cache overwrite.
 
-**Mastery records are device-local.** The `flash_state` table still has only `deck_title`, `known` and `learning` columns, so `setFlashState`'s mirror resolves the deck's title and sends the derived piles — the `cards` records don't leave the device. Studying the same deck on a second device therefore restarts its ladder there. Deliberate (Davis, 2026-08-17: get the ladder's shape right in real use before freezing it into a schema). Closing this means adding `cards jsonb` + `schema_version` to `flash_state` and keeping the two pile columns written in parallel for a release.
+**Mastery records are device-local.** The `flash_state` table still has only `deck_title`, `known` and `learning` columns, so `setFlashState`'s mirror resolves the deck's title and sends the derived piles — the `cards` records don't leave the device. Studying the same deck on a second device therefore restarts its streaks there. Deliberate (Davis, 2026-08-17: get the mode's shape right in real use before freezing it into a schema). Closing this means adding `cards jsonb` + `schema_version` to `flash_state` and keeping the two pile columns written in parallel for a release.
 
 ## Graph Rendering Notes
 

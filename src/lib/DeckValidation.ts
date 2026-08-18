@@ -6,6 +6,26 @@
 // Input is untrusted JSON, so we validate against `unknown` / loose shapes.
 type Raw = Record<string, unknown>;
 
+// R13/R14/R15: shared by quiz questions and flashcards — both may carry an
+// optional context graph, and a graph is wrong in exactly the same ways either way.
+function graphErrors(g: Raw, n: number): string[] {
+  const errors: string[] = [];
+  if (!g.type) errors.push(`Question ${n}: Graph object is missing 'type'.`);
+  if (!g.x_label) errors.push(`Question ${n}: Graph object is missing 'x_label'.`);
+  if (!g.y_label) errors.push(`Question ${n}: Graph object is missing 'y_label'.`);
+  if (!g.title) errors.push(`Question ${n}: Graph object is missing 'title'.`);
+  if (g.type === 'equation' && !g.x_range) {
+    errors.push(`Question ${n}: Equation graph requires 'x_range'.`);
+  }
+  if (g.x_range !== undefined && (!Array.isArray(g.x_range) || g.x_range.length !== 2)) {
+    errors.push(`Question ${n}: Graph 'x_range' must be a [min, max] array.`);
+  }
+  if (g.y_range !== undefined && (!Array.isArray(g.y_range) || g.y_range.length !== 2)) {
+    errors.push(`Question ${n}: Graph 'y_range' must be a [min, max] array.`);
+  }
+  return errors;
+}
+
 export function validateDeck(data: Raw): string[] {
   const errors: string[] = [];
 
@@ -50,6 +70,16 @@ export function validateDeck(data: Raw): string[] {
       // R9
       if (!q.front) errors.push(`Question ${n}: Missing 'front' field.`);
       if (!q.back) errors.push(`Question ${n}: Missing 'back' field.`);
+      // A card may carry one optional context graph on either face.
+      if (q.graph !== undefined && q.graph !== null) {
+        errors.push(...graphErrors(q.graph as Raw, n));
+      }
+      if (q.graphSide !== undefined && q.graphSide !== 'front' && q.graphSide !== 'back') {
+        errors.push(`Question ${n}: 'graphSide' must be "front" or "back", found "${String(q.graphSide)}".`);
+      }
+      if (q.graphSide !== undefined && (q.graph === undefined || q.graph === null)) {
+        errors.push(`Question ${n}: 'graphSide' is set but there is no 'graph' object.`);
+      }
       return;
     }
 
@@ -172,20 +202,7 @@ export function validateDeck(data: Raw): string[] {
 
     // R13/R14/R15: graph is optional; only checked when present.
     if (q.graph !== undefined && q.graph !== null) {
-      const g = q.graph as Raw;
-      if (!g.type) errors.push(`Question ${n}: Graph object is missing 'type'.`);
-      if (!g.x_label) errors.push(`Question ${n}: Graph object is missing 'x_label'.`);
-      if (!g.y_label) errors.push(`Question ${n}: Graph object is missing 'y_label'.`);
-      if (!g.title) errors.push(`Question ${n}: Graph object is missing 'title'.`);
-      if (g.type === 'equation' && !g.x_range) {
-        errors.push(`Question ${n}: Equation graph requires 'x_range'.`);
-      }
-      if (g.x_range !== undefined && (!Array.isArray(g.x_range) || g.x_range.length !== 2)) {
-        errors.push(`Question ${n}: Graph 'x_range' must be a [min, max] array.`);
-      }
-      if (g.y_range !== undefined && (!Array.isArray(g.y_range) || g.y_range.length !== 2)) {
-        errors.push(`Question ${n}: Graph 'y_range' must be a [min, max] array.`);
-      }
+      errors.push(...graphErrors(q.graph as Raw, n));
     }
 
     // table is optional context, independent of answerFormat.

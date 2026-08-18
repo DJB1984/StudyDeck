@@ -120,22 +120,6 @@ button { font-family: inherit; cursor: pointer; }
    on quiz decks: inherits .meta's scale but accent-colored, so a deck's
    progress reads as progress and not as more filename metadata. */
 .file-card .meta-flash { color: var(--accent-light); }
-/* "3 due" — the one time-sensitive thing on Home, so it gets a pill rather than
-   another run of inline text. Carries Mastery's own tint (not the everyday
-   accent) so the badge and the mode it sends you to read as the same thing. */
-.file-card .meta-due {
-  display: inline-block;
-  margin-right: 8px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--mode-mastery-veil);
-  border: 1px solid var(--mode-mastery-tint);
-  color: var(--mode-mastery-light);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  vertical-align: 0.05em;
-}
 .file-card .delete-btn {
   position: absolute;
   top: 12px;
@@ -1676,10 +1660,11 @@ button { font-family: inherit; cursor: pointer; }
   vertical-align: 0.08em;
 }
 
-/* Says which KIND of card is on screen when it isn't an ordinary ladder repeat.
-   A final check and a spacing filler look identical on the card itself, and the
-   honest answer to "do I know this?" differs between them — so the distinction
-   has to be visible before the student flips, not after. */
+/* Says which KIND of card is on screen when it isn't an ordinary repeat. A
+   never-seen card and a mastered one both sit at the extremes of the streak bar
+   and neither is an ordinary retrieval — one is worth double, the other can only
+   lose ground — so the distinction has to be visible before the student flips,
+   not after. */
 .flash-phase-tag {
   margin: 0 0 10px;
   font-size: 0.8rem;
@@ -1688,18 +1673,156 @@ button { font-family: inherit; cursor: pointer; }
   text-align: center;
   color: var(--text-secondary);
 }
-/* The final check is the moment the mode exists for, so it carries the mode's
-   light; filler is deliberately quiet, because it isn't work being asked of the
-   student and shouldn't compete with the card. A refresher sits between the two:
-   a real verdict is being asked for, so it's louder than filler — but it's a
-   spot-check on settled work, so it stays off the mode's own colour and reads in
-   the everyday accent instead. */
-.flash-phase-tag[data-phase='cold'] { color: var(--mode-light); }
-.flash-phase-tag[data-phase='refresh'] { color: var(--accent-light); }
+/* A first look is the moment the mode's shortcut is on offer, so it carries the
+   mode's own light. A mastered card in the rotation is deliberately quieter: it
+   isn't work being asked of the student, and it shouldn't compete with the card
+   for attention — it just needs to explain why something already finished is
+   back on screen. */
+.flash-phase-tag[data-phase='fresh'] { color: var(--mode-light); }
+.flash-phase-tag[data-phase='mastered'] { color: var(--text-secondary); }
 
-/* The mastery tally ("8 learned · 4 left") is mode-specific information, so it
+/* The mastery tally ("8 / 12 mastered") is mode-specific information, so it
    reads in the mode's own light. */
 .flash-progress-text { color: var(--mode-light); }
+
+/* The streak bar — three segments, one per hit needed, above the card. Always
+   rendered in Mastery rather than appearing on the first hit: a bar that arrives
+   mid-round would shift the card down under the student's cursor, and an empty
+   bar says "0 of 3" more clearly than an absent one says anything. */
+.flash-streak {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.flash-streak-track {
+  display: flex;
+  gap: 4px;
+}
+.flash-streak-seg {
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mode-tint) 26%, var(--border));
+  /* Slow enough to be seen as a segment lighting up rather than a repaint — the
+     bar is the only feedback a correct answer gets besides the card leaving. */
+  transition:
+    background 260ms ease,
+    box-shadow 260ms ease;
+}
+.flash-streak-seg[data-on='yes'] {
+  background: var(--mode-light);
+}
+/* The finished state earns a glow the climbing states don't get: three lit
+   segments and two lit segments are one pixel apart at a glance, and mastering a
+   card is the one event in the mode worth marking. */
+.flash-streak[data-mastered='yes'] .flash-streak-seg {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mode-light) 55%, transparent);
+}
+.flash-streak-label {
+  min-width: 62px; /* holds its width across "0 / 3" → "Mastered", so the bar can't shuffle sideways */
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+.flash-streak[data-mastered='yes'] .flash-streak-label { color: var(--mode-light); }
+@media (prefers-reduced-motion: reduce) {
+  .flash-streak-seg { transition: none; }
+}
+
+/* Spacing settings, as a popover off the gear rather than a screen of its own:
+   the numbers only mean anything next to the round they're spacing, and sending
+   a student out of a session to change one would cost them the session. */
+.flash-settings-wrap {
+  position: relative;
+  /* Above the ambience canvas, which is painted later in the DOM and would
+     otherwise cover an open panel. */
+  z-index: 30;
+}
+.flash-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  /* The current gaps ARE the label, so the button answers "what spacing am I on?"
+     without being opened. Tabular figures so 5 / 10 / 15 doesn't jitter as the
+     numbers change width. */
+  font-variant-numeric: tabular-nums;
+}
+.flash-settings-btn svg { flex: none; }
+.flash-settings-btn[aria-expanded='true'] {
+  color: var(--mode-light);
+  border-color: color-mix(in srgb, var(--mode-tint) 55%, var(--border));
+}
+.flash-settings-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: 290px;
+  max-width: calc(100vw - 48px);
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--mode-tint) 30%, var(--border));
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.42);
+}
+.flash-settings-intro {
+  margin: 0 0 12px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.flash-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.flash-settings-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+/* The rung each number belongs to, under its label — "after the 2nd hit" is
+   what the student did, "streak 2 / 3" is what they'll see on the bar, and the
+   settings are only legible if both are on screen together. */
+.flash-settings-name em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+.flash-settings-row input {
+  width: 62px;
+  padding: 5px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.flash-settings-row input:focus-visible {
+  outline: 1px solid var(--accent-light);
+  outline-offset: 1px;
+}
+.flash-settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+.flash-settings-actions .btn-ghost {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
 
 /* Stacking context for the ambience canvas, which spans the card, the hint and
    the sort buttons — Mastery's disc is centred on the whole region, not on the
@@ -1873,6 +1996,35 @@ button { font-family: inherit; cursor: pointer; }
 .card-back {
   transform: rotateY(180deg);
   color: var(--mode-light);
+}
+/* A card carrying a graph turns into a column: the plot on top, the card's own
+   text under it. The global .graph-area is a fixed 240px, which is taller than
+   the padded interior of a card at its 280px floor — so inside a face the plot
+   gives up its fixed height and takes whatever the flex track has left after
+   the text. Padding tightens for the same reason: the graph needs the room more
+   than the margin does. Text-only faces never match .has-graph and are
+   untouched. */
+.card-front.has-graph, .card-back.has-graph {
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(18px, 3vw, 32px);
+}
+.has-graph .graph-area {
+  height: auto;
+  /* min-height:0 is what actually lets it shrink — a flex item's automatic
+     minimum is its content size, and the canvas would otherwise hold the face
+     open past the card's cap. */
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  margin-bottom: 0;
+}
+/* The face's own type scale is sized for a card that is nothing but words; next
+   to a plot it's the caption, not the headline. */
+.has-graph .card-text {
+  flex: 0 0 auto;
+  font-size: clamp(1rem, 0.9rem + 0.4vw, 1.2rem);
+  line-height: 1.45;
 }
 #flash-card.sort-known {
   animation: flash-slide-out 350ms ease forwards;
