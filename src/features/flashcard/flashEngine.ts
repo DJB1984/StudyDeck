@@ -4,13 +4,14 @@
 // deck reordering. sortCard() is the ONLY method that changes a card's standing,
 // and every rule it applies comes from schedule.ts — keep it that way.
 //
-// Mastery is a single-session drill (see schedule.ts for the rationale): three
-// Know Its in a row master a card, each hit burying it further down the rotation.
-// The rotation itself never shrinks — a verdict always takes a card off the front
-// and puts it back further down, mastered or not — so the round ends on every
-// card being mastered rather than on the queue running dry. Mastered cards
-// circulating is deliberate: it's what keeps the gaps honest at the end of a
-// round, when there'd otherwise be two cards left to space a repeat against.
+// Mastery is a single-session drill (see schedule.ts for the rationale): four
+// Know Its in a row master a card, each hit burying it further down the rotation
+// and the last one sending it the whole way to the back. The rotation itself
+// never shrinks — a verdict always takes a card off the front and puts it back
+// further down, mastered or not — so the round ends on every card being mastered
+// rather than on the queue running dry. Mastered cards circulating is deliberate:
+// it's what keeps the gaps honest at the end of a round, when there'd otherwise
+// be two cards left to space a repeat against.
 
 import type {
   CardProgress,
@@ -189,7 +190,7 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
     },
 
     /** True when the card on screen has never had a verdict, in any session —
-     *  the one exposure whose Know It is worth two rungs. */
+     *  the one exposure whose Know It goes straight to one short of mastered. */
     currentIsFresh(): boolean {
       const id = this.queue[0];
       return id !== undefined && isFresh(this.cards[id] ?? newProgress());
@@ -287,21 +288,21 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       const now = new Date();
 
       if (pile === 'known') {
-        const p = this.cards[id] ?? newProgress();
-        const wasMastered = isMastered(p);
         // hit() owns the streak arithmetic, including the first-attempt jump to
-        // 2 — which is why the gap is read off the NEW streak rather than the old
-        // one plus one. A card mastering here reaches 3 and takes the third gap.
-        const next = hit(p, now);
+        // 3 — which is why the gap is read off the NEW streak rather than the old
+        // one plus one.
+        const next = hit(this.cards[id] ?? newProgress(), now);
         this.cards[id] = next;
-        // A card that was ALREADY mastered goes to the very back instead: it has
-        // nothing left to prove, so the only useful thing it can do is get out of
-        // the way of the cards that do — which also makes it the best spacer in
-        // the rotation, and guarantees every unmastered card keeps advancing
-        // toward the front.
+        // The hit that MASTERS a card sends it to the very back rather than a
+        // rung's distance: it has nothing left to prove, so the only useful thing
+        // it can do is get out of the way of the cards that do — which also makes
+        // it the best spacer in the rotation, and guarantees every unmastered
+        // card keeps advancing toward the front. An already-mastered card known
+        // again takes the same trip, since hit() holds it at the top of the
+        // ladder; that repeat is a free victory lap, not a fifth rung.
         this.reinsert(
           id,
-          wasMastered ? this.queue.length : gapFor(next.streak, this.queue.length, this.gaps),
+          isMastered(next) ? this.queue.length : gapFor(next.streak, this.queue.length, this.gaps),
         );
       } else {
         this.cards[id] = miss(now);

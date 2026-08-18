@@ -4,12 +4,13 @@
 // can be read (and changed) without reading the rotation machinery around it.
 //
 // The shape of the thing, in one paragraph: Mastery is a single-session drill. A
-// card needs three Know Its IN A ROW, and each one buries it further down the
-// rotation — 5 cards, then 10, then 15 — so every repeat is a real retrieval
-// rather than a glance at something still in working memory. The third hit
-// masters it; nothing before that does. A card seen for the very first time
-// skips to 2/3 on a hit, so a deck full of things the student already knows
-// clears in two passes instead of three. A miss sends the card down 3 and wipes
+// card needs four Know Its IN A ROW, and each one buries it further down the
+// rotation — 5 cards, then 10, then 15, then the whole way to the back — so
+// every repeat is a real retrieval rather than a glance at something still in
+// working memory. The fourth hit masters it; nothing before that does. A card
+// seen for the very first time skips to 3/4 on a hit, so a deck full of things
+// the student already knows clears in two passes instead of four. A miss sends
+// the card down 3 and wipes
 // the streak to zero. Mastery persists per deck across sessions, so a later
 // round only offers what isn't mastered yet; cards mastered during a round keep
 // circulating inside it, which is also what keeps the spacing honest late on,
@@ -18,13 +19,15 @@
 import type { CardProgress, FlashState, MasteryGaps } from '../../types';
 
 /** Hits in a row needed to master a card. Not configurable — the gaps are. */
-export const MASTERY_STREAK = 3;
+export const MASTERY_STREAK = 4;
 
 /**
  * How far down the rotation a card goes after each hit, indexed by the streak it
- * just reached. The third entry is the gap given by the hit that masters the
- * card: mastered cards stay in circulation for the rest of the round, so they
- * come back once more as a victory lap and double as spacers for what's left.
+ * just reached. Three of them for a four-hit ladder: the hit that MASTERS a card
+ * sends it the whole way to the back of the rotation instead, which is a
+ * position rather than a distance and so isn't a number anyone sets. Mastered
+ * cards keep circulating from there for the rest of the round, doubling as the
+ * longest spacers available to whatever is still being drilled.
  *
  * `miss` is deliberately much shorter than the first rung. A missed card is one
  * the student just saw the answer to, so bringing it back soon closes the loop
@@ -52,14 +55,16 @@ export function isFresh(p: CardProgress): boolean {
 }
 
 /**
- * A Know It. The first-ever verdict on a card counts double: getting something
- * right with no prior exposure is a far stronger signal than getting it right
- * shortly after being shown the answer, and grinding three passes through cards
- * the student already knew is how a 60-card deck becomes a chore.
+ * A Know It. The first-ever verdict on a card lands it one hit short of mastered
+ * in a single step: getting something right with no prior exposure is a far
+ * stronger signal than getting it right shortly after being shown the answer, and
+ * grinding four passes through cards the student already knew is how a 60-card
+ * deck becomes a chore. It still costs a second, spaced retrieval to master —
+ * a first look proves recall, not retention.
  */
 export function hit(p: CardProgress, now: Date = new Date()): CardProgress {
   const streak = (
-    isFresh(p) ? 2 : Math.min(MASTERY_STREAK, p.streak + 1)
+    isFresh(p) ? MASTERY_STREAK - 1 : Math.min(MASTERY_STREAK, p.streak + 1)
   ) as CardProgress['streak'];
   return { streak, lastSeen: now.toISOString() };
 }
@@ -107,9 +112,14 @@ function crop(gap: number, scale: number): number {
   return Math.max(1, Math.ceil(gap * scale));
 }
 
-/** How far down the rotation a card that just reached `streak` should go. */
+/**
+ * How far down the rotation a card that just reached `streak` should go. Only
+ * ever asked about the hits BELOW mastery — the mastering hit goes to the back
+ * of the queue, which is the engine's call to make, not a gap — so the clamp is
+ * to the number of rungs rather than to MASTERY_STREAK.
+ */
 export function gapFor(streak: number, live: number, gaps: MasteryGaps): number {
-  const rung = gaps.rungs[Math.min(Math.max(streak, 1), MASTERY_STREAK) - 1];
+  const rung = gaps.rungs[Math.min(Math.max(streak, 1), gaps.rungs.length) - 1];
   return crop(rung, cropScale(live, gaps));
 }
 
@@ -188,19 +198,31 @@ export function tally(ids: string[], cards: Record<string, CardProgress>): Maste
  *
  * Both paths land on the same idea: a card keeps the streak its past record
  * actually demonstrated, and no more. Old "known" meant a single Know It, which
- * is worth exactly what a first-attempt hit is worth here — 2, one pass short of
- * mastered. Ladder records map rung for rung, since three in-session hits was the
- * bar for mastery there too.
+ * is worth exactly what a first-attempt hit is worth here — 3, one spaced
+ * retrieval short of mastered. Ladder records map rung for rung; its bar was
+ * three hits, so one that had cleared it stays mastered and an unfinished one
+ * lands one hit short.
  */
 export function normalize(state: FlashState, now: Date = new Date()): FlashState {
-  if (state.cards && !needsUpgrade(state.cards)) return state;
+  if (state.cards && !needsUpgrade(state)) return state;
   const stamp = now.toISOString();
 
   if (state.cards) {
+    // The mastered ids as of the write, which is what tells an older model's
+    // FINISHED card apart from this model's nearly-finished one.
+    const wasMastered = new Set(state.known ?? []);
     const cards: Record<string, CardProgress> = {};
     for (const [id, raw] of Object.entries(state.cards)) {
       const old = raw as CardProgress & { step?: number; mastered?: boolean };
-      const streak = old.streak ?? (old.mastered ? MASTERY_STREAK : (old.step ?? 0));
+      const earned = old.streak ?? (old.mastered ? MASTERY_STREAK : (old.step ?? 0));
+      // A streak of 3 WAS mastery under the three-hit model this replaced (hence
+      // the bare 3 — it's a historical number, not the current bar). Taken at
+      // face value every card finished under that model would come back as 3/4,
+      // and a mastered deck would reopen as a full round. `known` separates the
+      // two exactly: under the current model a 3/4 card is in `learning` and
+      // never in `known`, so this can't misfire, and it stops firing on its own
+      // once the state has been rewritten.
+      const streak = earned === 3 && wasMastered.has(id) ? MASTERY_STREAK : earned;
       cards[id] = {
         streak: Math.max(0, Math.min(MASTERY_STREAK, streak)) as CardProgress['streak'],
         lastSeen: old.lastSeen ?? stamp,
@@ -213,16 +235,21 @@ export function normalize(state: FlashState, now: Date = new Date()): FlashState
   for (const id of state.learning ?? []) cards[id] = { streak: 0, lastSeen: stamp };
   // Known wins a collision — the old shape allowed an id in both arrays only
   // through a bug, and the more advanced record is the safer one to keep.
-  for (const id of state.known ?? []) cards[id] = { streak: 2, lastSeen: stamp };
+  for (const id of state.known ?? [])
+    cards[id] = { streak: (MASTERY_STREAK - 1) as CardProgress['streak'], lastSeen: stamp };
   return { ...state, cards };
 }
 
-// A record from the ladder era has `step` and no `streak`; one from this model
-// always has `streak`. Checked per record rather than per state, since a merge
-// from the cloud can leave a deck holding some of each.
-function needsUpgrade(cards: Record<string, CardProgress>): boolean {
-  for (const raw of Object.values(cards)) {
-    if ((raw as { streak?: number }).streak === undefined) return true;
+// Two shapes need lifting: a record from the ladder era has `step` and no
+// `streak`, and one from the three-hit model sits at streak 3 while `known` says
+// it was mastered. Checked per record rather than per state, since a merge from
+// the cloud can leave a deck holding some of each.
+function needsUpgrade(state: FlashState): boolean {
+  const mastered = new Set(state.known ?? []);
+  for (const [id, raw] of Object.entries(state.cards ?? {})) {
+    const streak = (raw as { streak?: number }).streak;
+    if (streak === undefined) return true;
+    if (streak === 3 && mastered.has(id)) return true;
   }
   return false;
 }

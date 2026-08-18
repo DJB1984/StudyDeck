@@ -218,21 +218,23 @@ export interface FlashSession {
  */
 export interface CardProgress {
   /**
-   * Consecutive Know Its. 3 means mastered; a Still Learning resets it to 0. A
-   * card's first-ever Know It jumps straight to 2 — see `hit()` in
+   * Consecutive Know Its. 4 means mastered; a Still Learning resets it to 0. A
+   * card's first-ever Know It jumps straight to 3 — see `hit()` in
    * features/flashcard/schedule.ts.
    */
-  streak: 0 | 1 | 2 | 3;
+  streak: 0 | 1 | 2 | 3 | 4;
   /**
    * ISO time of the last verdict given on this card, in any session. Null means
-   * never seen, which is what earns the first-attempt jump to 2.
+   * never seen, which is what earns the first-attempt jump to 3.
    */
   lastSeen: string | null;
 }
 
 /**
  * Mastery's spacing, in cards: how far down the rotation a card drops after the
- * hit that takes it to streak 1, 2 and 3, plus how far it drops on a miss.
+ * hit that takes it to streak 1, 2 and 3, plus how far it drops on a miss. There
+ * is deliberately no fourth number — the hit that masters a card sends it to the
+ * back of the rotation, a position rather than a distance.
  * Student-configurable and stored per device (Storage.getMasteryGaps), which is
  * why the shape lives here rather than with the policy that interprets it —
  * features/flashcard/schedule.ts owns the defaults, the bounds and the
