@@ -131,7 +131,7 @@ Nebula's second sanctioned appearance, and its only one outside Home: the two Fl
 - **Standard** — Starlight Blue (`#3093ec` / `#63b3ff` / fill `#1673cf`): the system's everyday accent, unchanged. The mode that adds nothing also changes nothing.
 - **Mastery** — muted Pink (`#a2519a` / `#d68cc9` / fill `#8f4489`): Nebula Pink pulled far down in saturation into a deep-space cast.
 
-`-tint` is the identity hue (rims, the card's tonal cast, the hint dot); `-light` is the readable-on-void variant (flipped-card answer text, the progress tally, the ambient particles); `-fill` is a deliberately deeper tone used only where white sits on top, so every mode's pill label clears 4.5:1; `-veil` is the radial ground wash. All four are registered via `@property` as `<color>`, so switching modes interpolates the hue over 700ms instead of snapping.
+`-tint` is the identity hue (rims, the card's tonal cast, the hint dot); `-light` is the readable-on-void variant (flipped-card answer text, the progress tally, the ambient particles); `-fill` is a deliberately deeper tone used where white sits on top — the pill's label and the filled button's gradient base — so every mode clears 4.5:1; `-veil` is the radial ground wash. All four are registered via `@property` as `<color>`, so switching modes interpolates the hue over 700ms instead of snapping.
 
 ### Neutral
 - **Void Navy** (`#080d16`): the page background — a near-black with a cool navy undertone, never pure `#000`.
@@ -150,7 +150,9 @@ Nebula's second sanctioned appearance, and its only one outside Home: the two Fl
 
 **The Nebula-Is-Rare Rule.** Nebula has exactly two sanctioned homes system-wide: the full-saturation conic gradient behind Home's hero, and the deeply muted cast of Flashcards' Mastery atmosphere. Nowhere else — never a button fill, never a chart or decoration color. Anything beyond those two breaks both Nebula's own impact and Starlight Blue's claim to "interactive."
 
-**The Atmosphere-Is-Not-A-Control Rule.** A mode's hue describes the round the student is in; it never says "act here." Ambience, rims, tonal casts and the mode pill's own thumb (the one control whose entire job is naming the mode) take the mode color. Every other control on the screen — the primary button, ghost buttons, focus rings — stays Starlight Blue. This is what lets a whole screen turn nebula pink without Starlight Blue losing its meaning.
+**The Mode-Owns-Its-Screen Rule.** Inside the Flashcard screen the mode's hue *replaces* Starlight Blue as the accent: ambience, rims and tonal casts take it, and so does every control that would otherwise be blue — the filled button, the switches, the pill's thumb, focus rings. The screen therefore still has exactly one color meaning "act here" (The Signal Rule holds; the color it resolves to is what changed). Nothing outside `#flashcard-screen` is touched — the mode hue never leaks past that screen, and Starlight Blue remains the app's accent everywhere else. Alert Red is the one exception inside the screen: a destructive button's red is a warning, not a theme.
+
+This reversed an earlier rule (the *Atmosphere-Is-Not-A-Control Rule*, which held every control on the screen to Starlight Blue); changed 2026-08-18 at Davis's call, because a blue Know It button on a purple Mastery screen read as a leftover from the other mode rather than as a signal.
 
 **The Feedback-Only Rule.** Success Green and Alert Red exist solely to answer "was this right or wrong." They never appear as generic UI accents, chart colors, or decoration outside a quiz-feedback context.
 
@@ -259,7 +261,7 @@ Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `
 ### Don't:
 - **Don't** add `backdrop-filter`/blur anywhere — this system is solid, tonal-layered panels, not glass.
 - **Don't** use the Nebula gradient on anything interactive, or take its hues anywhere beyond Home's hero and the Flashcard mode atmospheres (The Nebula-Is-Rare Rule).
-- **Don't** let a mode's hue reach a control that isn't the mode pill's thumb — Starlight Blue owns every action on the screen, whatever color the atmosphere is (The Atmosphere-Is-Not-A-Control Rule).
+- **Don't** let a mode's hue out of `#flashcard-screen` — inside it the mode hue is the accent and every blue control follows it, but the rest of the app stays Starlight Blue (The Mode-Owns-Its-Screen Rule).
 - **Don't** add drop shadows to static, at-rest surfaces — depth comes from tonal layering, not elevation (The Shadow-Is-Motion Rule).
 - **Don't** add bright, multi-color, gamified educational-app styling — badges, confetti, mascots, cheerful illustration, color emoji icons. The project is explicitly "not a Quizlet clone."
-- **Don't** style focus states with a glow or ring. The established cue is a border-color shift to Starlight Blue Light only.
+- **Don't** style focus states with a glow or ring. The established cue is a border-color shift to Starlight Blue Light — or, inside the Flashcard screen, to the mode's `-light` (The Mode-Owns-Its-Screen Rule).

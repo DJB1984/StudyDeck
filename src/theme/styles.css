@@ -1546,6 +1546,27 @@ button { font-family: inherit; cursor: pointer; }
   #flashcard-screen { transition: none; }
 }
 
+/* The two filled controls on this screen wear the mode's hue rather than the
+   app's everyday accent. Standard's tint IS the accent, so nothing changes
+   there; in Mastery a blue Know It and a blue switch were the only things on a
+   purple screen still arguing for the old mode. They travel with --mode-tint,
+   so the 700ms mode change carries them along with the field behind them.
+
+   Scoped to this screen only — the accent is the app's default everywhere else,
+   and .btn-danger is exempt because its red is the warning, not a theme. */
+#flashcard-screen .btn:not(.btn-danger) {
+  background: linear-gradient(180deg, var(--mode-tint), var(--mode-fill));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--mode-fill) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+#flashcard-screen .toggle-label input:checked + .toggle-track {
+  background: var(--mode-tint);
+  border-color: var(--mode-tint);
+}
+#flashcard-screen .toggle-label input:focus-visible + .toggle-track {
+  border-color: var(--mode-light);
+}
+
 /* The mode pill and the Settings button, with the pill left and the button
    pushed to the far corner — allowed to wrap rather than squeeze on a narrow
    phone, with a tighter row gap so a wrapped row still reads as one group. */
@@ -1622,7 +1643,7 @@ button { font-family: inherit; cursor: pointer; }
   color: white;
 }
 .mode-pill-option input:focus-visible + span {
-  outline: 1px solid var(--accent-light);
+  outline: 1px solid var(--mode-light);
   outline-offset: 4px;
   border-radius: 999px;
 }
@@ -1641,27 +1662,6 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.82rem;
 }
 .flash-settings-btn svg { flex: none; }
-
-/* Says which KIND of card is on screen when it isn't an ordinary repeat. A
-   never-seen card and a mastered one both sit at the extremes of the streak bar
-   and neither is an ordinary retrieval — one is worth three rungs, the other can only
-   lose ground — so the distinction has to be visible before the student flips,
-   not after. */
-.flash-phase-tag {
-  margin: 0 0 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-align: center;
-  color: var(--text-secondary);
-}
-/* A first look is the moment the mode's shortcut is on offer, so it carries the
-   mode's own light. A mastered card in the rotation is deliberately quieter: it
-   isn't work being asked of the student, and it shouldn't compete with the card
-   for attention — it just needs to explain why something already finished is
-   back on screen. */
-.flash-phase-tag[data-phase='fresh'] { color: var(--mode-light); }
-.flash-phase-tag[data-phase='mastered'] { color: var(--text-secondary); }
 
 /* The mastery tally ("8 / 12 mastered") is mode-specific information, so it
    reads in the mode's own light. */
@@ -1736,7 +1736,7 @@ button { font-family: inherit; cursor: pointer; }
      hung off its left edge would run off the viewport on a narrow window. */
   right: 0;
   z-index: 30;
-  width: 290px;
+  width: 260px;
   max-width: calc(100vw - 48px);
   padding: 14px;
   background: var(--surface);
@@ -1744,81 +1744,31 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 12px;
   box-shadow: 0 14px 34px rgb(0 0 0 / 0.42);
 }
-/* The toggle keeps its own name/hint stack, so it lines up with the number rows
-   below it instead of reading as a stray control pinned above them. */
+/* Each switch keeps a name/hint stack, so the panel reads as a short list of
+   settings rather than a stack of bare controls. */
 .flash-settings-toggle {
   align-items: flex-start;
   margin-bottom: 10px;
   color: var(--text);
   font-size: 0.82rem;
 }
+.flash-settings-toggle:last-child {
+  margin-bottom: 0;
+}
 .flash-settings-toggle .toggle-track {
   margin-top: 1px;
-}
-/* Names the second half of the panel — without it the number rows read as more
-   qualifiers on the toggle above them. */
-.flash-settings-group {
-  margin: 14px 0 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text);
-}
-.flash-settings-intro {
-  margin: 0 0 12px;
-  font-size: 0.76rem;
-  line-height: 1.45;
-  color: var(--text-secondary);
-}
-.flash-settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  font-size: 0.82rem;
-  cursor: pointer;
 }
 .flash-settings-name {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
-/* The rung each number belongs to, under its label — "after the 2nd hit" is
-   what the student did, "streak 2 / 4" is what they'll see on the bar, and the
-   settings are only legible if both are on screen together. */
+/* The one-line explanation under a setting's name — a switch's label says what
+   it is, the hint says what it does to the round. */
 .flash-settings-name em {
   font-style: normal;
   font-size: 0.7rem;
   color: var(--text-secondary);
-}
-.flash-settings-row input {
-  width: 62px;
-  padding: 5px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-.flash-settings-row input:focus-visible {
-  outline: 1px solid var(--accent-light);
-  outline-offset: 1px;
-}
-/* Holds Reset alone — the panel is dismissed by clicking away from it, so
-   there is no Done to sit opposite. */
-.flash-settings-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-.flash-settings-actions .btn-ghost {
-  padding: 5px 10px;
-  font-size: 0.78rem;
 }
 
 /* Stacking context for the ambience canvas, which spans the card, the hint and
@@ -2083,18 +2033,37 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* Undo sits in the same row as the two sort buttons but must not compete with
-   them — it's a correction, not a choice. Borderless and smaller keeps the
-   Still Learning / Know It pair reading as the only real decision on screen. */
+   them — it's a correction, not a choice. An unlabelled disc in the secondary
+   text colour keeps the Still Learning / Know It pair reading as the only real
+   decision on screen; it borrows a border only on hover, so at rest it is the
+   quietest thing in the row. */
 .flash-undo-btn {
-  border-color: transparent;
-  padding: 8px 12px;
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms, transform 100ms ease;
 }
+.flash-undo-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.flash-undo-btn:active:not(:disabled) { transform: scale(0.94); }
 .flash-undo-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
   color: var(--text-secondary);
   border-color: transparent;
+  background: transparent;
 }
 /* The end of a round is a moment, and the screen is now full-height — so the
    card sits in the middle of the stage the flashcard just left rather than

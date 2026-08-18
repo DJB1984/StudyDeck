@@ -3,19 +3,12 @@
 // mutations, matching the legacy flow while staying inside React.
 
 import { useEffect, useReducer, useRef, useState } from 'react';
-import type { FlashCard, HistoryEntry, MasteryGaps } from '../../types';
+import type { FlashCard, HistoryEntry } from '../../types';
 import { Katex } from '../../components/Math/Katex';
 import { Graph } from '../../components/Graph/Graph';
 import { Storage } from '../../lib/Storage';
 import { createFlashEngine, type FlashEngine } from './flashEngine';
-import {
-  DEFAULT_GAPS,
-  GAP_MAX,
-  GAP_MIN,
-  MASTERY_STREAK,
-  gapsAreDefault,
-  sanitizeGaps,
-} from './schedule';
+import { MASTERY_STREAK } from './schedule';
 import { FlashAmbience, type FlashAmbienceHandle } from './FlashAmbience';
 
 interface FlashcardScreenProps {
@@ -60,6 +53,28 @@ function SettingsIcon() {
   );
 }
 
+// A counter-clockwise arrow, no label. The two verdicts beside it are the row's
+// decision and now own the arrow keys; undo is the correction you reach for by
+// hand, and a word here would have given it the same weight as a verdict.
+function UndoIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 4.5h5.2a3.9 3.9 0 0 1 0 7.8H4.6" />
+      <polyline points="5.9,1.7 3,4.5 5.9,7.3" />
+    </svg>
+  );
+}
+
 // The card's standing toward mastery, as four segments it fills left to right —
 // one per Know It needed, the last of which is the hit that masters the card and
 // sends it to the back. Always present in Mastery (never conditional on having
@@ -86,101 +101,47 @@ function StreakBar({ streak }: { streak: number }) {
   );
 }
 
-// Every setting the round takes, as one popover off the gear. Both of these are
-// things a student sets once and then leaves alone, so neither earns permanent
-// space on the options row beside the mode pill — the choice that IS the round.
-// Spacing only appears in Mastery: it's the one mode that spaces anything.
+// Everything the round takes that isn't the mode, as one popover off the gear.
+// Both of these are things a student sets once and then leaves alone, so neither
+// earns permanent space on the options row beside the mode pill — the choice
+// that IS the round.
 //
-// Gap drafts are held as strings so a field can be empty mid-edit without the
-// value snapping back to a default on every keystroke; sanitizeGaps runs on
-// blur, which is also the point the change reaches the engine and Storage.
+// Card order only appears in Standard. Mastery decides where every card sits by
+// how well it's known, so shuffling underneath it would be undoing the mode's
+// own work — it isn't offered and then ignored, it simply isn't there.
 function FlashSettings({
+  showOrder,
   randomOn,
   onRandomToggle,
   motionOn,
   onMotionToggle,
-  showSpacing,
-  gaps,
-  onCommit,
 }: {
+  showOrder: boolean;
   randomOn: boolean;
   onRandomToggle: (checked: boolean) => void;
   motionOn: boolean;
   onMotionToggle: () => void;
-  showSpacing: boolean;
-  gaps: MasteryGaps;
-  onCommit: (next: MasteryGaps) => void;
 }) {
-  const [draft, setDraft] = useState<string[]>(() => [
-    ...gaps.rungs.map(String),
-    String(gaps.miss),
-  ]);
-
-  function gapsFrom(values: string[]): MasteryGaps {
-    return sanitizeGaps({
-      rungs: [Number(values[0]), Number(values[1]), Number(values[2])],
-      miss: Number(values[3]),
-    });
-  }
-
-  function commit(values: string[]) {
-    const next = gapsFrom(values);
-    setDraft([...next.rungs.map(String), String(next.miss)]);
-    onCommit(next);
-  }
-
-  // The panel is dismissed by clicking away from it, and pointerdown lands
-  // BEFORE the focused field's blur — so a number typed and then dismissed with
-  // a click would unmount before onBlur ever ran, and the edit would be lost.
-  // Committing again on unmount closes that gap; re-committing an unchanged
-  // draft is a no-op, so the ordinary blur path costs nothing.
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
-  useEffect(() => {
-    return () => onCommit(gapsFrom(draftRef.current));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function field(index: number, label: string, hint: string) {
-    return (
-      <label className="flash-settings-row" key={label}>
-        <span className="flash-settings-name">
-          {label}
-          <em>{hint}</em>
-        </span>
-        <input
-          type="number"
-          min={GAP_MIN}
-          max={GAP_MAX}
-          value={draft[index]}
-          onChange={(e) => {
-            const next = draft.slice();
-            next[index] = e.target.value;
-            setDraft(next);
-          }}
-          onBlur={() => commit(draft)}
-        />
-      </label>
-    );
-  }
-
   return (
     <div className="flash-settings-panel" role="group" aria-label="Study settings">
-      <label className="toggle-label flash-settings-toggle">
-        <input
-          type="checkbox"
-          checked={randomOn}
-          onChange={(e) => onRandomToggle(e.target.checked)}
-        />
-        <span className="toggle-track"></span>
-        <span className="flash-settings-name">
-          Random order
-          <em>Shuffles the deck; starts the round over</em>
-        </span>
-      </label>
-      {/* A switch here rather than the action-named button it used to be: inside
-          a list of settings the toggle above it sets the form, and one button
-          among switches reads as a different kind of thing than it is. */}
+      {showOrder && (
+        <label className="toggle-label flash-settings-toggle">
+          <input
+            type="checkbox"
+            checked={randomOn}
+            onChange={(e) => onRandomToggle(e.target.checked)}
+          />
+          <span className="toggle-track"></span>
+          <span className="flash-settings-name">
+            Random order
+            <em>Shuffles the deck; starts the round over</em>
+          </span>
+        </label>
+      )}
+      {/* A switch rather than the action-named button it used to be: in a list
+          of settings a lone button reads as a different kind of thing than it
+          is. The only control the panel always has — in Mastery it's the whole
+          panel. */}
       <label className="toggle-label flash-settings-toggle">
         <input type="checkbox" checked={motionOn} onChange={onMotionToggle} />
         <span className="toggle-track"></span>
@@ -189,36 +150,6 @@ function FlashSettings({
           <em>The field behind the card drifts</em>
         </span>
       </label>
-      {showSpacing && (
-        <>
-          <p className="flash-settings-group">Mastery spacing</p>
-          <p className="flash-settings-intro">
-            How many cards go by before a card comes back. On a deck too small to
-            hold these gaps they scale down together, keeping their shape. The 4th
-            hit masters the card and sends it to the very back, so it has no
-            number of its own.
-          </p>
-          {field(0, 'After the 1st hit', 'streak 1 / 4')}
-          {field(1, 'After the 2nd hit', 'streak 2 / 4')}
-          {field(2, 'After the 3rd hit', 'streak 3 / 4')}
-          {field(3, 'After a miss', 'streak resets to 0')}
-          {/* The only button in the panel, and it's a real action rather than a
-              way out — every setting here applies the moment it's changed, so
-              there is nothing to confirm on the way out. */}
-          <div className="flash-settings-actions">
-            <button
-              type="button"
-              className="btn-ghost"
-              disabled={gapsAreDefault(gaps)}
-              onClick={() =>
-                commit([...DEFAULT_GAPS.rungs.map(String), String(DEFAULT_GAPS.miss)])
-              }
-            >
-              Reset to 5 / 10 / 15
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -247,7 +178,6 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // atmosphere still reads while frozen — colour, rim and a composed still
   // frame all survive — so the default costs the mode nothing.
   const [motionOn, setMotionOn] = useState(() => Storage.getAmbientMotion());
-  const [gaps, setGaps] = useState<MasteryGaps>(() => sanitizeGaps(Storage.getMasteryGaps()));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsWrapRef = useRef<HTMLDivElement | null>(null);
   const [sortAnim, setSortAnim] = useState<'known' | 'learning' | null>(null);
@@ -258,11 +188,14 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // restart, so it never resumes the saved session. Each handler passes the
   // other options through from the engine, so changing one never silently
   // clears the others.
+  // `randomOn` is the student's Standard-mode preference, not the engine's live
+  // setting: Mastery forces the shuffle off, so passing it through here is what
+  // gives them their shuffle back when they come out the other side.
   function onModeSelect(next: StudyMode) {
     setMode(next);
     setSettingsOpen(false);
     eng.start({
-      randomOrder: eng.randomOrder,
+      randomOrder: randomOn,
       masteryMode: next === 'mastery',
       forceRestart: true,
     });
@@ -283,17 +216,6 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
       Storage.setAmbientMotion(!on);
       return !on;
     });
-  }
-
-  // Spacing takes effect from the next verdict rather than restarting the round:
-  // every card keeps the streak it has earned, and only where cards land from
-  // here on changes. Nothing about a round in progress needs to be thrown away
-  // to answer "these gaps are too long".
-  function commitGaps(next: MasteryGaps) {
-    setGaps(next);
-    Storage.setMasteryGaps(next);
-    eng.applyGaps(next);
-    force();
   }
 
   // R2: debounce sorting for the animation window so cards aren't skipped.
@@ -364,10 +286,10 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // Keyboard: the arrows split by axis, which is what makes the scheme learnable
   // across both modes. Vertical is always the card itself — ↑/↓ flip it, same as
   // Space and Enter (R1), in either mode. Horizontal is always the round moving
-  // on: Standard steps between cards, Mastery undoes the last sort (R17) and
-  // marks Know It. Still Learning has no key as a result; it's the one action
-  // whose direction the axis rule doesn't have a slot for, so it stays
-  // button-only rather than getting an arbitrary binding.
+  // on: Standard steps between cards, Mastery gives the verdict — ← Still
+  // Learning, → Know It, the two buttons in the order they sit in. Undo (R17)
+  // keeps no key of its own: it's a correction, and binding it to the same axis
+  // as the verdicts is how a slip becomes two slips.
   //
   // Every branch funnels through the same handler as its button, so they share
   // the debounce lock, the end guards and the complete-screen guard.
@@ -376,11 +298,19 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // so a state read here would be pinned to the mode the screen opened in.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      // Typing in the spacing fields must not also flip cards and mark them
-      // known: Space, Enter and the arrows all mean something inside a number
-      // input, and this screen claims all four at the window.
+      // A focused control in the settings panel keeps its own keys: Space on a
+      // checkbox toggles the setting, and this screen claims Space at the window
+      // to flip the card. Bailing on inputs is what stops one press doing both.
+      //
+      // The mode pill is the exception. Its radios are inputs too and they hold
+      // focus after a click, so bailing on every input meant that switching mode
+      // and then pressing an arrow moved the pill's own selection — a
+      // radiogroup's built-in arrow behaviour — instead of touching the card.
+      // Radios fall through to the card bindings, and the preventDefault below
+      // is what stops the pill from moving underneath them.
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.isContentEditable)) {
+      const onModePill = target instanceof HTMLInputElement && target.type === 'radio';
+      if (!onModePill && target && (target.tagName === 'INPUT' || target.isContentEditable)) {
         if (e.key === 'Escape') setSettingsOpen(false);
         return;
       }
@@ -395,7 +325,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         if (browsing) browsePrev();
-        else undoSort();
+        else sort('learning');
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         if (browsing) browseNext();
@@ -445,8 +375,6 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   const card = eng.currentCard();
   const progress = eng.progress();
   const mastery = eng.progressMastery();
-  const onMastered = !showComplete && eng.currentIsMastered();
-  const onFresh = !showComplete && eng.currentIsFresh();
 
   const total = eng.order.length;
 
@@ -458,8 +386,11 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // means the front, which is where a "what is this curve?" card wants it.
   const graphSide = card?.graph ? card.graphSide ?? 'front' : null;
 
-  // Drives how brightly Mastery's core burns — the round starts on a dim ember
-  // and ends on a lit one. Denominator guarded for the empty working set.
+  // Drives how brightly Mastery's core burns — how much of the DECK is mastered,
+  // the same fraction the header counts, so the core reads as an ember on a deck
+  // barely started and a lit one the moment the last card lands. A deck part-way
+  // through opens part-way lit, which is the honest picture of it. Denominator
+  // guarded for the empty deck.
   const masteryIntensity = mastery.total > 0 ? mastery.mastered / mastery.total : 1;
 
   return (
@@ -503,29 +434,26 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
           ))}
         </div>
         {/* One popover in the far corner for everything that isn't the mode —
-            card order, spacing and the background field. None of them is a
-            choice a student revisits often, so none of them competes with the
-            pill that is. */}
+            card order and the background field. Neither is a choice a student
+            revisits often, so neither competes with the pill that is. */}
         <div className="flash-settings-wrap" ref={settingsWrapRef}>
           <button
             type="button"
             className="btn-ghost flash-settings-btn"
             onClick={() => setSettingsOpen((open) => !open)}
             aria-expanded={settingsOpen}
-            title="Card order, spacing and motion"
+            title="Card order and motion"
           >
             Settings
             <SettingsIcon />
           </button>
           {settingsOpen && (
             <FlashSettings
+              showOrder={mode === 'standard'}
               randomOn={randomOn}
               onRandomToggle={onRandomToggle}
               motionOn={motionOn}
               onMotionToggle={toggleMotion}
-              showSpacing={mode === 'mastery'}
-              gaps={gaps}
-              onCommit={commitGaps}
             />
           )}
         </div>
@@ -542,22 +470,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
             intensity={masteryIntensity}
             paused={!motionOn}
           />
-          {eng.masteryMode && (
-            <>
-              {/* Two cards can carry the same 0/3 for opposite reasons, and one
-                  of them is worth three rungs — so the bar's zero state gets a line
-                  saying which. A mastered card in the rotation gets one too: a
-                  miss there is the one verdict that can take mastery away. */}
-              {(onMastered || onFresh) && (
-                <p className="flash-phase-tag" data-phase={onMastered ? 'mastered' : 'fresh'}>
-                  {onMastered
-                    ? 'Mastered — still circulating. A miss here starts it over.'
-                    : 'First look — get it right now and it jumps straight to 3 / 4.'}
-                </p>
-              )}
-              <StreakBar streak={eng.currentStreak()} />
-            </>
-          )}
+          {eng.masteryMode && <StreakBar streak={eng.currentStreak()} />}
 
           <div id="flash-card-wrap">
             <div id="flash-card" key={card.id} className={cardClass} onClick={flip}>
@@ -613,22 +526,24 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
             </div>
           ) : (
             <div className="flash-actions">
-              {/* Labeled "Undo" rather than "Back": the screen header already
-                  owns a "← Back" that exits to Home, and two Backs a few hundred
-                  pixels apart doing opposite things is exactly the misclick this
-                  adds. */}
+              {/* An icon, not a word: the screen header already owns a "← Back"
+                  that exits to Home, and a second labelled arrow-and-word a few
+                  hundred pixels below it doing something else entirely is exactly
+                  the misclick this control adds. The title carries the meaning. */}
               <button
-                className="btn-ghost flash-undo-btn"
+                type="button"
+                className="flash-undo-btn"
                 onClick={undoSort}
                 disabled={!eng.canGoBack() || sortAnim !== null}
-                title="Undo the last sort (←)"
+                aria-label="Undo the last sort"
+                title="Undo the last sort"
               >
-                ← Undo
+                <UndoIcon />
               </button>
-              <button className="btn-ghost" onClick={() => sort('learning')}>
+              <button className="btn-ghost" onClick={() => sort('learning')} title="Still Learning (←)">
                 Still Learning
               </button>
-              <button className="btn" onClick={() => sort('known')}>
+              <button className="btn" onClick={() => sort('known')} title="Know It (→)">
                 Know It
               </button>
             </div>

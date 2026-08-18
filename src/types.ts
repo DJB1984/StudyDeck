@@ -207,6 +207,7 @@ export interface FlashSession {
    * restoreSession can reject such a session instead of resuming it.
    */
   drillMode?: 'all' | 'learning';
+  /** Standard only — Mastery always runs the deck's own order. */
   randomOrder: boolean;
   masteryMode: boolean;
 }
@@ -228,21 +229,6 @@ export interface CardProgress {
    * never seen, which is what earns the first-attempt jump to 3.
    */
   lastSeen: string | null;
-}
-
-/**
- * Mastery's spacing, in cards: how far down the rotation a card drops after the
- * hit that takes it to streak 1, 2 and 3, plus how far it drops on a miss. There
- * is deliberately no fourth number — the hit that masters a card sends it to the
- * back of the rotation, a position rather than a distance.
- * Student-configurable and stored per device (Storage.getMasteryGaps), which is
- * why the shape lives here rather than with the policy that interprets it —
- * features/flashcard/schedule.ts owns the defaults, the bounds and the
- * small-deck cropping.
- */
-export interface MasteryGaps {
-  rungs: [number, number, number];
-  miss: number;
 }
 
 /**

@@ -10,36 +10,40 @@
 // working memory. The fourth hit masters it; nothing before that does. A card
 // seen for the very first time skips to 3/4 on a hit, so a deck full of things
 // the student already knows clears in two passes instead of four. A miss sends
-// the card down 3 and wipes
-// the streak to zero. Mastery persists per deck across sessions, so a later
+// the card down 3 and wipes the streak to zero. The spacing is fixed rather
+// than settable. Mastery persists per deck across sessions, so a later
 // round only offers what isn't mastered yet; cards mastered during a round keep
 // circulating inside it, which is also what keeps the spacing honest late on,
 // when little else is left in the rotation.
 
-import type { CardProgress, FlashState, MasteryGaps } from '../../types';
+import type { CardProgress, FlashState } from '../../types';
 
-/** Hits in a row needed to master a card. Not configurable — the gaps are. */
+/** Hits in a row needed to master a card. */
 export const MASTERY_STREAK = 4;
 
 /**
- * How far down the rotation a card goes after each hit, indexed by the streak it
- * just reached. Three of them for a four-hit ladder: the hit that MASTERS a card
- * sends it the whole way to the back of the rotation instead, which is a
- * position rather than a distance and so isn't a number anyone sets. Mastered
- * cards keep circulating from there for the rest of the round, doubling as the
- * longest spacers available to whatever is still being drilled.
+ * Mastery's spacing, in cards: how far down the rotation a card drops after the
+ * hit that takes it to streak 1, 2 and 3, plus how far it drops on a miss. There
+ * is deliberately no fourth number — the hit that MASTERS a card sends it to the
+ * back of the rotation, a position rather than a distance.
+ */
+export interface MasteryGaps {
+  rungs: [number, number, number];
+  miss: number;
+}
+
+/**
+ * The spacing every round runs at. Fixed, not a setting: the whole point of the
+ * ladder is that each repeat is far enough out to be a real retrieval, and a
+ * number the student can turn down is a number they turn down on the first deck
+ * that feels slow. Small decks still get the cropping below, which is the only
+ * case where the shape has to give.
  *
  * `miss` is deliberately much shorter than the first rung. A missed card is one
  * the student just saw the answer to, so bringing it back soon closes the loop
  * rather than testing retention — testing retention is what the streak is for.
- *
- * The shape itself is in types.ts, since Storage persists it.
  */
-export const DEFAULT_GAPS: MasteryGaps = { rungs: [5, 10, 15], miss: 3 };
-
-/** Bounds for the settings inputs. A gap of 0 would re-show the card on the spot. */
-export const GAP_MIN = 1;
-export const GAP_MAX = 99;
+export const GAPS: MasteryGaps = { rungs: [5, 10, 15], miss: 3 };
 
 export function newProgress(): CardProgress {
   return { streak: 0, lastSeen: null };
@@ -100,8 +104,8 @@ export function miss(now: Date = new Date()): CardProgress {
  * round can't end. Cropping the longest gap to `live` (rather than `live - 1`)
  * is what guarantees the back of the queue keeps being reachable.
  */
-function cropScale(live: number, gaps: MasteryGaps): number {
-  const max = Math.max(...gaps.rungs, gaps.miss);
+function cropScale(live: number): number {
+  const max = Math.max(...GAPS.rungs, GAPS.miss);
   if (max <= 0) return 1;
   return Math.min(1, Math.max(0, live / max));
 }
@@ -118,36 +122,14 @@ function crop(gap: number, scale: number): number {
  * of the queue, which is the engine's call to make, not a gap — so the clamp is
  * to the number of rungs rather than to MASTERY_STREAK.
  */
-export function gapFor(streak: number, live: number, gaps: MasteryGaps): number {
-  const rung = gaps.rungs[Math.min(Math.max(streak, 1), gaps.rungs.length) - 1];
-  return crop(rung, cropScale(live, gaps));
+export function gapFor(streak: number, live: number): number {
+  const rung = GAPS.rungs[Math.min(Math.max(streak, 1), GAPS.rungs.length) - 1];
+  return crop(rung, cropScale(live));
 }
 
 /** How far down a missed card goes. */
-export function missGap(live: number, gaps: MasteryGaps): number {
-  return crop(gaps.miss, cropScale(live, gaps));
-}
-
-/** Clamps stored or typed settings back into range, filling holes from the defaults. */
-export function sanitizeGaps(raw: unknown): MasteryGaps {
-  const src = (raw ?? {}) as Partial<MasteryGaps>;
-  const one = (v: unknown, fallback: number) => {
-    const n = Math.round(Number(v));
-    return Number.isFinite(n) ? Math.min(GAP_MAX, Math.max(GAP_MIN, n)) : fallback;
-  };
-  const rungs = Array.isArray(src.rungs) ? src.rungs : [];
-  return {
-    rungs: [
-      one(rungs[0], DEFAULT_GAPS.rungs[0]),
-      one(rungs[1], DEFAULT_GAPS.rungs[1]),
-      one(rungs[2], DEFAULT_GAPS.rungs[2]),
-    ],
-    miss: one(src.miss, DEFAULT_GAPS.miss),
-  };
-}
-
-export function gapsAreDefault(gaps: MasteryGaps): boolean {
-  return gaps.miss === DEFAULT_GAPS.miss && gaps.rungs.every((g, i) => g === DEFAULT_GAPS.rungs[i]);
+export function missGap(live: number): number {
+  return crop(GAPS.miss, cropScale(live));
 }
 
 export interface MasteryPartition {

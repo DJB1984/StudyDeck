@@ -3,14 +3,13 @@
 // handling, key naming, atomic deletes, id-keyed piles) stay in one place and a
 // future IndexedDB migration is a one-module change.
 
-import type { HistoryEntry, FlashState, MasteryGaps } from '../types';
+import type { HistoryEntry, FlashState } from '../types';
 import { showError } from './toast';
 import * as SupabaseClient from './SupabaseClient';
 
 const HISTORY_KEY = 'studydeck_history';
 const FLASH_PREFIX = 'studydeck_flash_';
 const MOTION_KEY = 'studydeck_ambient_motion';
-const GAPS_KEY = 'studydeck_mastery_gaps';
 
 // Flash state is keyed by the deck's stable id, not its title — mastery
 // scheduling is worth more than a display string is stable. `legacyFlashKey`
@@ -286,25 +285,6 @@ export const Storage = {
 
   setAmbientMotion(on: boolean): boolean {
     return this.set(MOTION_KEY, on);
-  },
-
-  // Mastery's spacing, per device and shared by every deck — like the motion
-  // toggle above and for the same reason: how far apart repeats have to be to
-  // feel like real recall is a fact about the student, not about one deck.
-  //
-  // Returned raw (null when never set), because clamping the numbers into a
-  // usable range is mastery policy and lives with the rest of it in
-  // features/flashcard/schedule.ts — every reader passes this through
-  // `sanitizeGaps()`. Storage's job here is the key and the JSON, nothing more.
-  //
-  // Also not mirrored to Supabase and not cleared by clearLocal(): it's a study
-  // preference, not the previous user's content.
-  getMasteryGaps(): MasteryGaps | null {
-    return this.get<MasteryGaps>(GAPS_KEY);
-  },
-
-  setMasteryGaps(gaps: MasteryGaps): boolean {
-    return this.set(GAPS_KEY, gaps);
   },
 
   // R8: persist piles (inherits R3 quota handling via set).

@@ -13,30 +13,23 @@
 // it's what keeps the gaps honest at the end of a round, when there'd otherwise
 // be two cards left to space a repeat against.
 
-import type {
-  CardProgress,
-  FlashCard,
-  FlashSession,
-  FlashState,
-  MasteryGaps,
-} from '../../types';
+import type { CardProgress, FlashCard, FlashSession, FlashState } from '../../types';
 import { Storage } from '../../lib/Storage';
 import { shuffleArray } from '../../lib/shuffle';
 import {
   derivePiles,
   gapFor,
   hit,
-  isFresh,
   isMastered,
   miss,
   missGap,
   newProgress,
   normalize,
   partition,
-  sanitizeGaps,
 } from './schedule';
 
 export interface FlashStartOptions {
+  /** Standard only — Mastery always runs the deck's own order (see start()). */
   randomOrder?: boolean;
   /** Run the mastery drill instead of a plain browse. */
   masteryMode?: boolean;
@@ -56,11 +49,10 @@ interface UndoFrame {
 
 const UNDO_DEPTH = 30;
 
-// The single shuffle site for both modes' starting order — mastery's working set
-// is carved out of the same shuffled `ids`, so there's one randomization here and
-// not a second one per mode. Uses lib/shuffle's Fisher-Yates rather than a
-// `sort(() => Math.random() - 0.5)` comparator, which is measurably biased
-// toward leaving cards near where they started.
+// The one shuffle site, and Standard's alone — `randomOrder` is already forced
+// off in Mastery by the time this is called. Uses lib/shuffle's Fisher-Yates
+// rather than a `sort(() => Math.random() - 0.5)` comparator, which is
+// measurably biased toward leaving cards near where they started.
 function shuffleIfRandom(ids: string[], random: boolean): string[] {
   return random ? shuffleArray(ids) : ids;
 }
@@ -76,11 +68,6 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
     queue: [] as string[],
     /** Every card's standing, for the whole deck — not just this round's working set. */
     cards: {} as Record<string, CardProgress>,
-    /** Spacing in force right now. Seeded at start and swapped live by the
-     *  settings panel, which is why it's engine state and not a per-call
-     *  argument: a mid-round change re-spaces everything from that point on
-     *  without disturbing the rotation the student is already inside. */
-    gaps: {} as MasteryGaps,
     flipped: false,
     randomOrder: false,
     masteryMode: false,
@@ -101,15 +88,18 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       for (const q of this.allQuestions) {
         if (!this.cards[q.id]) this.cards[q.id] = newProgress();
       }
-      this.gaps = sanitizeGaps(Storage.getMasteryGaps());
       this.undoStack = [];
 
       if (!options.forceRestart && state.session) {
         if (this.restoreSession(state.session)) return;
       }
 
-      this.randomOrder = !!options.randomOrder;
       this.masteryMode = !!options.masteryMode;
+      // Mastery ignores the shuffle outright. Its whole method is WHERE a card
+      // sits in the rotation, so a random starting order is the one thing that
+      // can't be layered on top of it — the deck's own order is the baseline the
+      // gaps are measured against.
+      this.randomOrder = !!options.randomOrder && !this.masteryMode;
       this.deck = this.allQuestions;
       this.currentIdx = 0;
 
@@ -161,8 +151,8 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
         this.queue = [];
       }
 
-      this.randomOrder = session.randomOrder;
       this.masteryMode = session.masteryMode;
+      this.randomOrder = session.randomOrder && !session.masteryMode;
       this.deck = cards as FlashCard[];
       this.order = session.order.slice();
       this.currentIdx = session.currentIdx;
@@ -180,20 +170,6 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
     currentStreak(): number {
       const id = this.queue[0];
       return id === undefined ? 0 : (this.cards[id]?.streak ?? 0);
-    },
-
-    /** True when the card on screen is already mastered and only circulating —
-     *  a hit costs nothing and a miss un-masters it, so the screen says so. */
-    currentIsMastered(): boolean {
-      const id = this.queue[0];
-      return id !== undefined && isMastered(this.cards[id] ?? newProgress());
-    },
-
-    /** True when the card on screen has never had a verdict, in any session —
-     *  the one exposure whose Know It goes straight to one short of mastered. */
-    currentIsFresh(): boolean {
-      const id = this.queue[0];
-      return id !== undefined && isFresh(this.cards[id] ?? newProgress());
     },
 
     isComplete(): boolean {
@@ -257,20 +233,24 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
     // Mastery's progress. "Card X of Y" would imply a fixed linear position,
     // which stops holding the moment a card requeues — what's left is a count of
     // cards, not a position in a list.
+    //
+    // Counted over the WHOLE deck, not this round's working set. The two differ
+    // by exactly the cards mastered in an earlier session, which start() leaves
+    // out of the round — so counting the working set would report a deck with
+    // four of twelve already earned as "0 / 8 mastered", dropping the earned
+    // cards from both halves of a line that says "mastered". This is the same
+    // number Home shows for the deck, which is the point: mastery is a property
+    // of the deck, and a round is just how more of it gets earned.
     progressMastery(): { mastered: number; remaining: number; total: number } {
       let mastered = 0;
-      for (const id of this.order) {
-        if (isMastered(this.cards[id] ?? newProgress())) mastered++;
+      for (const q of this.allQuestions) {
+        if (isMastered(this.cards[q.id] ?? newProgress())) mastered++;
       }
-      return { mastered, remaining: this.order.length - mastered, total: this.order.length };
-    },
-
-    /** New spacing from the settings panel, applied from the next verdict on.
-     *  Deliberately does NOT rebuild the queue: the cards already placed under
-     *  the old gaps are where they are, and yanking them would cost the student
-     *  their position mid-round to no benefit. */
-    applyGaps(gaps: MasteryGaps) {
-      this.gaps = sanitizeGaps(gaps);
+      return {
+        mastered,
+        remaining: this.allQuestions.length - mastered,
+        total: this.allQuestions.length,
+      };
     },
 
     flip() {
@@ -302,11 +282,11 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
         // ladder; that repeat is a free victory lap, not a fifth rung.
         this.reinsert(
           id,
-          isMastered(next) ? this.queue.length : gapFor(next.streak, this.queue.length, this.gaps),
+          isMastered(next) ? this.queue.length : gapFor(next.streak, this.queue.length),
         );
       } else {
         this.cards[id] = miss(now);
-        this.reinsert(id, missGap(this.queue.length, this.gaps));
+        this.reinsert(id, missGap(this.queue.length));
       }
 
       this.persist();
