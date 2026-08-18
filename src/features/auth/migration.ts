@@ -61,7 +61,10 @@ async function upload(): Promise<number> {
         console.error('auth: upload failed for deck', entry.title, error);
         failed++;
       }
-      const flash = Storage.getFlashState(entry.title);
+      // Storage keys flash state by deck id now; the cloud table is still keyed
+      // by title, so the upload maps one to the other. Entries out of
+      // getHistory() always carry an id (Storage back-fills on read).
+      const flash = entry.id ? Storage.getFlashState(entry.id) : { known: [], learning: [] };
       if (flash.known.length > 0 || flash.learning.length > 0) {
         const { error: flashError } = await SupabaseClient.setFlashState(entry.title, flash);
         if (flashError) {
@@ -115,23 +118,38 @@ function mergeDown(cloudDecks: HistoryEntry[], cloudFlash: Record<string, FlashS
 
   for (const [cloudTitle, state] of Object.entries(cloudFlash)) {
     const target = landedAs.get(cloudTitle) ?? cloudTitle;
-    const local = Storage.getFlashState(target);
-    // Only fill in when local truly has nothing for this title yet — avoids
-    // overwriting in-progress local pile state with a stale cloud copy. A
-    // renamed deck's pile key is always free, so its progress comes down too.
-    if (local.known.length === 0 && local.learning.length === 0) {
-      Storage.replaceFlashState(target, state);
+    // The cloud table is keyed by title; local state is keyed by deck id. This
+    // runs after replaceHistory, so every deck (including one that just came
+    // down) already has an id assigned by getHistory's back-fill.
+    const deckId = Storage.deckIdForTitle(target);
+    if (!deckId) continue;
+    const local = Storage.getFlashState(deckId);
+    // Only fill in when local truly has nothing for this deck yet — avoids
+    // overwriting in-progress local state with a stale cloud copy. A renamed
+    // deck's key is always free, so its progress comes down too.
+    //
+    // The incoming copy has no mastery records (the table has only the two pile
+    // columns), so it lands in the legacy shape and gets back-filled into a
+    // ladder by schedule.ts `normalize` on the first read.
+    if (local.known.length === 0 && local.learning.length === 0 && !local.cards) {
+      Storage.replaceFlashState(deckId, state);
     }
   }
 }
 
-// Rename every place the title is load-bearing, not just the history entry:
-// FlashcardScreen keys pile state off `data.title` (not `entry.title`), so
-// leaving the inner deck title alone would point the renamed deck's progress
-// straight back at the local deck's pile.
+// Rename every place the title is load-bearing, not just the history entry —
+// the inner `data.title` is what the cloud upload keys on and what every screen
+// displays, so leaving it alone would give the renamed copy the original's name
+// everywhere except the history list. (Flash state is no longer among these:
+// it's keyed by the entry's id, which a retitle doesn't touch.)
 function retitle(entry: HistoryEntry, title: string): HistoryEntry {
   return {
     ...entry,
+    // Dropped, not carried: a "(2)" copy exists precisely BECAUSE it's different
+    // content from the local deck of the same name. Keeping the incoming id
+    // would file both decks' mastery progress under one key and let one deck's
+    // answers mark the other's cards learned. Storage assigns a fresh one.
+    id: undefined,
     name: `${title}.json`,
     title,
     data: { ...entry.data, title },

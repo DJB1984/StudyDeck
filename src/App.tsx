@@ -5,7 +5,6 @@
 
 import { useState } from 'react';
 import type {
-  Deck,
   HistoryEntry,
   QuizMode,
   QuizQuestion,
@@ -26,7 +25,9 @@ type Route =
   | { name: 'quiz'; session: QuizSession; file: HistoryEntry }
   | { name: 'stats'; record: SessionRecord; session: QuizSession; file: HistoryEntry }
   | { name: 'review'; questions: QuizQuestion[]; order: number[]; origin: Route }
-  | { name: 'flashcard'; deck: Deck };
+  // Carries the whole history entry, not just the deck: mastery progress is
+  // filed under the entry's stable id, which the deck JSON doesn't have.
+  | { name: 'flashcard'; file: HistoryEntry };
 
 export function App() {
   const [route, setRoute] = useState<Route>({ name: 'home' });
@@ -52,7 +53,7 @@ export function App() {
             onOpenDeck={(entry) =>
               setRoute(
                 entry.data.type === 'flashcard'
-                  ? { name: 'flashcard', deck: entry.data }
+                  ? { name: 'flashcard', file: entry }
                   : { name: 'mode', file: entry },
               )
             }
@@ -120,7 +121,7 @@ export function App() {
 
       case 'flashcard':
         // R13: Back exits to Home — Mode Select is unreachable for flashcard decks.
-        return <FlashcardScreen deck={route.deck} onBack={() => setRoute({ name: 'home' })} />;
+        return <FlashcardScreen file={route.file} onBack={() => setRoute({ name: 'home' })} />;
     }
   }
 

@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "type": "flashcard",
+  "title": "Flashcard Graphs — Function Shapes",
+  "questions": [
+    {
+      "id": "g1",
+      "front": "What kind of function is graphed here?",
+      "back": "A quadratic — $y = x^2$. Its graph is a parabola opening upward, symmetric about the $y$-axis.",
+      "graph": {
+        "type": "equation",
+        "data": "x * x",
+        "x_range": [-4, 4],
+        "x_label": "$x$",
+        "y_label": "$y$",
+        "title": "Mystery function"
+      },
+      "graphSide": "front"
+    },
+    {
+      "id": "g2",
+      "front": "Sketch $y = \\sin(x)$ over $[0, 2\\pi]$",
+      "back": "One full cycle: up to $1$ at $\\pi/2$, back through zero at $\\pi$, down to $-1$ at $3\\pi/2$.",
+      "graph": {
+        "type": "equation",
+        "data": "Math.sin(x)",
+        "x_range": [0, 6.2832],
+        "y_range": [-1.2, 1.2],
+        "x_label": "$x$ (radians)",
+        "y_label": "$\\sin(x)$",
+        "title": "$y = \\sin(x)$"
+      },
+      "graphSide": "back"
+    },
+    {
+      "id": "g3",
+      "front": "An object falls from rest. What does its velocity-time graph look like?",
+      "back": "A straight line through the origin with slope $g \\approx 9.8$ m/s$^2$ — velocity grows linearly with time.",
+      "graph": {
+        "type": "points",
+        "data": [[0, 0], [1, 9.8], [2, 19.6], [3, 29.4], [4, 39.2]],
+        "x_label": "Time (s)",
+        "y_label": "Velocity (m/s)",
+        "title": "Free fall from rest"
+      },
+      "graphSide": "back"
+    },
+    {
+      "id": "g4",
+      "front": "Kinetic Energy",
+      "back": "$KE = \\frac{1}{2}mv^2$ — no graph on this card, so it should look exactly like an ordinary flashcard."
+    },
+    {
+      "id": "g5",
+      "front": "Broken-graph fallback test — this samples $\\sqrt{x}$ across negative $x$",
+      "back": "The plot should read \"Graph unavailable\" and the card should still flip normally.",
+      "graph": {
+        "type": "equation",
+        "data": "Math.sqrt(x)",
+        "x_range": [-5, 5],
+        "x_label": "$x$",
+        "y_label": "$\\sqrt{x}$",
+        "title": "Deliberately non-finite"
+      },
+      "graphSide": "front"
+    },
+    {
+      "id": "g6",
+      "front": "A long front with a graph — does the text still fit under the plot when it runs to more than a single line of card copy?",
+      "back": "Yes: the graph takes the leftover flex track and the text keeps its own line at the reduced caption size.",
+      "graph": {
+        "type": "points",
+        "data": [[1, 2], [2, 4], [3, 8], [4, 16], [5, 32]],
+        "x_label": "$n$",
+        "y_label": "$2^n$",
+        "title": "Exponential growth"
+      },
+      "graphSide": "front"
+    }
+  ]
+}

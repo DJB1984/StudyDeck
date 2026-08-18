@@ -101,6 +101,11 @@ export interface FlashCard {
   id: string;
   front: string;
   back: string;
+  /** Optional context graph, same shape quiz questions use. Context-only —
+      `answerMode`/`target`/`tolerance` stay quiz-side. */
+  graph?: GraphSpec;
+  /** Which face the graph sits on. Omitted = 'front'. */
+  graphSide?: 'front' | 'back';
 }
 
 export type DeckQuestion = QuizQuestion | FlashCard;
@@ -116,6 +121,14 @@ export interface Deck {
 
 /** A deck as persisted in history, with its metadata. */
 export interface HistoryEntry {
+  /**
+   * Stable per-deck identifier, generated on first save. Mastery state is keyed
+   * off this rather than the title, so the scheduling data isn't tied to a
+   * mutable display string. Optional on the TYPE only because entries persisted
+   * before this existed have no id — `Storage.getHistory()` back-fills one on
+   * read, so anything that came out of Storage always has it.
+   */
+  id?: string;
   name: string;
   title: string;
   count: number;
@@ -176,9 +189,15 @@ export interface QuizSession {
  * entry starts fresh.
  */
 export interface FlashSession {
-  /** Card ids in this round's order (Standard mode). */
+  /** Card ids in this round's working set. Mastery drops cards mastered in an
+   *  earlier session; Standard browses everything. */
   order: string[];
-  /** Mastery-mode working queue; unused in Standard mode. */
+  /**
+   * Mastery-mode live rotation; unused in Standard mode. Holds exactly the same
+   * ids as `order` for the whole round — every verdict removes a card from the
+   * front and puts it back further down, mastered or not — so a round ends on
+   * every card being mastered rather than on this emptying.
+   */
   queue?: string[];
   /** Position within `order`; unused in mastery mode. */
   currentIdx: number;
@@ -192,9 +211,53 @@ export interface FlashSession {
   masteryMode: boolean;
 }
 
-/** Persisted flashcard pile state, keyed by question id (never index). */
+/**
+ * Where one card stands in Mastery mode. Keyed by question id (never index), and
+ * persisted per deck, so mastery carries across sessions while the streak toward
+ * it is earned inside a single round.
+ */
+export interface CardProgress {
+  /**
+   * Consecutive Know Its. 4 means mastered; a Still Learning resets it to 0. A
+   * card's first-ever Know It jumps straight to 3 — see `hit()` in
+   * features/flashcard/schedule.ts.
+   */
+  streak: 0 | 1 | 2 | 3 | 4;
+  /**
+   * ISO time of the last verdict given on this card, in any session. Null means
+   * never seen, which is what earns the first-attempt jump to 3.
+   */
+  lastSeen: string | null;
+}
+
+/**
+ * Mastery's spacing, in cards: how far down the rotation a card drops after the
+ * hit that takes it to streak 1, 2 and 3, plus how far it drops on a miss. There
+ * is deliberately no fourth number — the hit that masters a card sends it to the
+ * back of the rotation, a position rather than a distance.
+ * Student-configurable and stored per device (Storage.getMasteryGaps), which is
+ * why the shape lives here rather than with the policy that interprets it —
+ * features/flashcard/schedule.ts owns the defaults, the bounds and the
+ * small-deck cropping.
+ */
+export interface MasteryGaps {
+  rungs: [number, number, number];
+  miss: number;
+}
+
+/**
+ * Persisted flashcard state for one deck, keyed by DECK ID (see HistoryEntry.id).
+ *
+ * `cards` is the real state. `known`/`learning` are derived mirrors kept in sync
+ * on every write purely for back-compat: the cloud `flash_state` table has only
+ * those two columns. Don't write to them directly — `derivePiles()` in
+ * features/flashcard/schedule.ts owns their contents.
+ */
 export interface FlashState {
   known: string[];
   learning: string[];
   session?: FlashSession;
+  /** Absent (or in an older shape) on state written before the streak model —
+   *  back-filled by `normalize()` on read. */
+  cards?: Record<string, CardProgress>;
 }

@@ -3,19 +3,28 @@
 // mutations, matching the legacy flow while staying inside React.
 
 import { useEffect, useReducer, useRef, useState } from 'react';
-import type { Deck, FlashCard } from '../../types';
+import type { FlashCard, HistoryEntry, MasteryGaps } from '../../types';
 import { Katex } from '../../components/Math/Katex';
+import { Graph } from '../../components/Graph/Graph';
 import { Storage } from '../../lib/Storage';
 import { createFlashEngine, type FlashEngine } from './flashEngine';
+import {
+  DEFAULT_GAPS,
+  GAP_MAX,
+  GAP_MIN,
+  MASTERY_STREAK,
+  gapsAreDefault,
+  sanitizeGaps,
+} from './schedule';
 import { FlashAmbience, type FlashAmbienceHandle } from './FlashAmbience';
 
 interface FlashcardScreenProps {
-  deck: Deck;
+  file: HistoryEntry;
   onBack: () => void;
 }
 
 // The two ways a round can run, as one exclusive choice. Standard just walks
-// the deck; Mastery sorts into piles and requeues what was missed.
+// the deck; Mastery runs the streak drill.
 type StudyMode = 'standard' | 'mastery';
 
 const MODE_LABEL: Record<StudyMode, string> = {
@@ -23,23 +32,18 @@ const MODE_LABEL: Record<StudyMode, string> = {
   mastery: 'Mastery',
 };
 
-const MODE_HINT: Record<StudyMode, string> = {
-  standard: 'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
-  mastery: 'The whole deck, and missed cards come back later in the round until every one is marked Know It.',
-};
-
 function modeOf(eng: FlashEngine): StudyMode {
   return eng.masteryMode ? 'mastery' : 'standard';
 }
 
-// Drawn rather than typed: DESIGN.md's icon rule is authored SVG at a single
-// stroke weight, and the ▶/⏸ characters render as color emoji on some
-// platforms. 1.6 stroke matches the mode-select icons.
-function MotionIcon({ playing }: { playing: boolean }) {
+// Sliders, not a cogwheel: a 15px gear's teeth collapse into eight spokes
+// around a dot, which renders as a sun. Two rails and two knobs survive the
+// size, and they say "adjust these" as plainly as a cog does.
+function SettingsIcon() {
   return (
     <svg
-      width="14"
-      height="14"
+      width="15"
+      height="15"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -48,25 +52,189 @@ function MotionIcon({ playing }: { playing: boolean }) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {playing ? (
-        <>
-          <line x1="6" y1="3.5" x2="6" y2="12.5" />
-          <line x1="10" y1="3.5" x2="10" y2="12.5" />
-        </>
-      ) : (
-        <path d="M5 3.4 L12.6 8 L5 12.6 Z" />
-      )}
+      <line x1="2.2" y1="5.5" x2="13.8" y2="5.5" />
+      <line x1="2.2" y1="10.5" x2="13.8" y2="10.5" />
+      <circle cx="6" cy="5.5" r="1.9" fill="var(--surface)" />
+      <circle cx="10.5" cy="10.5" r="1.9" fill="var(--surface)" />
     </svg>
   );
 }
 
-export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
+// The card's standing toward mastery, as four segments it fills left to right —
+// one per Know It needed, the last of which is the hit that masters the card and
+// sends it to the back. Always present in Mastery (never conditional on having
+// started the card), so the card never shifts vertically when a streak begins —
+// and so a 0/4 card is visibly at zero rather than merely unannotated.
+function StreakBar({ streak }: { streak: number }) {
+  const mastered = streak >= MASTERY_STREAK;
+  return (
+    <div
+      className="flash-streak"
+      data-mastered={mastered ? 'yes' : 'no'}
+      role="img"
+      aria-label={mastered ? 'Mastered' : `Streak ${streak} of ${MASTERY_STREAK}`}
+    >
+      <div className="flash-streak-track" aria-hidden="true">
+        {Array.from({ length: MASTERY_STREAK }, (_, i) => (
+          <span key={i} className="flash-streak-seg" data-on={i < streak ? 'yes' : 'no'} />
+        ))}
+      </div>
+      <span className="flash-streak-label" aria-hidden="true">
+        {mastered ? 'Mastered' : `${streak} / ${MASTERY_STREAK}`}
+      </span>
+    </div>
+  );
+}
+
+// Every setting the round takes, as one popover off the gear. Both of these are
+// things a student sets once and then leaves alone, so neither earns permanent
+// space on the options row beside the mode pill — the choice that IS the round.
+// Spacing only appears in Mastery: it's the one mode that spaces anything.
+//
+// Gap drafts are held as strings so a field can be empty mid-edit without the
+// value snapping back to a default on every keystroke; sanitizeGaps runs on
+// blur, which is also the point the change reaches the engine and Storage.
+function FlashSettings({
+  randomOn,
+  onRandomToggle,
+  motionOn,
+  onMotionToggle,
+  showSpacing,
+  gaps,
+  onCommit,
+}: {
+  randomOn: boolean;
+  onRandomToggle: (checked: boolean) => void;
+  motionOn: boolean;
+  onMotionToggle: () => void;
+  showSpacing: boolean;
+  gaps: MasteryGaps;
+  onCommit: (next: MasteryGaps) => void;
+}) {
+  const [draft, setDraft] = useState<string[]>(() => [
+    ...gaps.rungs.map(String),
+    String(gaps.miss),
+  ]);
+
+  function gapsFrom(values: string[]): MasteryGaps {
+    return sanitizeGaps({
+      rungs: [Number(values[0]), Number(values[1]), Number(values[2])],
+      miss: Number(values[3]),
+    });
+  }
+
+  function commit(values: string[]) {
+    const next = gapsFrom(values);
+    setDraft([...next.rungs.map(String), String(next.miss)]);
+    onCommit(next);
+  }
+
+  // The panel is dismissed by clicking away from it, and pointerdown lands
+  // BEFORE the focused field's blur — so a number typed and then dismissed with
+  // a click would unmount before onBlur ever ran, and the edit would be lost.
+  // Committing again on unmount closes that gap; re-committing an unchanged
+  // draft is a no-op, so the ordinary blur path costs nothing.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  useEffect(() => {
+    return () => onCommit(gapsFrom(draftRef.current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function field(index: number, label: string, hint: string) {
+    return (
+      <label className="flash-settings-row" key={label}>
+        <span className="flash-settings-name">
+          {label}
+          <em>{hint}</em>
+        </span>
+        <input
+          type="number"
+          min={GAP_MIN}
+          max={GAP_MAX}
+          value={draft[index]}
+          onChange={(e) => {
+            const next = draft.slice();
+            next[index] = e.target.value;
+            setDraft(next);
+          }}
+          onBlur={() => commit(draft)}
+        />
+      </label>
+    );
+  }
+
+  return (
+    <div className="flash-settings-panel" role="group" aria-label="Study settings">
+      <label className="toggle-label flash-settings-toggle">
+        <input
+          type="checkbox"
+          checked={randomOn}
+          onChange={(e) => onRandomToggle(e.target.checked)}
+        />
+        <span className="toggle-track"></span>
+        <span className="flash-settings-name">
+          Random order
+          <em>Shuffles the deck; starts the round over</em>
+        </span>
+      </label>
+      {/* A switch here rather than the action-named button it used to be: inside
+          a list of settings the toggle above it sets the form, and one button
+          among switches reads as a different kind of thing than it is. */}
+      <label className="toggle-label flash-settings-toggle">
+        <input type="checkbox" checked={motionOn} onChange={onMotionToggle} />
+        <span className="toggle-track"></span>
+        <span className="flash-settings-name">
+          Background motion
+          <em>The field behind the card drifts</em>
+        </span>
+      </label>
+      {showSpacing && (
+        <>
+          <p className="flash-settings-group">Mastery spacing</p>
+          <p className="flash-settings-intro">
+            How many cards go by before a card comes back. On a deck too small to
+            hold these gaps they scale down together, keeping their shape. The 4th
+            hit masters the card and sends it to the very back, so it has no
+            number of its own.
+          </p>
+          {field(0, 'After the 1st hit', 'streak 1 / 4')}
+          {field(1, 'After the 2nd hit', 'streak 2 / 4')}
+          {field(2, 'After the 3rd hit', 'streak 3 / 4')}
+          {field(3, 'After a miss', 'streak resets to 0')}
+          {/* The only button in the panel, and it's a real action rather than a
+              way out — every setting here applies the moment it's changed, so
+              there is nothing to confirm on the way out. */}
+          <div className="flash-settings-actions">
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={gapsAreDefault(gaps)}
+              onClick={() =>
+                commit([...DEFAULT_GAPS.rungs.map(String), String(DEFAULT_GAPS.miss)])
+              }
+            >
+              Reset to 5 / 10 / 15
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
+  const deck = file.data;
   const engineRef = useRef<FlashEngine | null>(null);
   if (!engineRef.current) {
     // R12: entered directly from opening a flashcard deck — resumes a saved
     // unfinished session (same card, same toggles), else a fresh full-deck
-    // session with drill off and random off.
-    engineRef.current = createFlashEngine(deck.title, deck.questions as FlashCard[]);
+    // session with mastery off and random off.
+    //
+    // Keyed by the entry's stable id, never the title: mastery progress is real
+    // work, and a title is a string the deck's author can change.
+    // Storage guarantees an id on anything that came out of getHistory().
+    engineRef.current = createFlashEngine(file.id!, deck.questions as FlashCard[]);
     engineRef.current.start({ randomOrder: false, masteryMode: false });
   }
   const eng = engineRef.current;
@@ -79,6 +247,9 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   // atmosphere still reads while frozen — colour, rim and a composed still
   // frame all survive — so the default costs the mode nothing.
   const [motionOn, setMotionOn] = useState(() => Storage.getAmbientMotion());
+  const [gaps, setGaps] = useState<MasteryGaps>(() => sanitizeGaps(Storage.getMasteryGaps()));
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsWrapRef = useRef<HTMLDivElement | null>(null);
   const [sortAnim, setSortAnim] = useState<'known' | 'learning' | null>(null);
   const sortingRef = useRef(false);
   const ambienceRef = useRef<FlashAmbienceHandle | null>(null);
@@ -89,6 +260,7 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   // clears the others.
   function onModeSelect(next: StudyMode) {
     setMode(next);
+    setSettingsOpen(false);
     eng.start({
       randomOrder: eng.randomOrder,
       masteryMode: next === 'mastery',
@@ -111,6 +283,17 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
       Storage.setAmbientMotion(!on);
       return !on;
     });
+  }
+
+  // Spacing takes effect from the next verdict rather than restarting the round:
+  // every card keeps the streak it has earned, and only where cards land from
+  // here on changes. Nothing about a round in progress needs to be thrown away
+  // to answer "these gaps are too long".
+  function commitGaps(next: MasteryGaps) {
+    setGaps(next);
+    Storage.setMasteryGaps(next);
+    eng.applyGaps(next);
+    force();
   }
 
   // R2: debounce sorting for the animation window so cards aren't skipped.
@@ -160,13 +343,21 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     force();
   }
 
-  // Restarts the same mode over the whole deck from the top.
+  // Restarts the same mode over its working set from the top.
   function restartAll() {
     eng.start({
       randomOrder: eng.randomOrder,
       masteryMode: eng.masteryMode,
       forceRestart: true,
     });
+    force();
+  }
+
+  // Wipes every streak in the deck. The only way back into a deck that's already
+  // fully mastered, which is why it's offered exactly there and nowhere else —
+  // it is not a "restart", and putting it beside one would guarantee the misclick.
+  function resetProgress() {
+    eng.resetProgress();
     force();
   }
 
@@ -185,6 +376,18 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   // so a state read here would be pinned to the mode the screen opened in.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // Typing in the spacing fields must not also flip cards and mark them
+      // known: Space, Enter and the arrows all mean something inside a number
+      // input, and this screen claims all four at the window.
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.isContentEditable)) {
+        if (e.key === 'Escape') setSettingsOpen(false);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setSettingsOpen(false);
+        return;
+      }
       const browsing = eng.isBrowseMode();
       if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
@@ -204,7 +407,21 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-read this deck's pile state after a login-time hydration/migration
+  // Click away to dismiss — the panel has no Done button because it has nothing
+  // to confirm: every control in it takes effect as it's touched. Bound only
+  // while open, and scoped to the wrapper so the button's own click still
+  // toggles rather than being closed here and reopened in the same gesture.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    function onDown(e: PointerEvent) {
+      const wrap = settingsWrapRef.current;
+      if (wrap && !wrap.contains(e.target as Node)) setSettingsOpen(false);
+    }
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [settingsOpen]);
+
+  // Re-read this deck's state after a login-time hydration/migration
   // bulk-overwrites the local cache.
   useEffect(() => {
     return Storage.subscribe(() => {
@@ -218,12 +435,18 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
   }, []);
 
   const emptyFromStart = eng.deck.length === 0; // R11
-  const complete = !emptyFromStart && eng.isComplete(); // R9
-  const showComplete = emptyFromStart || complete;
+  // Mastery opened on a deck with nothing left to drill — every card was
+  // mastered in an earlier session. A finished state, but a different one from
+  // having just finished a round.
+  const caughtUp = !emptyFromStart && eng.nothingDue();
+  const complete = !emptyFromStart && !caughtUp && eng.isComplete(); // R9
+  const showComplete = emptyFromStart || caughtUp || complete;
 
   const card = eng.currentCard();
   const progress = eng.progress();
   const mastery = eng.progressMastery();
+  const onMastered = !showComplete && eng.currentIsMastered();
+  const onFresh = !showComplete && eng.currentIsFresh();
 
   const total = eng.order.length;
 
@@ -231,11 +454,13 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
     (eng.flipped ? 'flipped ' : '') +
     (sortAnim === 'known' ? 'sort-known' : sortAnim === 'learning' ? 'sort-learning' : '');
 
+  // A card carries at most one graph, on whichever face it names. Omitted side
+  // means the front, which is where a "what is this curve?" card wants it.
+  const graphSide = card?.graph ? card.graphSide ?? 'front' : null;
+
   // Drives how brightly Mastery's core burns — the round starts on a dim ember
-  // and ends on a lit one. Denominator guarded: a mastered card leaves the
-  // queue for good, so both terms are zero on the completion frame.
-  const masteryTotal = mastery.mastered + mastery.remaining;
-  const masteryIntensity = masteryTotal > 0 ? mastery.mastered / masteryTotal : 1;
+  // and ends on a lit one. Denominator guarded for the empty working set.
+  const masteryIntensity = mastery.total > 0 ? mastery.mastered / mastery.total : 1;
 
   return (
     <section
@@ -253,7 +478,7 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
           {showComplete
             ? ''
             : eng.masteryMode
-              ? `${mastery.mastered} mastered · ${mastery.remaining} left`
+              ? `${mastery.mastered} / ${mastery.total} mastered`
               : `Card ${progress.current} of ${progress.total}`}
         </span>
       </div>
@@ -277,39 +502,34 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
             </label>
           ))}
         </div>
-        <label className="toggle-label">
-          <input
-            type="checkbox"
-            checked={randomOn}
-            onChange={(e) => onRandomToggle(e.target.checked)}
-          />
-          <span className="toggle-track"></span>
-          Random order
-        </label>
-        {/* A button rather than a third toggle: the two controls to its left
-            are study options that change what the round IS, and this one only
-            changes how the screen looks. Its label names the action it will
-            take, so the current state never has to be inferred from a switch. */}
-        <button
-          type="button"
-          className="btn-ghost flash-motion-btn"
-          onClick={toggleMotion}
-          title={
-            motionOn
-              ? 'Hold the background field still'
-              : 'Let the background field move'
-          }
-        >
-          <MotionIcon playing={motionOn} />
-          {motionOn ? 'Pause motion' : 'Play motion'}
-        </button>
+        {/* One popover in the far corner for everything that isn't the mode —
+            card order, spacing and the background field. None of them is a
+            choice a student revisits often, so none of them competes with the
+            pill that is. */}
+        <div className="flash-settings-wrap" ref={settingsWrapRef}>
+          <button
+            type="button"
+            className="btn-ghost flash-settings-btn"
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-expanded={settingsOpen}
+            title="Card order, spacing and motion"
+          >
+            Settings
+            <SettingsIcon />
+          </button>
+          {settingsOpen && (
+            <FlashSettings
+              randomOn={randomOn}
+              onRandomToggle={onRandomToggle}
+              motionOn={motionOn}
+              onMotionToggle={toggleMotion}
+              showSpacing={mode === 'mastery'}
+              gaps={gaps}
+              onCommit={commitGaps}
+            />
+          )}
+        </div>
       </div>
-
-      {/* One word per segment can't carry what a mode actually does, and those
-          differences (which cards am I seeing, and do missed ones come back?)
-          are the whole reason to pick one — so a line of copy tracks the
-          selection. */}
-      <p className="flash-mode-hint">{MODE_HINT[mode]}</p>
 
       {!showComplete && card && (
         <div id="flash-active-area">
@@ -322,14 +542,41 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
             intensity={masteryIntensity}
             paused={!motionOn}
           />
+          {eng.masteryMode && (
+            <>
+              {/* Two cards can carry the same 0/3 for opposite reasons, and one
+                  of them is worth three rungs — so the bar's zero state gets a line
+                  saying which. A mastered card in the rotation gets one too: a
+                  miss there is the one verdict that can take mastery away. */}
+              {(onMastered || onFresh) && (
+                <p className="flash-phase-tag" data-phase={onMastered ? 'mastered' : 'fresh'}>
+                  {onMastered
+                    ? 'Mastered — still circulating. A miss here starts it over.'
+                    : 'First look — get it right now and it jumps straight to 3 / 4.'}
+                </p>
+              )}
+              <StreakBar streak={eng.currentStreak()} />
+            </>
+          )}
+
           <div id="flash-card-wrap">
             <div id="flash-card" key={card.id} className={cardClass} onClick={flip}>
               <div className="card-inner">
-                <div className="card-front">
-                  <Katex text={card.front} />
+                <div className={'card-front' + (graphSide === 'front' ? ' has-graph' : '')}>
+                  {graphSide === 'front' && card.graph && (
+                    <Graph key={card.id + '-fg'} graph={card.graph} />
+                  )}
+                  <div className="card-text">
+                    <Katex text={card.front} />
+                  </div>
                 </div>
-                <div className="card-back">
-                  <Katex text={card.back} />
+                <div className={'card-back' + (graphSide === 'back' ? ' has-graph' : '')}>
+                  {graphSide === 'back' && card.graph && (
+                    <Graph key={card.id + '-bg'} graph={card.graph} />
+                  )}
+                  <div className="card-text">
+                    <Katex text={card.back} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -399,26 +646,55 @@ export function FlashcardScreen({ deck, onBack }: FlashcardScreenProps) {
                 <h3>Nothing to Study</h3>
                 <p>This deck has no cards in it.</p>
               </>
+            ) : caughtUp ? (
+              // Opened Mastery on a deck with nothing left to drill. The honest
+              // thing is to say so rather than re-offer finished work, and to
+              // name the one action that would give the mode something to do.
+              <>
+                <h3>Deck Mastered</h3>
+                <p>
+                  All {eng.allQuestions.length} card(s) are mastered, so there's nothing left to
+                  drill. Browse them any time — or reset and earn them again from scratch.
+                </p>
+              </>
             ) : eng.isBrowseMode() ? (
-              // Standard marks nothing, so a known/learning tally here would
-              // report zeros for a round that had no verdicts in it.
+              // Standard marks nothing, so a tally here would report zeros for a
+              // round that had no verdicts in it.
               <>
                 <h3>End of Deck</h3>
                 <p>You've been through all {total} card(s).</p>
               </>
             ) : (
-              // Mastery mode only ends when the queue empties, i.e. every card
-              // was marked Know It — so a "nailed every card this round" line
-              // would read as praise for a round that may have taken several passes.
+              // Mastery's round end. Every card in the working set reached four
+              // in a row, which is the whole bar — so this says so plainly.
               <>
-                <h3>Deck Mastered</h3>
-                <p>All {total} card(s) marked Know It — nothing left in the rotation.</p>
+                <h3>Round Complete</h3>
+                <p>
+                  {total} card(s) mastered — four in a row each, spaced out. The deck stays
+                  mastered, so Mastery has nothing more to ask until you reset it.
+                </p>
               </>
             )}
             <div className="stats-actions" style={{ justifyContent: 'center' }}>
-              <button className="btn-ghost" onClick={restartAll}>
-                Restart All
-              </button>
+              {/* A finished mastery round and a deck that was already finished
+                  land on the same two choices: look at the cards, or clear the
+                  slate. "Restart" is offered only where there's a round left to
+                  restart — in Mastery there isn't, since restarting a mastered
+                  deck lands straight back on this screen. */}
+              {eng.isBrowseMode() ? (
+                <button className="btn-ghost" onClick={restartAll}>
+                  Restart All
+                </button>
+              ) : (
+                <>
+                  <button className="btn-ghost" onClick={() => onModeSelect('standard')}>
+                    Browse the Deck
+                  </button>
+                  <button className="btn-ghost" onClick={resetProgress}>
+                    Reset Progress
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

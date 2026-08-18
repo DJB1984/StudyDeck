@@ -12,6 +12,7 @@ import { showError } from '../../lib/toast';
 import { QUIZ_PROMPT_MD, FLASHCARD_PROMPT_MD } from '../../lib/formatSpec';
 import { copyWithFeedback } from '../../lib/clipboard';
 import { stripCodeFences } from '../../lib/deckText';
+import { normalize, tally, type MasteryTally } from '../flashcard/schedule';
 import { RotatingWord } from './RotatingWord';
 import { AuthButton } from '../auth/AuthButton';
 import { Starfield } from '../../components/Starfield/Starfield';
@@ -25,13 +26,39 @@ function today(): string {
   return new Date().toLocaleDateString();
 }
 
-// Cards a flashcard deck's owner has marked Know It, counted against the deck
-// itself rather than trusting the pile's length: a re-imported deck can leave
-// behind known ids for questions it no longer contains, and "12 / 8 known" is
+// A flashcard deck's mastery standing, counted against the deck's OWN card ids
+// rather than trusting the stored record count: a re-imported deck can leave
+// behind records for questions it no longer contains, and "12 / 8 mastered" is
 // worse than no badge at all.
-function knownCount(file: HistoryEntry): number {
-  const known = new Set(Storage.getFlashState(file.title).known);
-  return file.data.questions.filter((q) => known.has(q.id)).length;
+function masteryFor(file: HistoryEntry): MasteryTally {
+  const state = normalize(Storage.getFlashState(file.id ?? ''));
+  return tally(
+    file.data.questions.map((q) => q.id),
+    state.cards ?? {},
+  );
+}
+
+// Flashcard decks show mastery IN PLACE OF the question count — progress is
+// what a returning student is looking for, and the count survives as its
+// denominator. A live snapshot re-read from Storage on every render rather than
+// persisted as its own value, so it can't drift from the records the flashcard
+// engine actually owns; never-opened decks read "0 / N mastered" via
+// getFlashState's empty default.
+//
+// Cards part-way up a streak are called out beside the mastered count: they're
+// the closest thing this mode has to unfinished business, and a deck with eight
+// cards half-learned is a more useful thing to open than one that's never been
+// touched.
+function FlashMeta({ file }: { file: HistoryEntry }) {
+  const m = masteryFor(file);
+  return (
+    <>
+      <span className="meta-flash">
+        {m.mastered} / {m.total} mastered
+      </span>
+      {m.inProgress > 0 && <> · {m.inProgress} started</>} · {file.lastOpened}
+    </>
+  );
 }
 
 // R12: label says "Copy Prompt" but the payload is a full composed prompt
@@ -388,12 +415,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                     empty default. */}
                 <div className="meta">
                   {file.data.type === 'flashcard' ? (
-                    <>
-                      <span className="meta-flash">
-                        {knownCount(file)} / {file.count} known
-                      </span>{' '}
-                      · {file.lastOpened}
-                    </>
+                    <FlashMeta file={file} />
                   ) : (
                     <>
                       {file.count} questions · {file.lastOpened}
