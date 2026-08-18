@@ -7,8 +7,10 @@
 // inside a single session (three Know Its, spaced further apart each time). The
 // third success does NOT mean mastered — it makes the card *provisional* and
 // takes it out of the rotation with a due date on the next day. It comes back
-// once, cold, in a later session; passing that retires it for good. Everything
-// below exists to make those two sentences true.
+// once, cold, in a later session; passing that masters it. A mastered card
+// leaves the ladder for good, but it isn't gone: it resurfaces every so often
+// on a widening interval as a *refresher*, a few per session at most. Everything
+// below exists to make those sentences true.
 
 import type { CardProgress, FlashState } from '../../types';
 
@@ -62,8 +64,27 @@ const HARD_RESET_LAPSES = 2;
  */
 const MIN_COLD_CHECK_MS = 8 * 60 * 60 * 1000;
 
+/**
+ * Days from a mastered card's last verdict to its next refresher, widening with
+ * each one it passes and capped at the final entry. Mastery stays a state the
+ * student can reach and be done with — the refresher is not a fourth rung and
+ * cannot be failed into more work than re-learning the card — but "I knew this
+ * once" decays, and a card seen every few weeks is the cheapest possible way to
+ * find out whether it still holds.
+ */
+export const REFRESH_DAYS = [3, 7, 16, 35] as const;
+
+/**
+ * Ceiling on refreshers per session. Mastered cards are a garnish on the round,
+ * never the round: the work a student came to do is the ladder and the cold
+ * checks, and a deck with sixty mastered cards must not bury those under a
+ * backlog of victory laps. Overdue refreshers past the cap simply wait — nothing
+ * about them is time-sensitive, which is exactly why they're capped.
+ */
+export const REFRESH_LIMIT = 3;
+
 export function newProgress(): CardProgress {
-  return { step: 0, lapses: 0, dueAt: null, lastSeen: null, mastered: false };
+  return { step: 0, lapses: 0, dueAt: null, lastSeen: null, mastered: false, refreshes: 0 };
 }
 
 /** Start of the next local day, but never sooner than MIN_COLD_CHECK_MS from now. */
@@ -102,7 +123,49 @@ export function lapse(p: CardProgress, now: Date = new Date()): CardProgress {
 
 /** Passing the cold check — the only way a card ever retires. */
 export function retire(p: CardProgress, now: Date = new Date()): CardProgress {
-  return { ...p, step: 3, mastered: true, dueAt: null, lastSeen: now.toISOString() };
+  return { ...p, step: 3, mastered: true, dueAt: null, lastSeen: now.toISOString(), refreshes: 0 };
+}
+
+/**
+ * When a mastered card next wants a refresher, derived from `lastSeen` rather
+ * than stored. Deriving it means every card mastered before refreshers existed
+ * schedules itself on read with no migration, and there's no second due-date
+ * field to keep in step with the first.
+ *
+ * Counted in calendar days off the day of the last verdict, so the card comes
+ * back at the start of its day the way cold checks do — not at whatever hour the
+ * student happened to finish.
+ */
+export function refreshDueAt(p: CardProgress): string | null {
+  if (!p.mastered || !p.lastSeen) return null;
+  const seen = Date.parse(p.lastSeen);
+  if (Number.isNaN(seen)) return null;
+  const idx = Math.min(p.refreshes ?? 0, REFRESH_DAYS.length - 1);
+  const at = new Date(seen);
+  at.setHours(0, 0, 0, 0);
+  at.setDate(at.getDate() + REFRESH_DAYS[idx]);
+  return at.toISOString();
+}
+
+/** Passing a refresher: the card stays mastered and the next one moves further out. */
+export function refresh(p: CardProgress, now: Date = new Date()): CardProgress {
+  return { ...p, refreshes: (p.refreshes ?? 0) + 1, lastSeen: now.toISOString() };
+}
+
+/**
+ * Missing a refresher. Unlike a lapse this resets the ladder outright rather
+ * than costing a rung: failing a card days after mastering it is forgetting,
+ * not a slip, and the only honest response is to make it earn mastery again.
+ */
+export function forget(p: CardProgress, now: Date = new Date()): CardProgress {
+  return {
+    step: 0,
+    lapses: p.lapses + 1,
+    dueAt: null,
+    lastSeen: now.toISOString(),
+    mastered: false,
+    refreshes: 0,
+  };
 }
 
 /** How far down the rotation a card at this rung should be reinserted. */
@@ -119,33 +182,68 @@ export interface MasteryPartition {
   coldCheck: string[];
   /** Rungs 0-2, including never-seen cards. The body of the session. */
   ladder: string[];
+  /** Mastered cards due a refresher, most overdue first and capped at REFRESH_LIMIT. */
+  refresh: string[];
   /** Provisional but not due yet — deliberately excluded from this session. */
   waiting: string[];
-  /** Already retired. Never scheduled again; only ever used as rotation filler. */
+  /** Mastered and not up for a refresher. Only ever used as rotation filler. */
   retired: string[];
 }
 
 /**
  * Splits a deck's cards into what this session should do with each. Order
  * within each bucket is preserved from `ids`, so the caller's shuffle carries
- * through rather than being re-randomised here.
+ * through rather than being re-randomised here — except `refresh`, which is
+ * ordered by how overdue each card is so a backlog drains oldest-first instead
+ * of re-offering whichever cards the shuffle happened to favour.
  */
 export function partition(
   ids: string[],
   cards: Record<string, CardProgress>,
   now: Date = new Date(),
 ): MasteryPartition {
-  const out: MasteryPartition = { coldCheck: [], ladder: [], waiting: [], retired: [] };
+  const out: MasteryPartition = { coldCheck: [], ladder: [], refresh: [], waiting: [], retired: [] };
+  const overdue: { id: string; at: number }[] = [];
   for (const id of ids) {
     const p = cards[id] ?? newProgress();
-    if (p.mastered) out.retired.push(id);
-    else if (p.step === 3) (isDue(p, now) ? out.coldCheck : out.waiting).push(id);
+    if (p.mastered) {
+      const at = refreshDueAt(p);
+      const t = at === null ? NaN : Date.parse(at);
+      if (!Number.isNaN(t) && t <= now.getTime()) overdue.push({ id, at: t });
+      else out.retired.push(id);
+    } else if (p.step === 3) (isDue(p, now) ? out.coldCheck : out.waiting).push(id);
     else out.ladder.push(id);
+  }
+  overdue.sort((a, b) => a.at - b.at);
+  overdue.forEach((c, i) => (i < REFRESH_LIMIT ? out.refresh : out.retired).push(c.id));
+  return out;
+}
+
+/**
+ * Drops `extras` into `base` at even intervals. Refreshers are spread through
+ * the ladder rather than run up front like cold checks: a cold check is the
+ * reason the student came back and deserves their sharpest attention, while a
+ * refresher opening the session would make a round of real work start with
+ * three cards the student already knows.
+ */
+export function spread(base: string[], extras: string[]): string[] {
+  if (extras.length === 0) return base.slice();
+  if (base.length === 0) return extras.slice();
+  const out = base.slice();
+  const step = base.length / (extras.length + 1);
+  // Back to front, so each insertion point is still an index into the untouched
+  // head of the array.
+  for (let i = extras.length - 1; i >= 0; i--) {
+    out.splice(Math.round(step * (i + 1)), 0, extras[i]);
   }
   return out;
 }
 
-/** Earliest cold check still in the future, or null when nothing is waiting. */
+/**
+ * Earliest thing this deck will want next — a cold check or a refresher — or
+ * null when there's genuinely nothing ahead. Both count, because the question
+ * the caller is really asking is "when is it worth coming back?".
+ */
 export function nextDueDate(
   ids: string[],
   cards: Record<string, CardProgress>,
@@ -154,8 +252,10 @@ export function nextDueDate(
   let soonest: number | null = null;
   for (const id of ids) {
     const p = cards[id];
-    if (!p || p.mastered || p.step !== 3 || !p.dueAt) continue;
-    const t = Date.parse(p.dueAt);
+    if (!p) continue;
+    const iso = p.mastered ? refreshDueAt(p) : p.step === 3 ? p.dueAt : null;
+    if (!iso) continue;
+    const t = Date.parse(iso);
     if (Number.isNaN(t) || t <= now.getTime()) continue;
     if (soonest === null || t < soonest) soonest = t;
   }
@@ -209,7 +309,9 @@ export function tally(
   const p = partition(ids, cards, now);
   return {
     total: ids.length,
-    mastered: p.retired.length,
+    // A card up for a refresher is still mastered — the refresher is a touch,
+    // not a demotion, and Home's count would flicker if it said otherwise.
+    mastered: p.retired.length + p.refresh.length,
     due: p.coldCheck.length,
     inProgress: p.ladder.filter((id) => (cards[id]?.lastSeen ?? null) !== null).length,
   };
@@ -231,12 +333,12 @@ export function normalize(state: FlashState, now: Date = new Date()): FlashState
   const cards: Record<string, CardProgress> = {};
   const stamp = now.toISOString();
   for (const id of state.learning ?? []) {
-    cards[id] = { step: 0, lapses: 0, dueAt: null, lastSeen: stamp, mastered: false };
+    cards[id] = { step: 0, lapses: 0, dueAt: null, lastSeen: stamp, mastered: false, refreshes: 0 };
   }
   // Known wins a collision — the old shape allowed an id in both arrays only
   // through a bug, and the more advanced record is the safer one to keep.
   for (const id of state.known ?? []) {
-    cards[id] = { step: 3, lapses: 0, dueAt: stamp, lastSeen: stamp, mastered: false };
+    cards[id] = { step: 3, lapses: 0, dueAt: stamp, lastSeen: stamp, mastered: false, refreshes: 0 };
   }
   return { ...state, cards };
 }

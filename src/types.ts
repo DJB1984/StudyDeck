@@ -195,6 +195,8 @@ export interface FlashSession {
    */
   /** Cards in this session's cold-check phase — one hit retires them. */
   coldCheck?: string[];
+  /** Mastered cards pulled in for a refresher this round. */
+  refresh?: string[];
   /** Cards awaiting a relearn touch, whose next Know It doesn't advance the ladder. */
   relearning?: string[];
   /** Cards already pulled in as rotation filler — each is eligible only once. */
@@ -224,9 +226,10 @@ export interface FlashSession {
  * Where one card sits on the mastery ladder. Keyed by question id (never index).
  *
  * The lifecycle is deliberately finite: three in-session successes make a card
- * *provisional*, one cold hit on a later day retires it for good. There is no
- * widening review schedule after that (Davis's call, 2026-08-17) — "mastered"
- * has to be something a student can actually reach and be done with.
+ * *provisional*, one cold hit on a later day masters it. After that it only ever
+ * returns as a refresher on a widening interval, a few per session at most —
+ * "mastered" still has to be something a student can reach and be done with, so
+ * the refresher is a spot-check on that claim, never a fourth rung to climb.
  */
 export interface CardProgress {
   /**
@@ -244,8 +247,16 @@ export interface CardProgress {
   dueAt: string | null;
   /** ISO time of the last verdict given on this card. */
   lastSeen: string | null;
-  /** Passed its cold check — retired, never scheduled again. */
+  /** Passed its cold check — off the ladder for good, bar the odd refresher. */
   mastered: boolean;
+  /**
+   * Refreshers this mastered card has passed, which picks its interval out of
+   * `REFRESH_DAYS`. The refresher's own due time is derived from `lastSeen`
+   * rather than stored, so cards mastered before refreshers existed schedule
+   * themselves with no migration — which is also why this is optional: absent
+   * reads as 0.
+   */
+  refreshes?: number;
 }
 
 /**

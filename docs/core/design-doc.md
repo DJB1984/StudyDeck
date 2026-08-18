@@ -303,7 +303,9 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
   "cards": {
     "q1": { "step": 3, "lapses": 0, "dueAt": "2026-08-18T00:00:00.000Z", "lastSeen": "...", "mastered": false },
     "q2": { "step": 1, "lapses": 1, "dueAt": null, "lastSeen": "...", "mastered": false },
-    "q3": { "step": 3, "lapses": 0, "dueAt": null, "lastSeen": "...", "mastered": true }
+    // Mastered. `refreshes` picks its refresher interval; the refresher's own
+    // due time is DERIVED from lastSeen, never stored (see refreshDueAt).
+    "q3": { "step": 3, "lapses": 0, "dueAt": null, "lastSeen": "...", "mastered": true, "refreshes": 2 }
   },
   // Derived mirrors, rewritten from `cards` on every save. They exist only
   // because the cloud `flash_state` table has just these two columns. Never
@@ -311,7 +313,7 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
   "known": ["q1", "q3"],
   "learning": ["q2"],
   // The in-progress round, so a reload resumes where the student left off.
-  "session": { "order": [...], "queue": [...], "coldCheck": [...], "startedOn": "2026-08-17", ... }
+  "session": { "order": [...], "queue": [...], "coldCheck": [...], "refresh": [...], "startedOn": "2026-08-17", ... }
 }
 
 // Whether Flashcards' decorative ambient motion may animate. Absent = off:
@@ -323,10 +325,15 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
 
 Card records use question `id` fields (not array indices) so state survives question reordering.
 
-**Mastery ladder (see `src/features/flashcard/schedule.ts`, which owns every rule below).** The mode is deliberately two-stage and deliberately finite:
+**Mastery ladder (see `src/features/flashcard/schedule.ts`, which owns every rule below).** The mode is deliberately two-stage, and mastery is deliberately an ending rather than a rung:
 
 1. **In-session ladder.** Three Know Its inside one session, spaced 6 then 14 cards apart, move a card to `step: 3` — *provisional*, not mastered. It leaves the rotation with `dueAt` set to the start of the next local day (floored at 8 hours out, so studying at 11:50pm doesn't make a card due at midnight).
-2. **Cold check.** On a later session, due cards run **first**. One Know It sets `mastered: true` and retires the card permanently. There is no widening review schedule after that — "mastered" is a state a student can reach and be done with (Davis, 2026-08-17).
+2. **Cold check.** On a later session, due cards run **first**. One Know It sets `mastered: true` and takes the card off the ladder for good.
+3. **Refreshers.** A mastered card resurfaces occasionally to confirm it stuck — `REFRESH_DAYS = [3, 7, 16, 35]` calendar days after its last verdict, widening with each one passed and capping at 35 (Davis, 2026-08-17, superseding an earlier same-day call that mastery should end all scheduling). A pass keeps mastery and pushes the next one out; a **miss resets the card to `step: 0` and clears `mastered`** — failing days later is forgetting, not a slip. Constraints that keep this from becoming a fourth rung:
+   - **At most `REFRESH_LIMIT = 3` per session**, most-overdue-first. Overflow just waits; nothing about a refresher is time-sensitive, which is the point.
+   - **Due times are derived from `lastSeen`, never stored.** No migration was needed for cards mastered before refreshers existed, and there's no second due-date field to keep in step with `dueAt`.
+   - **Spread through the ladder, not run first.** Cold checks earn the student's sharpest attention; a refresher opening the round would start real work with cards they already know.
+   - Refreshers count as **mastered** in Home's tally and are excluded from `takeFiller`.
 
 Supporting rules, each fixing a specific failure mode:
 
@@ -335,6 +342,7 @@ Supporting rules, each fixing a specific failure mode:
 - **The rotation is padded with already-learned cards** when it's shorter than the gap being asked for, budgeted at `FILLER_BUDGET` per session. Without it, intervals collapse late in a session — exactly when cards are being certified. Filler verdicts are asymmetric: a hit changes nothing, a miss demotes the card back onto the ladder.
 - **A mastery round belongs to the day it started on** (`session.startedOn`). Resuming yesterday's unfinished queue would skip every cold check that came due overnight.
 - **Pre-ladder state is back-filled on read** (`schedule.ts` `normalize`). Old `known` ids become provisional-and-immediately-due rather than mastered, since a single Know It in the old one-pass mode is a much weaker claim than three in a row.
+- **"Deck Mastered" splits on the deck's standing, not on whether a due date exists.** Every mastered deck now has a refresher date ahead of it, so the finished-state screen keys off `allMastered()` — otherwise the one screen that tells a student they're done would silently become "All Caught Up".
 
 **Deletion lifecycle:** `Storage.deleteFile(title)` removes the entry from `studydeck_history` AND deletes the corresponding `studydeck_flash_{id}` key (plus any pre-migration `studydeck_flash_{title}` key) in one atomic operation. This keeps localStorage clean and prevents orphaned card data accumulating over time.
 

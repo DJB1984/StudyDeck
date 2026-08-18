@@ -32,11 +32,37 @@ const MODE_HINT: Record<StudyMode, string> = {
   standard:
     'Flip through the whole deck at your own pace — arrows move between cards, and nothing is marked.',
   mastery:
-    'Get a card right three times, spaced further apart each time, and it’s set aside for a final check tomorrow. Passing that check masters it for good.',
+    'Get a card right three times, spaced further apart each time, and it’s set aside for a final check tomorrow. Passing that check masters it — after which it only drops in now and then to prove it stuck.',
 };
 
 function modeOf(eng: FlashEngine): StudyMode {
   return eng.masteryMode ? 'mastery' : 'standard';
+}
+
+// Mastery's end-of-round copy, assembled rather than templated: a round can end
+// with new cards learned, refreshers held, both, or — on a quiet day where the
+// only thing due was a mastered card or two — refreshers alone. "0 of 3 learned"
+// is a poor way to describe a round that went perfectly well.
+function roundSummary(
+  learned: number,
+  refreshed: number,
+  total: number,
+  nextDue: string | null,
+): string {
+  const parts = [
+    learned > 0
+      ? `${learned} of ${total} card(s) learned this session.`
+      : 'No new cards were learned this round.',
+  ];
+  if (refreshed > 0) parts.push(`${refreshed} mastered card(s) came back for a refresher and held.`);
+  if (learned > 0) {
+    parts.push(
+      `Come back ${nextDue ? describeDue(nextDue) : 'tomorrow'} for the final check that locks them in.`,
+    );
+  } else if (nextDue) {
+    parts.push(`Come back ${describeDue(nextDue)}.`);
+  }
+  return parts.join(' ');
 }
 
 // Drawn rather than typed: DESIGN.md's icon rule is authored SVG at a single
@@ -241,6 +267,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   const mastery = eng.progressMastery();
   const nextDue = eng.nextDue();
   const coldCheck = !showComplete && eng.currentIsColdCheck();
+  const refreshing = !showComplete && eng.currentIsRefresh();
 
   const total = eng.order.length;
 
@@ -343,11 +370,16 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
               but they mean opposite things — one is a real test of yesterday's
               learning, the other is a step toward it. Saying which is what
               keeps "Know It" from being answered on autopilot. */}
-          {eng.masteryMode && (coldCheck || eng.currentIsFiller()) && (
-            <p className="flash-phase-tag" data-phase={coldCheck ? 'cold' : 'filler'}>
+          {eng.masteryMode && (coldCheck || refreshing || eng.currentIsFiller()) && (
+            <p
+              className="flash-phase-tag"
+              data-phase={coldCheck ? 'cold' : refreshing ? 'refresh' : 'filler'}
+            >
               {coldCheck
                 ? 'Final check — you learned this on an earlier day.'
-                : 'Already learned — just keeping the spacing honest.'}
+                : refreshing
+                  ? 'Refresher — you mastered this a while back. Still got it?'
+                  : 'Already learned — just keeping the spacing honest.'}
             </p>
           )}
 
@@ -432,18 +464,26 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
               // Mastery's most important screen: there is genuinely nothing
               // useful to do right now, and the honest thing is to say so and
               // name the day rather than invent busywork to fill the session.
-              nextDue ? (
+              // Split on the deck's actual standing rather than on whether a
+              // date exists: refreshers mean a finished deck always has a next
+              // date now, and "All Caught Up" would quietly replace the one
+              // screen that tells a student they're done.
+              eng.allMastered() ? (
                 <>
-                  <h3>All Caught Up</h3>
+                  <h3>Deck Mastered</h3>
                   <p>
-                    Every card here is either mastered or waiting on its final check. The next one
-                    comes due {describeDue(nextDue)}.
+                    Every card passed its final check on a later day. Nothing left to do here —
+                    they'll drop back in for the odd refresher
+                    {nextDue ? `, starting ${describeDue(nextDue)}` : ''}.
                   </p>
                 </>
               ) : (
                 <>
-                  <h3>Deck Mastered</h3>
-                  <p>Every card passed its final check on a later day. This deck is done.</p>
+                  <h3>All Caught Up</h3>
+                  <p>
+                    Every card here is either mastered or waiting on its final check.
+                    {nextDue ? ` The next one comes due ${describeDue(nextDue)}.` : ''}
+                  </p>
                 </>
               )
             ) : eng.isBrowseMode() ? (
@@ -460,12 +500,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
               // exact illusion of competence the mode is built to prevent.
               <>
                 <h3>Round Complete</h3>
-                <p>
-                  {mastery.learned} of {total} card(s) learned this session.
-                  {nextDue
-                    ? ` Come back ${describeDue(nextDue)} for the final check that locks them in.`
-                    : ' Come back tomorrow for the final check that locks them in.'}
-                </p>
+                <p>{roundSummary(mastery.learned, mastery.refreshed, total, nextDue)}</p>
               </>
             )}
             <div className="stats-actions" style={{ justifyContent: 'center' }}>

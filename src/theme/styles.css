@@ -1690,8 +1690,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 /* The final check is the moment the mode exists for, so it carries the mode's
    light; filler is deliberately quiet, because it isn't work being asked of the
-   student and shouldn't compete with the card. */
+   student and shouldn't compete with the card. A refresher sits between the two:
+   a real verdict is being asked for, so it's louder than filler — but it's a
+   spot-check on settled work, so it stays off the mode's own colour and reads in
+   the everyday accent instead. */
 .flash-phase-tag[data-phase='cold'] { color: var(--mode-light); }
+.flash-phase-tag[data-phase='refresh'] { color: var(--accent-light); }
 
 /* The mastery tally ("8 learned · 4 left") is mode-specific information, so it
    reads in the mode's own light. */

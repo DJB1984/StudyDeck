@@ -6,9 +6,11 @@
 //
 // Mastery is a two-stage mode, and the split is the whole design (see
 // schedule.ts for the rationale): three spaced Know Its inside one session make
-// a card *provisional*, and one cold hit on a later day retires it. A session
+// a card *provisional*, and one cold hit on a later day masters it. A session
 // therefore runs the cold checks it owes first, then works the ladder, and
-// deliberately does NOT show provisional cards that aren't due yet.
+// deliberately does NOT show provisional cards that aren't due yet. Mastered
+// cards due a refresher are spread through the ladder — present, but never the
+// shape of the round.
 
 import type { CardProgress, FlashCard, FlashSession, FlashState } from '../../types';
 import { Storage } from '../../lib/Storage';
@@ -17,6 +19,7 @@ import {
   FILLER_BUDGET,
   advance,
   derivePiles,
+  forget,
   gapFor,
   lapse,
   localDayKey,
@@ -24,8 +27,10 @@ import {
   nextDueDate,
   normalize,
   partition,
+  refresh,
   relearnGap,
   retire,
+  spread,
 } from './schedule';
 
 export interface FlashStartOptions {
@@ -46,6 +51,7 @@ interface UndoFrame {
   fillerUsed: string[];
   card: CardProgress;
   wasColdCheck: boolean;
+  wasRefresh: boolean;
   wasRelearning: boolean;
   wasLearned: boolean;
 }
@@ -85,6 +91,9 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
     cards: {} as Record<string, CardProgress>,
     /** Provisional cards whose cold check came due — one Know It retires them. */
     coldCheck: new Set<string>(),
+    /** Mastered cards up for a refresher this round. A card leaves this set only
+     *  by failing one, which drops it back onto the ladder. */
+    refresh: new Set<string>(),
     /** Cards awaiting a relearn touch; their next Know It restores rather than advances. */
     relearning: new Set<string>(),
     /** Cards pulled in as rotation filler — each is eligible only once per session. */
@@ -131,6 +140,7 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       );
 
       this.coldCheck = new Set();
+      this.refresh = new Set();
       this.relearning = new Set();
       this.fillerUsed = new Set();
       this.learned = new Set();
@@ -146,9 +156,12 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
         const split = partition(ids, this.cards);
         // Cold checks run first: they're the point of coming back, and taking
         // them while the student is freshest is what makes them a real test.
-        this.order = [...split.coldCheck, ...split.ladder];
+        // Refreshers get no such billing — they're spread through the ladder so
+        // the round still opens on work the student actually owes.
+        this.order = [...split.coldCheck, ...spread(split.ladder, split.refresh)];
         this.queue = this.order.slice();
         this.coldCheck = new Set(split.coldCheck);
+        this.refresh = new Set(split.refresh);
         this.waiting = split.waiting;
       } else {
         // Standard browses the whole deck, including retired cards — it records
@@ -197,6 +210,7 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       // cold checks and which were already pulled as filler are facts about how
       // this session has gone, and the records can't reconstruct any of them.
       this.coldCheck = new Set(session.coldCheck ?? []);
+      this.refresh = new Set(session.refresh ?? []);
       this.relearning = new Set(session.relearning ?? []);
       this.fillerUsed = new Set(session.fillerUsed ?? []);
       this.learned = new Set(session.learned ?? []);
@@ -225,11 +239,23 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       return id !== undefined && this.coldCheck.has(id);
     },
 
+    /** True when the card on screen is a refresher — mastered days or weeks ago
+     *  and back to prove it stuck. */
+    currentIsRefresh(): boolean {
+      const id = this.queue[0];
+      return id !== undefined && this.refresh.has(id);
+    },
+
     /** True when the card on screen was pulled in only to keep the rotation
      *  honest. It's already learned; a hit costs nothing and a miss un-learns it. */
     currentIsFiller(): boolean {
       const id = this.queue[0];
-      return id !== undefined && this.fillerUsed.has(id) && !this.coldCheck.has(id);
+      return (
+        id !== undefined &&
+        this.fillerUsed.has(id) &&
+        !this.coldCheck.has(id) &&
+        !this.refresh.has(id)
+      );
     },
 
     isComplete(): boolean {
@@ -237,11 +263,19 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       return this.masteryMode ? this.queue.length === 0 : this.currentIdx >= this.order.length;
     },
 
-    /** Mastery with nothing to do right now: every card is either retired or
-     *  provisional-but-not-due. Distinct from an empty deck, and the only place
-     *  the mode tells the student when to come back. */
+    /** Mastery with nothing to do right now: every card is mastered (and not up
+     *  for a refresher) or provisional-but-not-due. Distinct from an empty deck,
+     *  and the only place the mode tells the student when to come back. */
     nothingDue(): boolean {
       return this.masteryMode && this.allQuestions.length > 0 && this.order.length === 0;
+    },
+
+    /** Whole deck mastered. Separates the real finish line from a quiet day —
+     *  both land on the caught-up screen, but only one of them is an ending. */
+    allMastered(): boolean {
+      return (
+        this.allQuestions.length > 0 && this.allQuestions.every((q) => this.cards[q.id]?.mastered)
+      );
     },
 
     /** ISO time of the soonest cold check still ahead, or null. */
@@ -292,12 +326,24 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
     // stops holding the moment cards requeue. `remaining` excludes filler (it
     // isn't work the student signed up for) and is deduplicated by id, since a
     // requeued card is still one card.
-    progressMastery(): { learned: number; remaining: number; coldChecks: number } {
+    progressMastery(): {
+      learned: number;
+      remaining: number;
+      coldChecks: number;
+      refreshed: number;
+    } {
       const remaining = new Set(this.queue.filter((id) => !this.fillerUsed.has(id)));
+      // Refreshers passed = the ones this round offered, less the ones still
+      // queued. A failed refresher leaves the set entirely (it's back on the
+      // ladder, and counting it as a refresher done would be a lie), so no
+      // separate tally has to be persisted for this.
+      let refreshed = 0;
+      for (const id of this.refresh) if (!remaining.has(id)) refreshed++;
       return {
         learned: this.learned.size,
         remaining: remaining.size,
         coldChecks: this.queue.filter((id) => this.coldCheck.has(id)).length,
+        refreshed,
       };
     },
 
@@ -316,7 +362,8 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       const now = new Date();
       const p = this.cards[id] ?? newProgress();
       const isColdCheck = this.coldCheck.has(id);
-      const isFiller = !isColdCheck && this.fillerUsed.has(id);
+      const isRefresh = this.refresh.has(id);
+      const isFiller = !isColdCheck && !isRefresh && this.fillerUsed.has(id);
 
       if (pile === 'known') {
         if (isColdCheck) {
@@ -324,6 +371,11 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
           this.cards[id] = retire(p, now);
           this.coldCheck.delete(id);
           this.learned.add(id);
+        } else if (isRefresh) {
+          // Still holds. The card stays mastered and its next refresher moves
+          // further out; it does NOT go back into the rotation, because one
+          // retrieval is the entire ask.
+          this.cards[id] = refresh(p, now);
         } else if (isFiller) {
           // Already learned; this was free retrieval. Record that it happened
           // and leave the standing alone — filler must never be a shortcut to
@@ -344,6 +396,15 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
           if (next.step === 3) this.learned.add(id);
           else this.reinsert(id, gapFor(next.step));
         }
+      } else if (isRefresh) {
+        // A mastered card that didn't survive the gap. It loses mastery outright
+        // and restarts the ladder here and now — it's the clearest evidence of
+        // forgetting the mode can collect, and softening it to a single rung
+        // would let a card the student can't recall keep its badge.
+        this.cards[id] = forget(p, now);
+        this.refresh.delete(id);
+        this.relearning.add(id);
+        this.reinsert(id, relearnGap());
       } else {
         this.cards[id] = lapse(p, now);
         this.coldCheck.delete(id);
@@ -379,6 +440,9 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
         const p = this.cards[q.id];
         if (!p || (!p.mastered && p.step !== 3)) continue;
         if (queued.has(q.id) || this.fillerUsed.has(q.id)) continue;
+        // A refresher already has a job this round; reusing it as padding would
+        // show the same card twice and blur which appearance counted.
+        if (this.refresh.has(q.id)) continue;
         return q.id;
       }
       return null;
@@ -393,6 +457,7 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
         fillerUsed: Array.from(this.fillerUsed),
         card: { ...(this.cards[id] ?? newProgress()) },
         wasColdCheck: this.coldCheck.has(id),
+        wasRefresh: this.refresh.has(id),
         wasRelearning: this.relearning.has(id),
         wasLearned: this.learned.has(id),
       });
@@ -413,6 +478,8 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
       this.cards[prev.id] = { ...prev.card };
       if (prev.wasColdCheck) this.coldCheck.add(prev.id);
       else this.coldCheck.delete(prev.id);
+      if (prev.wasRefresh) this.refresh.add(prev.id);
+      else this.refresh.delete(prev.id);
       if (prev.wasRelearning) this.relearning.add(prev.id);
       else this.relearning.delete(prev.id);
       if (prev.wasLearned) this.learned.add(prev.id);
@@ -435,6 +502,7 @@ export function createFlashEngine(deckId: string, allQuestions: FlashCard[]) {
           order: this.order,
           queue: this.masteryMode ? this.queue.slice() : undefined,
           coldCheck: this.masteryMode ? Array.from(this.coldCheck) : undefined,
+          refresh: this.masteryMode ? Array.from(this.refresh) : undefined,
           relearning: this.masteryMode ? Array.from(this.relearning) : undefined,
           fillerUsed: this.masteryMode ? Array.from(this.fillerUsed) : undefined,
           learned: this.masteryMode ? Array.from(this.learned) : undefined,
