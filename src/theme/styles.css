@@ -1603,8 +1603,8 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--mode-light);
 }
 
-/* The mode pill and the Settings button, with the pill left and the button
-   pushed to the far corner — allowed to wrap rather than squeeze on a narrow
+/* The mode pill, Undo beside it, and the Settings button — pill first, then
+   the one action the mode affords, with the button pushed to the far corner — allowed to wrap rather than squeeze on a narrow
    phone, with a tighter row gap so a wrapped row still reads as one group. */
 .flash-options {
   display: flex;
@@ -1887,6 +1887,17 @@ button { font-family: inherit; cursor: pointer; }
 @media (max-width: 560px) {
   .flash-ambience { height: calc(100% + 200px); }
   #flash-active-area::before { inset: -32px -24px -160px; }
+  /* Undo is the only button a phone keeps, so it's the one that has to be
+     reachable by thumb — up to the 44px target floor from its desktop 40, and
+     pulled closer to the pill so the row still reads as one group. */
+  /* Three controls in 342px: undo (44) + the mode pill (~177) + Settings. With
+     the word, Settings needs ~100 and the row wraps by a handful of pixels,
+     spending a second row of a phone's scarce height on chrome. The icon carries
+     it alone — the button keeps its accessible name and its tooltip. */
+  .flash-options { column-gap: 14px; }
+  .flash-options .flash-undo-btn { width: 44px; height: 44px; }
+  .flash-settings-btn { padding: 10px; }
+  .flash-settings-word { display: none; }
   /* Mastery's tally is long enough to wrap on a phone, which was squeezing the
      Back button into two lines beside it. Give it its own row instead. */
   #flashcard-screen .screen-header { flex-wrap: wrap; row-gap: 6px; }
@@ -1923,6 +1934,36 @@ button { font-family: inherit; cursor: pointer; }
   align-self: stretch;
   perspective: 1400px;
   cursor: pointer;
+  /* The card owns the horizontal axis and the page keeps the vertical one, so a
+     sideways drag never scrolls and a downward one never sorts. The JS locks the
+     same axis on the same 10px, so the two agree about which gesture started. */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  /* The spring home from a drag that didn't commit. Exponential ease-out, so the
+     card leaves the finger fast and settles slowly — the shape of something with
+     weight returning to rest. Suppressed mid-drag: under the finger the card is
+     the finger, not a thing catching up with it. */
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+#flash-card[data-dragging='yes'] {
+  transition: none;
+  cursor: grabbing;
+}
+/* The two verdicts, as colour. Know It takes the mode's own hue — the screen's
+   accent already means "this is the good direction", and inside Mastery that
+   colour IS the mode (The Mode-Owns-Its-Screen Rule). Still Learning takes Alert
+   Red, which is the one thing on this screen allowed to override the mode: it is
+   a warning about the card, not a theme for the screen. */
+#flash-card[data-swipe='right'] {
+  --swipe-hue: var(--mode-tint);
+  --swipe-ink: var(--mode-light);
+  --swipe-wash: 90deg;
+}
+#flash-card[data-swipe='left'] {
+  --swipe-hue: var(--incorrect);
+  --swipe-ink: var(--incorrect);
+  --swipe-wash: 270deg;
 }
 /* Both of these have to sit after the base rule above — a media query adds no
    specificity, so source order is the only thing that decides. */
@@ -1941,6 +1982,16 @@ button { font-family: inherit; cursor: pointer; }
      accepts the field trailing off past the fold, exactly as it did before. */
   #flashcard-screen { min-height: calc(100dvh - 96px); }
 }
+/* With the buttons gone the card is the only thing between the hint and the
+   bottom of the screen, so it takes the height they were using rather than
+   leaving it as void — the point of hiding them was to give it back. */
+#flashcard-screen[data-actions='hidden'] #flash-card-wrap {
+  max-height: 560px;
+  /* Not 0: the hint sits directly under the card here, and closing the gap
+     entirely put the caption against the card's own border. */
+  margin-bottom: 14px;
+}
+
 /* Width follows the height that's actually available. The card's floor is a
    fixed 280px, so on a short viewport a full 760px card would flatten into a
    letterbox — narrowing it instead keeps the proportions of a card at every
@@ -1997,6 +2048,76 @@ button { font-family: inherit; cursor: pointer; }
   transform: rotateY(180deg);
   color: var(--mode-light);
 }
+/* The card's own words give way to the verdict as the drag travels. Not a
+   plain crossfade — two centred words at half opacity on the same pixels is an
+   illegible smear, which is exactly what a straight 1:1 fade produced. It's a
+   relay in three beats off the single --swipe-p the gesture writes:
+
+     0.00–0.36  the card's words dissolve, while the rim colours up under them
+     0.34–0.64  the verdict arrives in the space they left
+     0.53+      the rim is at full strength
+
+   The steep multipliers are what separate the beats; opacity clamps to 0–1, so
+   each one simply finishes early rather than overshooting. The faces themselves
+   keep their fill throughout: this is the card's content dissolving, not the
+   card. */
+.card-front > *,
+.card-back > * {
+  opacity: calc(1 - var(--swipe-p, 0) * 2.8);
+  transition: opacity 200ms ease;
+}
+#flash-card[data-dragging='yes'] .card-front > *,
+#flash-card[data-dragging='yes'] .card-back > * {
+  transition: none;
+}
+
+/* The verdict the drag is pointed at: a rim in that verdict's colour, a wash
+   entering from the edge the card is heading toward, and the word itself where
+   the card's text was. Above both faces via a 1px lift rather than z-index —
+   the parent is a 3D rendering context, so depth here is literal. */
+.flash-swipe-cue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  transform: translateZ(1px);
+  border: 2px solid var(--swipe-hue, transparent);
+  border-radius: var(--radius);
+  background: linear-gradient(
+    var(--swipe-wash, 90deg),
+    transparent 34%,
+    color-mix(in srgb, var(--swipe-hue, transparent) 26%, transparent) 100%
+  );
+  /* Permitted by The Shadow-Is-Motion Rule: this only exists on a card the
+     student is actively moving, and it goes with the card. */
+  box-shadow: 0 0 34px -8px color-mix(in srgb, var(--swipe-hue, transparent) 70%, transparent);
+  /* Ahead of the word it frames: the rim is the drag registering, and that has
+     to answer the first few pixels, not wait for the handover. */
+  opacity: calc(var(--swipe-p, 0) * 1.9);
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+#flash-card[data-dragging='yes'] .flash-swipe-cue,
+#flash-card[data-dragging='yes'] .flash-swipe-cue span {
+  transition: none;
+}
+/* Held back until the card's own words are gone, so the two never share the
+   space. Multiplies with the rim's opacity above, which is why it climbs
+   steeply — by the time it starts, the rim is nearly full. */
+.flash-swipe-cue span {
+  opacity: calc((var(--swipe-p, 0) - 0.34) * 3.3);
+  transition: opacity 200ms ease;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 1.1rem + 0.95vw, 1.9rem);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--swipe-ink, var(--text));
+}
+
 /* A card carrying a graph turns into a column: the plot on top, the card's own
    text under it. The global .graph-area is a fixed 240px, which is taller than
    the padded interior of a card at its 280px floor — so inside a face the plot
@@ -2026,17 +2147,40 @@ button { font-family: inherit; cursor: pointer; }
   font-size: clamp(1rem, 0.9rem + 0.4vw, 1.2rem);
   line-height: 1.45;
 }
-#flash-card.sort-known {
-  animation: flash-slide-out 350ms ease forwards;
+/* Three ways a card can leave, and which one it takes says who dismissed it.
+   A verdict given by button files right (Know It) or refuses in place (Still
+   Learning) — the vocabulary the mode has always had. A verdict given by swipe
+   leaves the way it was thrown, in either direction, because a card thrown left
+   that files itself to the right reads as the throw having been overruled.
+
+   Both exits start from --exit-from/--exit-rot, which the screen sets to exactly
+   where the finger let go — without an explicit `from`, the implicit one is the
+   card's untransformed rest position, and the throw would visibly snap back to
+   centre before flying out. A button press sets them to zero. */
+#flash-card.flash-exit-right {
+  animation: flash-exit-right 350ms ease forwards;
 }
-#flash-card.sort-learning {
+#flash-card.flash-exit-left {
+  animation: flash-exit-left 350ms ease forwards;
+}
+#flash-card.flash-exit-shake {
   animation: flash-shake 350ms ease;
 }
-/* Ends low and to the right rather than straight out the side, and tips as it
-   goes: the card is dismissed toward the Know It button under it, so it reads
-   as being filed rather than as merely leaving the screen. */
-@keyframes flash-slide-out {
+/* Ends low and to the side rather than straight out, and tips as it goes: the
+   card is being filed, not merely leaving the screen. */
+@keyframes flash-exit-right {
+  from {
+    transform: translate3d(var(--exit-from, 0px), 0, 0) rotate(var(--exit-rot, 0deg));
+    opacity: 1;
+  }
   to { transform: translate(120%, 12%) rotate(8deg); opacity: 0; }
+}
+@keyframes flash-exit-left {
+  from {
+    transform: translate3d(var(--exit-from, 0px), 0, 0) rotate(var(--exit-rot, 0deg));
+    opacity: 1;
+  }
+  to { transform: translate(-120%, 12%) rotate(-8deg); opacity: 0; }
 }
 @keyframes flash-shake {
   0%, 100% { transform: translateX(0); }
@@ -2048,7 +2192,22 @@ button { font-family: inherit; cursor: pointer; }
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.85rem;
+  /* A definite max rather than a definite height, so the line can collapse when
+     it retires itself on touch (height:auto has nothing to animate from) without
+     clipping a copy string that wraps on some narrow window. Two lines' worth of
+     headroom; the collapse just travels the empty part faster. */
+  max-height: 3rem;
   margin: 0 0 24px;
+  overflow: hidden;
+  transition: opacity 240ms ease, max-height 240ms ease, margin-bottom 240ms ease;
+}
+.flash-hint.is-gone {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash-hint { transition: none; }
 }
 .flash-actions {
   position: relative;
@@ -2056,6 +2215,22 @@ button { font-family: inherit; cursor: pointer; }
   justify-content: center;
   align-items: center;
   gap: 16px;
+}
+/* Phone width, where the card is the whole screen and the thumb is the whole
+   input: the verdicts move into the swipe and the buttons stop taking height
+   from the card. Visually hidden rather than display:none — a phone screen
+   reader has no gesture to give a verdict with, and taking the buttons off the
+   accessibility tree would take the mode away with them. Settings puts them
+   back for anyone who is at phone width without a thumb (see Card buttons). */
+#flashcard-screen[data-actions='hidden'] .flash-actions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 /* Standard mode's prev/next pair. Solid rather than .btn-ghost's outline —
    they're the only controls on the screen, and an icon with no label needs

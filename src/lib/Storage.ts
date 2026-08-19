@@ -10,6 +10,10 @@ import * as SupabaseClient from './SupabaseClient';
 const HISTORY_KEY = 'studydeck_history';
 const FLASH_PREFIX = 'studydeck_flash_';
 const MOTION_KEY = 'studydeck_ambient_motion';
+// Deliberately NOT under FLASH_PREFIX: clearLocal() wipes every key with that
+// prefix as deck progress, and neither of these is deck progress.
+const SWIPE_HINT_KEY = 'studydeck_swipe_hint';
+const CARD_BUTTONS_KEY = 'studydeck_card_buttons';
 
 // Flash state is keyed by the deck's stable id, not its title — mastery
 // scheduling is worth more than a display string is stable. `legacyFlashKey`
@@ -309,6 +313,31 @@ export const Storage = {
 
   setAmbientMotion(on: boolean): boolean {
     return this.set(MOTION_KEY, on);
+  },
+
+  // Whether this device has already been shown — and used — the swipe gesture
+  // on a flashcard. Written once, on the first swipe that commits, and read to
+  // decide whether the card still needs a line under it naming the gesture.
+  // Device-local for the same reason motion is: what you've learned to do with
+  // your thumb belongs to the thumb, not to the account.
+  getSwipeHintSeen(): boolean {
+    return this.get<boolean>(SWIPE_HINT_KEY) === true;
+  },
+
+  setSwipeHintSeen(seen: boolean): boolean {
+    return this.set(SWIPE_HINT_KEY, seen);
+  },
+
+  // The escape hatch for a narrow window: the flashcard's action buttons hide
+  // themselves once the column is phone-width, and this brings them back.
+  // Absent means hidden, so the swipe-only layout is what a phone gets by
+  // default and the buttons are something you ask for.
+  getCardButtons(): boolean {
+    return this.get<boolean>(CARD_BUTTONS_KEY) === true;
+  },
+
+  setCardButtons(on: boolean): boolean {
+    return this.set(CARD_BUTTONS_KEY, on);
   },
 
   // R8: persist piles (inherits R3 quota handling via set).
