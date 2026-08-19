@@ -16,6 +16,42 @@ html, body {
   font-family: var(--font-body);
 }
 
+/* Scrollbars — themed through the standard properties first, so platforms with
+   overlay scrollbars (macOS) keep their native show-on-scroll behavior instead
+   of gaining a permanent gutter the way ::-webkit-scrollbar forces. Both
+   properties inherit, so this single rule also dresses the JSON paste box, the
+   code editor and the table's horizontal scroller. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Engines without the standard properties (Chrome < 121, Safari < 18.2) take
+   the -webkit- path, which also buys the hover state the standard one can't
+   express. Gated so nothing applies both. The thumb's transparent border plus
+   background-clip is what insets it off the track edge — hence background-color
+   rather than the shorthand, which would reset the clip. */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background-color: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    min-height: 40px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+}
+
 #app {
   max-width: 960px;
   margin: 0 auto;

@@ -14,6 +14,15 @@
   --border: rgba(255, 255, 255, 0.08);  /* hairline edge */
   --border-strong: rgba(255, 255, 255, 0.16);
 
+  /* Scrollbars — a tonal step off the same white-alpha ladder as the borders,
+     never the accent: a scrollbar sits on every long screen at once, and
+     Starlight Blue only ever marks the one thing to act on (DESIGN.md's Signal
+     Rule). The track stays transparent so one bar reads correctly on the void
+     and inside a panel alike. */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
+  --scrollbar-track: transparent;
+
   --accent: #3093ec;                    /* starlight blue — the one everyday accent */
   --accent-light: #63b3ff;              /* hover/focus/text-on-dark */
   --accent-deep: #0267c7;               /* gradient base for filled buttons */

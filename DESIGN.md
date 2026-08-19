@@ -6,6 +6,7 @@ colors:
   surface: "#11161f"
   surface-raised: "#1a2029"
   border-hairline: "rgba(255, 255, 255, 0.08)"
+  scrollbar-thumb: "rgba(255, 255, 255, 0.16)"
   starlight-blue: "#3093ec"
   starlight-blue-light: "#63b3ff"
   starlight-blue-deep: "#0267c7"
@@ -138,6 +139,7 @@ Nebula's second sanctioned appearance, and its only one outside Home: the two Fl
 - **Surface** (`#11161f`): the solid fill for every panel/card at rest.
 - **Surface Raised** (`#1a2029`): the same surfaces on hover, or a card's next tonal step up — a lightness step, not a hue change.
 - **Border Hairline** (`rgba(255, 255, 255, 0.08)`): the 1px edge on every panel.
+- **Scrollbar Thumb** (`rgba(255, 255, 255, 0.16)`, hover `0.32`) on a transparent track: the same white-alpha ladder the borders sit on, one step above the hairline. Deliberately not the accent — see Scrollbars under Components.
 - **Text Primary** (`#e1e5eb`): primary text — a cool off-white, never pure `#fff` outside the hero gradient's top stop.
 - **Text Muted** (`#79818d`): secondary/meta text — timestamps, hints, subtitles, progress labels.
 
@@ -241,6 +243,11 @@ Both are pure functions of `(particle, time)` over one fixed pool, so a mode swi
 
 ### Mode Icons
 Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `1.6` stroke width, no fill) instead of color emoji — Text Muted at rest, Starlight Blue Light when the card is selected. Replaces the prior full-color-emoji icons, which were the one ornamental element left over from before this redesign.
+
+### Scrollbars
+- **Style:** a thin bar with a transparent track and a `rgba(255,255,255,0.16)` thumb, brightening to `0.32` on hover. Because the track carries no fill, the same bar reads correctly over the Void Navy page and inside a panel or the JSON textarea.
+- **Not the accent.** A scrollbar is present on every long screen at once, so a Starlight Blue thumb would put the app's one "act here" color on chrome the student never needs to look at (The Signal Rule). The scrollbar belongs to the tonal ladder, like a border.
+- **Standard properties first.** `scrollbar-width`/`scrollbar-color` are set once on `html` and inherit to every scroll container, so macOS keeps its native overlay behavior — `::-webkit-scrollbar` would force a permanent gutter there. The `-webkit-` rules exist only inside `@supports not (scrollbar-color: auto)`, for Chrome < 121 and Safari < 18.2.
 
 ### Toggle
 - **Style:** a `38×22px` pill track (Surface Raised fill, Border Hairline) with a `14px` circular thumb. Checked state fills the track Starlight Blue and slides the thumb to white.
