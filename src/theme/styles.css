@@ -1797,14 +1797,6 @@ button { font-family: inherit; cursor: pointer; }
 .flash-settings-name {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
-/* The one-line explanation under a setting's name — a switch's label says what
-   it is, the hint says what it does to the round. */
-.flash-settings-name em {
-  font-style: normal;
-  font-size: 0.7rem;
-  color: var(--text-secondary);
 }
 
 /* Stacking context for the ambience canvas, which spans the card, the hint and

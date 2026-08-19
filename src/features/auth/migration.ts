@@ -11,6 +11,7 @@
 // dropped (Davis's call, 2026-08-15 — the previous order silently overwrote
 // the account's copy with the local one and there was no way to get it back).
 
+import { fromPiles } from '../flashcard/schedule';
 import { Storage } from '../../lib/Storage';
 import * as SupabaseClient from '../../lib/SupabaseClient';
 import { showError } from '../../lib/toast';
@@ -129,10 +130,14 @@ function mergeDown(cloudDecks: HistoryEntry[], cloudFlash: Record<string, FlashS
     // deck's key is always free, so its progress comes down too.
     //
     // The incoming copy has no mastery records (the table has only the two pile
-    // columns), so it lands in the legacy shape and gets back-filled into a
-    // ladder by schedule.ts `normalize` on the first read.
+    // columns), so the records are rebuilt here rather than left to `normalize`.
+    // Only this call site knows the arrays came from the CURRENT model, where
+    // `known` means mastered — normalize's legacy path reads the same two arrays
+    // as pre-streak state, where `known` was worth 3, and left to it a deck
+    // mastered on one device would land on the second at 0 mastered and then
+    // mirror that emptied pile back up, destroying the account's record.
     if (local.known.length === 0 && local.learning.length === 0 && !local.cards) {
-      Storage.replaceFlashState(deckId, state);
+      Storage.replaceFlashState(deckId, fromPiles(state.known, state.learning));
     }
   }
 }

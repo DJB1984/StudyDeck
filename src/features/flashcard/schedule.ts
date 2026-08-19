@@ -237,6 +237,32 @@ function needsUpgrade(state: FlashState): boolean {
 }
 
 /**
+ * The inverse of `derivePiles` — the shape a deck's state takes when it comes
+ * back from somewhere that can only carry the two arrays (the cloud table has
+ * no `cards` column). `known` there means MASTERED, because derivePiles only
+ * ever puts mastered cards in it.
+ *
+ * Deliberately not folded into `normalize`'s legacy path, which reads the same
+ * two arrays and must keep reading them the old way: in state written before
+ * the streak model, `known` meant one Know It, worth 3. The two shapes are
+ * indistinguishable by inspection, so the caller — which knows where the state
+ * came from — is what tells them apart.
+ */
+export function fromPiles(
+  known: string[] = [],
+  learning: string[] = [],
+  now: Date = new Date(),
+): FlashState {
+  const stamp = now.toISOString();
+  const cards: Record<string, CardProgress> = {};
+  for (const id of learning) cards[id] = { streak: 0, lastSeen: stamp };
+  // Mastered wins a collision, as in normalize: an id in both arrays is only
+  // reachable through a bug, and the more advanced record is the safer keep.
+  for (const id of known) cards[id] = { streak: MASTERY_STREAK, lastSeen: stamp };
+  return { known: [...known], learning: [...learning], cards };
+}
+
+/**
  * Rebuilds the legacy `known`/`learning` arrays from the records. Written on
  * every save purely so the cloud table keeps working — `cards` is the real state.
  */

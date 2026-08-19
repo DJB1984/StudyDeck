@@ -23,6 +23,13 @@ function legacyFlashKey(title: string): string {
   return FLASH_PREFIX + title;
 }
 
+// Ids minted by a read whose write-back failed — a full localStorage that
+// eviction couldn't make room in. Without this, every subsequent read mints
+// fresh ids for the same decks and each read files mastery progress under a key
+// the next one can't find. Keyed by title, the only other stable handle a
+// history entry has. Cleared as soon as a write-back gets through.
+const unpersistedIds = new Map<string, string>();
+
 function newDeckId(): string {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -90,6 +97,8 @@ export const Storage = {
         if (key === HISTORY_KEY || key?.startsWith(FLASH_PREFIX)) keysToRemove.push(key);
       }
       keysToRemove.forEach((k) => localStorage.removeItem(k));
+      // Nothing left for a remembered id to belong to.
+      unpersistedIds.clear();
     } catch (e) {
       console.error('Storage.clearLocal failed', e);
     }
@@ -160,12 +169,21 @@ export const Storage = {
       // decks sharing one id would share one deck's mastery progress — one
       // deck's answers silently marking another deck's cards learned.
       if (!entry.id || seen.has(entry.id)) {
-        entry.id = newDeckId();
+        const remembered = unpersistedIds.get(entry.title);
+        entry.id = remembered && !seen.has(remembered) ? remembered : newDeckId();
         assigned = true;
       }
       seen.add(entry.id);
     }
-    if (assigned) this.set(HISTORY_KEY, history);
+    if (assigned) {
+      if (this.set(HISTORY_KEY, history)) {
+        unpersistedIds.clear();
+      } else {
+        // Couldn't persist, so hold the assignment in memory instead: an id that
+        // changes between two reads orphans the flash state written under it.
+        for (const entry of history) if (entry.id) unpersistedIds.set(entry.title, entry.id);
+      }
+    }
     return history;
   },
 
@@ -210,7 +228,13 @@ export const Storage = {
   // quota-eviction path in `set`). User-initiated deletes go through
   // deleteFile, which is this plus the cloud mirror.
   deleteLocal(title: string): void {
-    const all = this.getHistory();
+    // readHistoryRaw, NOT getHistory: this runs from `set`'s quota-eviction
+    // path, and getHistory writes back its id back-fill through `set` — which
+    // on a full localStorage lands straight back here. That recursion has no
+    // base case (nothing about the state changes between trips) and ends in a
+    // RangeError, which isn't a DOMException and so escapes every catch in this
+    // module. An entry with no id has no id-keyed pile to remove anyway.
+    const all = this.readHistoryRaw();
     const doomed = all.find((f) => f.title === title);
     this.set(
       HISTORY_KEY,

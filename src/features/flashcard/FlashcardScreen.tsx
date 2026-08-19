@@ -132,10 +132,7 @@ function FlashSettings({
             onChange={(e) => onRandomToggle(e.target.checked)}
           />
           <span className="toggle-track"></span>
-          <span className="flash-settings-name">
-            Random order
-            <em>Shuffles the deck; starts the round over</em>
-          </span>
+          <span className="flash-settings-name">Random order</span>
         </label>
       )}
       {/* A switch rather than the action-named button it used to be: in a list
@@ -145,10 +142,7 @@ function FlashSettings({
       <label className="toggle-label flash-settings-toggle">
         <input type="checkbox" checked={motionOn} onChange={onMotionToggle} />
         <span className="toggle-track"></span>
-        <span className="flash-settings-name">
-          Background motion
-          <em>The field behind the card drifts</em>
-        </span>
+        <span className="flash-settings-name">Background motion</span>
       </label>
     </div>
   );
@@ -259,8 +253,15 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // R17: undo the last sort. Shares flip/sort's `sortingRef` lock so it can't
   // race an in-flight sort animation (which would undo a sort the engine hasn't
   // applied yet, or step back off a card mid-slide).
+  // Deliberately NOT gated on isComplete(), unlike the browse steps: the verdict
+  // that masters the last card is the one most worth taking back, and gating it
+  // made that the single unreachable undo in the mode — with nothing to fall back
+  // on but Reset Progress, which wipes the whole deck. goBack() restores the
+  // card's record along with the queue, so the round simply stops being complete.
+  // Standard mode can't reach this anyway: it records no verdicts, so its undo
+  // stack is always empty.
   function undoSort() {
-    if (sortingRef.current || eng.isComplete() || !eng.canGoBack()) return;
+    if (sortingRef.current || !eng.canGoBack()) return;
     eng.goBack();
     force();
   }
@@ -470,7 +471,12 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
             intensity={masteryIntensity}
             paused={!motionOn}
           />
-          {eng.masteryMode && <StreakBar streak={eng.currentStreak()} />}
+          {/* Keyed by card: the bar belongs to the card under it, and without a
+              key React keeps one element across the change and CSS-transitions
+              between two different cards' values — a Know It on a 2/4 card
+              followed by a 0/4 card animates two segments going dark, which
+              reads as the hit having taken progress away. */}
+          {eng.masteryMode && <StreakBar key={card.id} streak={eng.currentStreak()} />}
 
           <div id="flash-card-wrap">
             <div id="flash-card" key={card.id} className={cardClass} onClick={flip}>
@@ -602,6 +608,14 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
                 </button>
               ) : (
                 <>
+                  {/* Only where a sort actually happened — the already-mastered
+                      deck arrives here with an empty undo stack, and a dead
+                      button beside two live ones is worse than no button. */}
+                  {eng.canGoBack() && (
+                    <button className="btn-ghost" onClick={undoSort}>
+                      Undo Last Card
+                    </button>
+                  )}
                   <button className="btn-ghost" onClick={() => onModeSelect('standard')}>
                     Browse the Deck
                   </button>
