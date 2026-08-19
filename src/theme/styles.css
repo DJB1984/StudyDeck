@@ -1798,6 +1798,31 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
 }
+/* The panel's one destructive control. A text button under a rule rather than a
+   filled one: it has to be findable, not inviting, and the dialog behind it is
+   where the weight belongs. */
+.flash-settings-reset {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+  color: var(--incorrect);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+.flash-settings-reset:hover {
+  color: color-mix(in srgb, var(--incorrect) 70%, #fff);
+}
+.flash-settings-reset:focus-visible {
+  outline: 2px solid var(--incorrect);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 /* Stacking context for the ambience canvas, which spans the card, the hint and
    the sort buttons — Mastery's disc is centred on the whole region, not on the

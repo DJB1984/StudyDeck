@@ -10,6 +10,7 @@ import { Storage } from '../../lib/Storage';
 import { createFlashEngine, type FlashEngine } from './flashEngine';
 import { MASTERY_STREAK } from './schedule';
 import { FlashAmbience, type FlashAmbienceHandle } from './FlashAmbience';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 interface FlashcardScreenProps {
   file: HistoryEntry;
@@ -115,12 +116,16 @@ function FlashSettings({
   onRandomToggle,
   motionOn,
   onMotionToggle,
+  showReset,
+  onReset,
 }: {
   showOrder: boolean;
   randomOn: boolean;
   onRandomToggle: (checked: boolean) => void;
   motionOn: boolean;
   onMotionToggle: () => void;
+  showReset: boolean;
+  onReset: () => void;
 }) {
   return (
     <div className="flash-settings-panel" role="group" aria-label="Study settings">
@@ -144,6 +149,14 @@ function FlashSettings({
         <span className="toggle-track"></span>
         <span className="flash-settings-name">Background motion</span>
       </label>
+      {/* Mastery only, and last: it's the one control here that destroys work
+          rather than shaping the round, so it sits under a rule apart from the
+          switches and asks before it does anything. */}
+      {showReset && (
+        <button type="button" className="flash-settings-reset" onClick={onReset}>
+          Reset mastery
+        </button>
+      )}
     </div>
   );
 }
@@ -173,6 +186,12 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // frame all survive — so the default costs the mode nothing.
   const [motionOn, setMotionOn] = useState(() => Storage.getAmbientMotion());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The reset confirmation. Mirrored into a ref because the window keydown
+  // handler below is bound once and would otherwise read the opening render's
+  // value forever — it needs the live one to keep its hands off the card while
+  // the dialog is up.
+  const [confirmReset, setConfirmReset] = useState(false);
+  const confirmResetRef = useRef(false);
   const settingsWrapRef = useRef<HTMLDivElement | null>(null);
   const [sortAnim, setSortAnim] = useState<'known' | 'learning' | null>(null);
   const sortingRef = useRef(false);
@@ -276,10 +295,17 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
     force();
   }
 
-  // Wipes every streak in the deck. The only way back into a deck that's already
-  // fully mastered, which is why it's offered exactly there and nowhere else —
-  // it is not a "restart", and putting it beside one would guarantee the misclick.
+  // Wipes every streak in the deck. Reachable from the caught-up screen (where
+  // it's the only thing left to do) and from Mastery's settings panel mid-round
+  // — both go through the same confirmation, since either way it throws away
+  // every card's earned standing and nothing else on the screen undoes it.
+  function askReset(open: boolean) {
+    confirmResetRef.current = open;
+    setConfirmReset(open);
+    if (open) setSettingsOpen(false);
+  }
   function resetProgress() {
+    askReset(false);
     eng.resetProgress();
     force();
   }
@@ -299,6 +325,9 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // so a state read here would be pinned to the mode the screen opened in.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // The confirm dialog owns the keyboard while it's up, Escape included —
+      // otherwise a Space meant for its buttons flips the card behind it.
+      if (confirmResetRef.current) return;
       // A focused control in the settings panel keeps its own keys: Space on a
       // checkbox toggles the setting, and this screen claims Space at the window
       // to flip the card. Bailing on inputs is what stops one press doing both.
@@ -455,6 +484,8 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
               onRandomToggle={onRandomToggle}
               motionOn={motionOn}
               onMotionToggle={toggleMotion}
+              showReset={mode === 'mastery'}
+              onReset={() => askReset(true)}
             />
           )}
         </div>
@@ -619,7 +650,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
                   <button className="btn-ghost" onClick={() => onModeSelect('standard')}>
                     Browse the Deck
                   </button>
-                  <button className="btn-ghost" onClick={resetProgress}>
+                  <button className="btn-ghost" onClick={() => askReset(true)}>
                     Reset Progress
                   </button>
                 </>
@@ -627,6 +658,17 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmReset && (
+        <ConfirmModal
+          title="Reset mastery?"
+          message="Every card in this deck goes back to zero."
+          confirmLabel="Reset"
+          danger
+          onConfirm={resetProgress}
+          onCancel={() => askReset(false)}
+        />
       )}
     </section>
   );
