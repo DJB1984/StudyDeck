@@ -158,23 +158,40 @@ button { font-family: inherit; cursor: pointer; }
   cursor: pointer;
   transition: background 150ms;
 }
-.file-card h3 { font-size: 1rem; padding-right: 24px; }
+/* Room for BOTH corner controls (share + remove), not just the ×. */
+.file-card h3 { font-size: 1rem; padding-right: 52px; }
 .file-card .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
 /* Flashcard-only mastery tally, inline in .meta where the question count sits
    on quiz decks: inherits .meta's scale but accent-colored, so a deck's
    progress reads as progress and not as more filename metadata. */
 .file-card .meta-flash { color: var(--accent-light); }
-.file-card .delete-btn {
+/* Share and remove sit in one row so the corner reads as a pair of controls
+   rather than two independently positioned glyphs. Only the row is absolutely
+   placed; the buttons inside it just flow. */
+.file-card-actions {
   position: absolute;
   top: 12px;
   right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.file-card .delete-btn,
+.file-card .share-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
   font-size: 1.1rem;
   line-height: 1;
   padding: 4px;
+  transition: color 150ms;
 }
+/* Share is the constructive one of the pair, so it takes the everyday accent
+   on hover while remove takes the alert hue — the color says which is which
+   before the tooltip does. */
+.file-card .share-btn { display: flex; }
+.file-card .share-btn svg { width: 17px; height: 17px; display: block; }
+.file-card .share-btn:hover { color: var(--accent-light); }
 .file-card .delete-btn:hover { color: var(--incorrect); }
 
 /* Rotating tagline (Home spec R14–R17) */
@@ -2317,3 +2334,90 @@ button { font-family: inherit; cursor: pointer; }
 }
 .flash-complete-card h3 { margin-bottom: 12px; }
 .flash-complete-card p { color: var(--text-secondary); margin-bottom: 20px; }
+
+/* --- Sharing -------------------------------------------------------------
+   ShareModal (a deck card's link button) and ShareScreen (what a link opens).
+   The modal reuses LoginModal's overlay/card proportions; the screen reuses
+   Home's hero so a first-time visitor who has never seen StudyDeck lands on
+   something recognizably the same app. */
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.share-modal-card {
+  position: relative;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+}
+.share-modal-desc {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.share-modal-desc strong { color: var(--text-primary); font-weight: 600; }
+.share-modal-error {
+  color: var(--incorrect);
+  font-size: 0.85rem;
+  margin: 0;
+}
+/* Same pulse the login button uses while sending: a several-second wait on a
+   cold Supabase project should read as working, not stuck. */
+.share-modal-working { animation: btn-pulse 1.4s ease-in-out infinite; }
+.share-link-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  width: 100%;
+  /* A link is one long unbreakable token — let it scroll inside the field
+     rather than stretch the modal past its max-width. */
+  overflow-x: auto;
+}
+.share-link-input:focus {
+  outline: none;
+  border-color: var(--accent-light);
+}
+
+.share-hero {
+  padding-bottom: 8px;
+  margin-bottom: 24px;
+}
+.share-hero-inner {
+  position: relative;
+  z-index: 1;
+  padding: 32px 16px 16px;
+}
+.share-hero-inner .subtitle { margin-bottom: 0; }
+.share-panel {
+  padding: 28px;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.share-panel h3 { margin: 0; }
+.share-panel-desc {
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.55;
+}
+.share-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}

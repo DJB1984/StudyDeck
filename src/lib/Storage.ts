@@ -7,6 +7,19 @@ import type { HistoryEntry, FlashState } from '../types';
 import { showError } from './toast';
 import * as SupabaseClient from './SupabaseClient';
 
+/**
+ * Per-account ceiling on how many study sets one person can keep.
+ *
+ * Generous by design: a heavy student runs maybe five classes at four decks
+ * each in a term, so 100 is years of real use and nobody studying will ever
+ * see it — it exists to bound what one account can cost, not to ration.
+ *
+ * MIRRORED IN `supabase/schema.sql` (enforce_deck_limits + create_share). The
+ * server copy is the real boundary — the anon key is public, so a cap that
+ * lives only in this file is a suggestion. Change both or neither.
+ */
+export const MAX_DECKS = 100;
+
 const HISTORY_KEY = 'studydeck_history';
 const FLASH_PREFIX = 'studydeck_flash_';
 const MOTION_KEY = 'studydeck_ambient_motion';
@@ -199,6 +212,20 @@ export const Storage = {
     return this.get<HistoryEntry[]>(HISTORY_KEY) || [];
   },
 
+  /**
+   * Whether saving a deck under `title` would be refused for hitting the cap.
+   * Callers ask BEFORE building an entry so they can explain the limit in
+   * place and not navigate to a deck that was never saved; `saveFile` refuses
+   * independently, so nothing can bypass the cap by not asking.
+   *
+   * False for a title already in history — that is a replacement, not an add.
+   */
+  isAtDeckLimit(title: string): boolean {
+    const history = this.getHistory();
+    if (history.some((f) => f.title === title)) return false;
+    return history.length >= MAX_DECKS;
+  },
+
   /** The stable id for a deck title, or null when no such deck is in history. */
   deckIdForTitle(title: string): string | null {
     return this.getHistory().find((e) => e.title === title)?.id ?? null;
@@ -216,8 +243,24 @@ export const Storage = {
       // id (if any) loses, because the id already on disk is the one the
       // persisted flash state is filed under.
       entry.id = history[idx].id ?? entry.id ?? newDeckId();
+      // Same reasoning for the share link: it belongs to the deck sitting on
+      // disk, not to whatever copy is being written over it. Without this, a
+      // re-import (or a lastOpened bump, which re-saves the whole entry) would
+      // strip the token and the next click of that link would add a duplicate
+      // instead of opening this deck.
+      entry.shareToken = entry.shareToken ?? history[idx].shareToken;
       history[idx] = entry;
     } else {
+      // The cap applies to ADDING a deck, never to updating one already here —
+      // which is why it sits in this branch and not at the top. An account
+      // sitting at the limit must still be able to open its decks (every open
+      // re-saves the entry with a fresh lastOpened) and sync them.
+      if (history.length >= MAX_DECKS) {
+        showError(
+          `You've reached the limit of ${MAX_DECKS} study sets. Remove one to add another.`,
+        );
+        return false;
+      }
       entry.id = entry.id ?? newDeckId();
       history.unshift(entry);
     }

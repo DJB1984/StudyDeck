@@ -12,6 +12,7 @@
 // the account's copy with the local one and there was no way to get it back).
 
 import { fromPiles } from '../flashcard/schedule';
+import { canonicalDeck, freeTitle, retitle } from '../../lib/deckIdentity';
 import { Storage } from '../../lib/Storage';
 import * as SupabaseClient from '../../lib/SupabaseClient';
 import { showError } from '../../lib/toast';
@@ -142,52 +143,9 @@ function mergeDown(cloudDecks: HistoryEntry[], cloudFlash: Record<string, FlashS
   }
 }
 
-// Rename every place the title is load-bearing, not just the history entry —
-// the inner `data.title` is what the cloud upload keys on and what every screen
-// displays, so leaving it alone would give the renamed copy the original's name
-// everywhere except the history list. (Flash state is no longer among these:
-// it's keyed by the entry's id, which a retitle doesn't touch.)
-function retitle(entry: HistoryEntry, title: string): HistoryEntry {
-  return {
-    ...entry,
-    // Dropped, not carried: a "(2)" copy exists precisely BECAUSE it's different
-    // content from the local deck of the same name. Keeping the incoming id
-    // would file both decks' mastery progress under one key and let one deck's
-    // answers mark the other's cards learned. Storage assigns a fresh one.
-    id: undefined,
-    name: `${title}.json`,
-    title,
-    data: { ...entry.data, title },
-  };
-}
-
-function freeTitle(base: string, taken: Set<string>): string {
-  let n = 2;
-  while (taken.has(`${base} (${n})`)) n++;
-  return `${base} (${n})`;
-}
-
 // Compares deck CONTENT, ignoring history metadata (lastOpened differs by
-// definition between the two copies) and, critically, key order: `data` round
-// trips through a Postgres `jsonb` column, which does not preserve the key
-// order of what was written. A plain JSON.stringify comparison would report
-// every single deck as "different" and spawn a "(2)" duplicate of the user's
-// whole library on every login.
+// definition between the two copies) and, critically, key order — see
+// canonicalDeck in lib/deckIdentity.ts for why that matters.
 function sameDeck(a: HistoryEntry, b: HistoryEntry): boolean {
-  return canonical(a.data) === canonical(b.data);
-}
-
-function canonical(value: unknown): string {
-  return JSON.stringify(sortKeys(value));
-}
-
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys);
-  if (value !== null && typeof value === 'object') {
-    const source = value as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(source).sort()) out[key] = sortKeys(source[key]);
-    return out;
-  }
-  return value;
+  return canonicalDeck(a.data) === canonicalDeck(b.data);
 }

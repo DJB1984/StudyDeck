@@ -95,41 +95,84 @@ interface DeckRow {
   title: string;
   question_count: number;
   last_opened: string;
-  data: HistoryEntry['data'];
+  /** Null on a row that points at a shared snapshot — see share_token. */
+  data: HistoryEntry['data'] | null;
+  share_token: string | null;
 }
 
 export async function getDecks(): Promise<HistoryEntry[]> {
   if (!client || !currentSession) return [];
   const { data, error } = await client
     .from('decks')
-    .select('title, question_count, last_opened, data')
+    .select('title, question_count, last_opened, data, share_token')
     .order('last_opened', { ascending: false });
   if (error) {
     console.error('SupabaseClient.getDecks failed', error);
     return [];
   }
-  return (data as DeckRow[]).map((row) => ({
-    name: `${row.title}.json`,
-    title: row.title,
-    count: row.question_count,
-    // HistoryEntry.lastOpened is always a pre-formatted display string
-    // elsewhere in the app (HomeScreen's today() uses toLocaleDateString()) —
-    // reformat Postgres's raw ISO timestamp to match, or the card shows the
-    // raw "2026-07-20T00:00:00+00:00" string until the deck is opened once.
-    lastOpened: new Date(row.last_opened).toLocaleDateString(),
-    data: row.data,
-  }));
+  const rows = data as DeckRow[];
+  // Rows added from a share link carry a pointer, not a payload — that is what
+  // keeps one deck shared with fifty people down to one stored copy. Resolve
+  // the pointers in ONE follow-up query rather than a PostgREST embed, so
+  // nothing depends on a generated relationship name.
+  const payloads = await resolveSharePayloads(rows);
+  const entries: HistoryEntry[] = [];
+  for (const row of rows) {
+    const deck = row.data ?? (row.share_token ? payloads.get(row.share_token) : undefined);
+    if (!deck) {
+      // A pointer whose snapshot is gone (owner deleted it) has no questions to
+      // study. Dropping it beats handing the app a deck-shaped hole.
+      console.error('SupabaseClient.getDecks: unresolvable deck', row.title);
+      continue;
+    }
+    entries.push({
+      name: `${row.title}.json`,
+      title: row.title,
+      count: row.question_count,
+      // HistoryEntry.lastOpened is always a pre-formatted display string
+      // elsewhere in the app (HomeScreen's today() uses toLocaleDateString()) —
+      // reformat Postgres's raw ISO timestamp to match, or the card shows the
+      // raw "2026-07-20T00:00:00+00:00" string until the deck is opened once.
+      lastOpened: new Date(row.last_opened).toLocaleDateString(),
+      shareToken: row.share_token ?? undefined,
+      data: deck,
+    });
+  }
+  return entries;
+}
+
+async function resolveSharePayloads(rows: DeckRow[]): Promise<Map<string, HistoryEntry['data']>> {
+  const out = new Map<string, HistoryEntry['data']>();
+  const tokens = rows.filter((r) => !r.data && r.share_token).map((r) => r.share_token as string);
+  if (!client || tokens.length === 0) return out;
+  const { data, error } = await client
+    .from('shared_decks')
+    .select('token, data')
+    .in('token', tokens);
+  if (error) {
+    console.error('SupabaseClient: resolving shared payloads failed', error);
+    return out;
+  }
+  for (const row of data as Array<{ token: string; data: HistoryEntry['data'] }>) {
+    out.set(row.token, row.data);
+  }
+  return out;
 }
 
 export async function saveDeck(entry: HistoryEntry): Promise<{ error: string | null }> {
   if (!client || !currentSession) return { error: 'Not logged in.' };
+  // A deck linked to a share stores the POINTER only — the payload already
+  // lives in shared_decks, and writing it here as well is exactly the
+  // duplication the share model exists to avoid. This device keeps its own full
+  // copy in the local cache regardless, so nothing here depends on a read-back.
   const { error } = await client.from('decks').upsert(
     {
       user_id: currentSession.user.id,
       title: entry.title,
       question_count: entry.count,
       last_opened: entry.lastOpened,
-      data: entry.data,
+      share_token: entry.shareToken ?? null,
+      data: entry.shareToken ? null : entry.data,
     },
     { onConflict: 'user_id,title' },
   );
@@ -144,6 +187,71 @@ export async function deleteDeck(title: string): Promise<{ error: string | null 
     .eq('user_id', currentSession.user.id)
     .eq('title', title);
   return { error: error ? error.message : null };
+}
+
+// --- shared_decks table ------------------------------------------------------
+
+/** One published snapshot, as the get_shared_deck RPC returns it. */
+export interface SharedDeck {
+  token: string;
+  title: string;
+  count: number;
+  hash: string;
+  data: HistoryEntry['data'];
+}
+
+/**
+ * Resolve a share link's token. Deliberately does NOT require a session —
+ * adding a shared deck works signed out (Davis, 2026-08-19) — which is why it
+ * goes through a SECURITY DEFINER function instead of a table select: an
+ * exact-token lookup is a capability, while a readable table would be a
+ * directory of every shared deck on the service.
+ */
+export async function fetchSharedDeck(
+  token: string,
+): Promise<{ deck: SharedDeck | null; error: string | null }> {
+  if (!client) return { deck: null, error: 'Sharing is not set up for this deployment.' };
+  const { data, error } = await client.rpc('get_shared_deck', { p_token: token });
+  if (error) {
+    console.error('SupabaseClient.fetchSharedDeck failed', error);
+    return { deck: null, error: error.message };
+  }
+  const row = (data as Array<Record<string, unknown>> | null)?.[0];
+  if (!row) return { deck: null, error: null };
+  return {
+    deck: {
+      token: row.token as string,
+      title: row.title as string,
+      count: row.question_count as number,
+      hash: row.content_hash as string,
+      data: row.data as HistoryEntry['data'],
+    },
+    error: null,
+  };
+}
+
+/**
+ * Publish a deck and return its link token. Idempotent per (owner, content):
+ * sharing the same deck twice returns the token it already has rather than
+ * minting a second snapshot, so a re-share spreads the same link.
+ */
+export async function createShare(
+  entry: HistoryEntry,
+  hash: string,
+): Promise<{ token: string | null; error: string | null }> {
+  if (!client) return { token: null, error: 'Sharing is not set up for this deployment.' };
+  if (!currentSession) return { token: null, error: 'Not logged in.' };
+  const { data, error } = await client.rpc('create_share', {
+    p_title: entry.title,
+    p_question_count: entry.count,
+    p_hash: hash,
+    p_data: entry.data,
+  });
+  if (error) {
+    console.error('SupabaseClient.createShare failed', error);
+    return { token: null, error: error.message };
+  }
+  return { token: data as string, error: null };
 }
 
 // --- flash_state table -------------------------------------------------------

@@ -18,6 +18,8 @@ import { QuizScreen } from './features/quiz/QuizScreen';
 import { StatsScreen } from './features/stats/StatsScreen';
 import { ReviewScreen } from './features/review/ReviewScreen';
 import { FlashcardScreen } from './features/flashcard/FlashcardScreen';
+import { ShareScreen } from './features/share/ShareScreen';
+import { readShareTokenFromUrl } from './lib/shareLink';
 
 type Route =
   | { name: 'home' }
@@ -27,10 +29,28 @@ type Route =
   | { name: 'review'; questions: QuizQuestion[]; order: number[]; origin: Route }
   // Carries the whole history entry, not just the deck: mastery progress is
   // filed under the entry's stable id, which the deck JSON doesn't have.
-  | { name: 'flashcard'; file: HistoryEntry };
+  | { name: 'flashcard'; file: HistoryEntry }
+  // Entered only from a share link in the address bar — never navigated to.
+  | { name: 'share'; token: string };
 
 export function App() {
-  const [route, setRoute] = useState<Route>({ name: 'home' });
+  // A `?s=` token in the URL is the one thing that can open the app somewhere
+  // other than Home. Read once, at first render, before ShareScreen strips it.
+  const [route, setRoute] = useState<Route>(() => {
+    const token = readShareTokenFromUrl();
+    return token ? { name: 'share', token } : { name: 'home' };
+  });
+
+  // Route by deck type: quiz decks pick a mode; flashcard decks have exactly
+  // one mode, so they auto-open (Home R4/R10, ModeSelect R2). Omitted `type`
+  // means quiz, same as validation.
+  function openDeck(entry: HistoryEntry) {
+    setRoute(
+      entry.data.type === 'flashcard'
+        ? { name: 'flashcard', file: entry }
+        : { name: 'mode', file: entry },
+    );
+  }
 
   function startQuiz(file: HistoryEntry, mode: QuizMode, order: number[]) {
     const session: QuizSession = {
@@ -45,18 +65,14 @@ export function App() {
   function renderScreen() {
     switch (route.name) {
       case 'home':
+        return <HomeScreen onOpenDeck={openDeck} />;
+
+      case 'share':
         return (
-          <HomeScreen
-            // Route by deck type: quiz decks pick a mode; flashcard decks have
-            // exactly one mode, so they auto-open (Home R4/R10, ModeSelect R2).
-            // Omitted `type` means quiz, same as validation.
-            onOpenDeck={(entry) =>
-              setRoute(
-                entry.data.type === 'flashcard'
-                  ? { name: 'flashcard', file: entry }
-                  : { name: 'mode', file: entry },
-              )
-            }
+          <ShareScreen
+            token={route.token}
+            onOpenDeck={openDeck}
+            onHome={() => setRoute({ name: 'home' })}
           />
         );
 

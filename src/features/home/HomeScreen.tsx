@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Deck, HistoryEntry } from '../../types';
-import { Storage } from '../../lib/Storage';
+import { Storage, MAX_DECKS } from '../../lib/Storage';
 import { validateDeck } from '../../lib/DeckValidation';
 import { showError } from '../../lib/toast';
 import { QUIZ_PROMPT_MD, FLASHCARD_PROMPT_MD } from '../../lib/formatSpec';
@@ -17,8 +17,25 @@ import { RotatingWord } from './RotatingWord';
 import { AuthButton } from '../auth/AuthButton';
 import { Starfield } from '../../components/Starfield/Starfield';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { ShareModal } from '../share/ShareModal';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
+// Two links of a chain: the "copy a link" idea, drawn rather than spelled out,
+// so the card's corner stays two small glyphs instead of a word and an ×.
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.2 1.2M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const AI_NAMES = ['ChatGPT', 'Claude', 'Gemini', 'Grok', 'Copilot', 'Perplexity'];
 const OUTPUTS = ['flashcards', 'quizzes', 'tests'];
 
@@ -163,6 +180,7 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<HistoryEntry | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pasteBoxRef = useRef<HTMLTextAreaElement>(null);
 
@@ -198,6 +216,15 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
     const errors = validateDeck(raw as unknown as Record<string, unknown>);
     if (errors.length > 0) {
       showError(errors.join('\n'));
+      return false;
+    }
+    // Asked before building the entry so the limit is explained in one clear
+    // message and nothing navigates to a deck that was never saved. saveFile
+    // refuses on its own too — this is the readable half, not the enforcing one.
+    if (Storage.isAtDeckLimit(raw.title)) {
+      showError(
+        `You've reached the limit of ${MAX_DECKS} study sets. Remove one from your library to add another.`,
+      );
       return false;
     }
     const entry: HistoryEntry = {
@@ -266,6 +293,11 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   function deleteCard(e: React.MouseEvent, title: string) {
     e.stopPropagation(); // R3: don't also trigger the card's open action.
     setPendingDelete(title);
+  }
+
+  function shareCard(e: React.MouseEvent, file: HistoryEntry) {
+    e.stopPropagation(); // don't also open the deck.
+    setSharing(file);
   }
 
   function confirmDelete() {
@@ -397,13 +429,24 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                 className="file-card glass-card"
                 onClick={() => openCard(file)}
               >
-                <button
-                  className="delete-btn"
-                  title="Remove from history"
-                  onClick={(e) => deleteCard(e, file.title)}
-                >
-                  &times;
-                </button>
+                <div className="file-card-actions">
+                  <button
+                    className="share-btn"
+                    title="Share this study set"
+                    aria-label={`Share ${file.title}`}
+                    onClick={(e) => shareCard(e, file)}
+                  >
+                    <LinkIcon />
+                  </button>
+                  <button
+                    className="delete-btn"
+                    title="Remove from history"
+                    aria-label={`Remove ${file.title}`}
+                    onClick={(e) => deleteCard(e, file.title)}
+                  >
+                    &times;
+                  </button>
+                </div>
                 <h3>{file.title}</h3>
                 {/* Flashcard decks show the Know It tally IN PLACE OF the
                     question count — progress is what a returning student is
@@ -427,6 +470,18 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
           </div>
           {addDeckSurface}
         </>
+      )}
+
+      {sharing && (
+        <ShareModal
+          file={sharing}
+          onClose={() => {
+            setSharing(null);
+            // The share may have stamped a token onto the deck — re-read so a
+            // second Share opens straight onto the existing link.
+            refresh();
+          }}
+        />
       )}
 
       {pendingDelete !== null && (

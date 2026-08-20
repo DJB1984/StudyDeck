@@ -129,6 +129,17 @@ export interface HistoryEntry {
    * read, so anything that came out of Storage always has it.
    */
   id?: string;
+  /**
+   * The share this deck is linked to, if any — set both on the deck the owner
+   * published and on every copy added from that link. It is the dedupe key:
+   * clicking a link a second time finds the deck by this rather than by title,
+   * so a renamed copy is still recognized as the same study set.
+   *
+   * When present, the cloud row for this deck stores a POINTER to the shared
+   * snapshot (decks.share_token) and no payload of its own — see
+   * SupabaseClient.saveDeck.
+   */
+  shareToken?: string;
   name: string;
   title: string;
   count: number;

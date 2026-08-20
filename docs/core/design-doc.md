@@ -135,12 +135,14 @@ src/
 ├── App.tsx             Route state machine (Home→Mode→Quiz/Flashcard→Stats, Review branch)
 ├── types.ts            Deck/Question/Session/FlashState types
 ├── theme/              tokens.css (palette) + styles.css (ported component CSS)
-├── lib/                Storage, SupabaseClient, DeckValidation, clipboard, formatSpec, shuffle, toast
+├── lib/                Storage, SupabaseClient, DeckValidation, deckIdentity, shareLink, clipboard, formatSpec, shuffle, toast
 ├── components/         Math/Katex.tsx, Graph/Graph.tsx, Toast.tsx
-└── features/           home, modeSelect, quiz, stats, review, flashcard, auth
+└── features/           home, modeSelect, quiz, stats, review, flashcard, auth, share
 ```
 
 `src/lib/SupabaseClient.ts` (see `docs/auth/design-doc.md`) is the only module that imports `@supabase/supabase-js`, mirroring how `Storage.ts` is the only module that touches `localStorage`. `src/features/auth/` (`AuthButton.tsx`, `LoginModal.tsx`, `migration.ts`) is the optional email-magic-link login UI, wired into the Home screen header only.
+
+`src/lib/deckIdentity.ts` answers "are these the same deck?" — a canonical, key-order-independent form and a hash of it — for both login migration and sharing, so the two can't disagree. `src/features/share/` (`ShareModal.tsx`, `ShareScreen.tsx`, `shareLibrary.ts`) plus `src/lib/shareLink.ts` is the share-a-study-set feature; see `docs/sharing/design-doc.md`.
 
 Behavioral contracts per module:
 
@@ -202,9 +204,13 @@ The React modules keep these same responsibilities: `Storage` → `src/lib/Stora
 ```
 Home → Mode Select → Quiz/Flashcard → Stats → Home
                                     ↘ Review (browse read-only) → Home
+
+/?s=<token> → Share (add to library?) → Mode Select/Flashcard, or Home
 ```
 
-**Home screen:** Grid of file cards (title, question count, last opened date). Drag-drop zone at top. "Load file" button. Clicking a card goes to Mode Select.
+**Home screen:** Grid of file cards (title, question count, last opened date). Drag-drop zone at top. "Load file" button. Clicking a card goes to Mode Select. Each card's top-right corner carries two controls: a link glyph (share — accent on hover) and the × (remove — alert red on hover).
+
+**Share screen:** The only screen reachable without passing through Home, entered from a `?s=<token>` share link in the address bar (`src/App.tsx` reads it once at first render). Shows the shared set's title and size with **Add to my library** / **Not now**; works signed in or out. A deck the student already has is not offered at all — it opens their existing copy, progress intact, after a short "you already have this" beat. The token is stripped from the URL on mount, so a refresh lands on Home. Full model in `docs/sharing/design-doc.md`.
 
 **Mode select screen:** Mode cards — Practice, Test, Review, Flashcard decks skip straight to Flashcard. Start button. (No random-order toggle — it existed early on and was removed as unhelpful; question order is always the deck's natural `0..n-1`.)
 
@@ -310,8 +316,13 @@ All reads/writes go through the `Storage` module. No other module accesses `loca
 // File history. `id` is generated on first save and never changes; it is what
 // flashcard state is filed under, so a deck's title can change without
 // orphaning weeks of mastery scheduling.
+//
+// `shareToken` is present only on a deck linked to a share — one the student
+// published, or one they added from a link. It is how a second click of the
+// same link finds this deck instead of adding a duplicate, and it is preserved
+// across saves the same way `id` is. Optional; most decks never have one.
 "studydeck_history": [
-  { "id": "3f2b...", "name": "Physics Ch3.json", "title": "Physics Chapter 3", "count": 20, "lastOpened": "2026-06-29", "data": { ...full parsed JSON... } }
+  { "id": "3f2b...", "shareToken": "AbC123xyz789", "name": "Physics Ch3.json", "title": "Physics Chapter 3", "count": 20, "lastOpened": "2026-06-29", "data": { ...full parsed JSON... } }
 ]
 
 // Flashcard state — keyed by DECK ID, indexed by question id (not position)
