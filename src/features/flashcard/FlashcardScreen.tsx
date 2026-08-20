@@ -34,12 +34,23 @@ const EXIT_MS = 350;
 // suggests — at the old 0.035 a committed drag put the top corner into the
 // streak bar and the bottom corner onto the hint line.
 const DRAG_TILT = 0.02;
+// The ceiling that tip is allowed to reach, however far the card is hauled. A
+// tilt is a swing: at 760px wide the corners drop half the card's width times
+// the sine of the angle, so an uncapped haul dips them far enough below the card
+// to lengthen the page — and a page that grows mid-gesture puts a scrollbar
+// under the hand doing the dragging. Six degrees is past anything a committed
+// throw needs to look thrown.
+const MAX_TILT_DEG = 6;
 
-// Where the action buttons stop fitting and the card takes the screen on its
-// own. The same number the stylesheet's phone breakpoint uses.
-const NARROW_QUERY = '(max-width: 560px)';
-// Touch as the primary input — the case where the hint should name a gesture
-// rather than a key, and where the gesture is the only way in.
+/** The card's tip for a given horizontal offset, capped in both directions. */
+function tiltFor(dx: number): number {
+  return Math.max(-MAX_TILT_DEG, Math.min(dx * DRAG_TILT, MAX_TILT_DEG));
+}
+
+// Touch as the primary input — a finger rather than a mouse or trackpad, and
+// the only question this screen asks about its hands. It decides the hint's
+// wording and whether the action buttons are there at all: a finger has the
+// gesture instead, and anything that points keeps the buttons at every width.
 const TOUCH_QUERY = '(pointer: coarse)';
 
 const MODE_LABEL: Record<StudyMode, string> = {
@@ -167,10 +178,10 @@ function FlashSettings({
           <span className="flash-settings-name">Random order</span>
         </label>
       )}
-      {/* Only where the buttons are actually hidden, which is the only place a
-          switch for them means anything. It's the way back for a desktop window
-          dragged narrow — the layout there is a phone's, but the hands aren't,
-          and a mouse has nothing to swipe with that a button doesn't do better. */}
+      {/* Only on touch, which is the only place the buttons are hidden and so
+          the only place a switch for them means anything. It's the way back for
+          a tablet that would rather tap than swipe; anything with a pointer
+          keeps its buttons at every width and never needs it. */}
       {showButtonsOption && (
         <label className="toggle-label flash-settings-toggle">
           <input type="checkbox" checked={buttonsOn} onChange={onButtonsToggle} />
@@ -231,19 +242,19 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const confirmResetRef = useRef(false);
   const settingsWrapRef = useRef<HTMLDivElement | null>(null);
-  // How the outgoing card leaves. A verdict given by button keeps the vocabulary
-  // it always had — Know It files off to the right, Still Learning refuses in
-  // place — while a verdict given by swipe finishes the arc the finger drew,
-  // because a card thrown left that snaps back to centre reads as a throw that
-  // failed rather than as one that landed.
-  const [exitAnim, setExitAnim] = useState<'left' | 'right' | 'shake' | null>(null);
+  // How the outgoing card leaves — the same two arcs for every input. A swipe
+  // finishes the throw the finger drew; a button starts that identical throw
+  // from rest. Still Learning used to shudder in place here instead, which made
+  // the button and the gesture two different vocabularies for one verdict; it
+  // now leaves left, the direction its own swipe already meant.
+  const [exitAnim, setExitAnim] = useState<'left' | 'right' | null>(null);
   const sortingRef = useRef(false);
   const ambienceRef = useRef<FlashAmbienceHandle | null>(null);
 
-  // Phone-width, and touch-as-primary. Two separate questions: a desktop window
-  // dragged narrow is the first without being the second, and it's why the
-  // buttons hide behind a setting rather than behind a device check.
-  const narrow = useMediaQuery(NARROW_QUERY);
+  // Touch-as-primary, and the only input question this screen asks. Width used
+  // to stand in for it, which cost a desktop window dragged narrow its buttons —
+  // the layout there is a phone's, but the hands aren't. Live, so an iPad that
+  // gains a trackpad mid-round gains its buttons with it.
   const touch = useMediaQuery(TOUCH_QUERY);
   const [buttonsOn, setButtonsOn] = useState(() => Storage.getCardButtons());
   // The gesture's caption, retired once the gesture has been used on this
@@ -254,6 +265,11 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   // Where the finger let go, handed to the exit keyframes so the throw carries
   // on from there rather than restarting at centre. Zero for a button press.
   const exitFromRef = useRef(0);
+  // The verdict a BUTTON gave, held for the length of the flight. A thrown card
+  // leaves already wearing its rim and its word, because the finger built both
+  // up on the way out — so a pressed one blooms the same pair as it goes rather
+  // than leaving as a blank card. Never set in Standard, which has no verdict.
+  const [buttonCue, setButtonCue] = useState<SwipeDir | null>(null);
 
   // R7/R18: changing any option restarts the session from the top — an explicit
   // restart, so it never resumes the saved session. Each handler passes the
@@ -297,13 +313,16 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   }
 
   // R2: debounce sorting for the animation window so cards aren't skipped.
-  // `dir` is passed only by the swipe, and only to say which way the card was
-  // thrown; every other caller leaves the exit to the pile.
+  // `dir` is passed only by the swipe, and only to say where the throw was
+  // already pointing. A button has no offset to carry, so it flies the same arc
+  // from centre — the verdict decides the direction either way.
   function sort(pile: 'known' | 'learning', dir?: SwipeDir, fromDx = 0) {
     if (sortingRef.current || eng.isComplete() || !eng.currentCard()) return;
     sortingRef.current = true;
     exitFromRef.current = fromDx;
-    setExitAnim(dir ?? (pile === 'known' ? 'right' : 'shake'));
+    const away: SwipeDir = dir ?? (pile === 'known' ? 'right' : 'left');
+    setExitAnim(away);
+    if (!dir && eng.masteryMode) setButtonCue(away);
     // Fired with the card animation, not after it: the ripple has to leave the
     // core while the card is still moving, or the two read as two separate
     // events instead of one.
@@ -311,6 +330,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
     window.setTimeout(() => {
       eng.sortCard(pile);
       setExitAnim(null);
+      setButtonCue(null);
       sortingRef.current = false;
       force();
     }, EXIT_MS);
@@ -531,18 +551,12 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
 
   const cardClass =
     (eng.flipped ? 'flipped ' : '') +
-    (exitAnim === 'right'
-      ? 'flash-exit-right'
-      : exitAnim === 'left'
-        ? 'flash-exit-left'
-        : exitAnim === 'shake'
-          ? 'flash-exit-shake'
-          : '');
+    (exitAnim === 'right' ? 'flash-exit-right' : exitAnim === 'left' ? 'flash-exit-left' : '');
 
   // Standard records nothing, so it gets no verdict cue: a card that turns red
   // on the way to the previous card would be promising a consequence the mode
   // doesn't have. There the card simply follows the finger.
-  const cueDir = eng.masteryMode ? swipe.dir : null;
+  const cueDir = eng.masteryMode ? swipe.dir ?? buttonCue : null;
   // The cue outlives the drag by the length of its own fade, so it has to keep
   // the hue it was wearing — dropping back to a default mid-fade would flash the
   // other verdict's colour on the way out.
@@ -550,24 +564,28 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
   const cueShown = cueDir ?? lastCueRef.current;
   const dragging = swipe.dir !== null || swipe.dx !== 0;
   const cardStyle = {
-    '--swipe-p': String(cueDir ? swipe.progress : 0),
+    // A drag writes its own travel; a button jumps straight to full, which is
+    // exactly where a released swipe leaves it. The cue's own 200ms transitions
+    // then turn that jump into a bloom over the flight.
+    '--swipe-p': String(cueDir ? (swipe.dir ? swipe.progress : 1) : 0),
     ...(exitAnim
       ? {
           '--exit-from': `${exitFromRef.current}px`,
-          '--exit-rot': `${exitFromRef.current * DRAG_TILT}deg`,
+          '--exit-rot': `${tiltFor(exitFromRef.current)}deg`,
         }
       : null),
     ...(swipe.dx !== 0
       ? {
-          transform: `translate3d(${swipe.dx}px, 0, 0) rotate(${swipe.dx * DRAG_TILT}deg)`,
+          transform: `translate3d(${swipe.dx}px, 0, 0) rotate(${tiltFor(swipe.dx)}deg)`,
         }
       : null),
   } as CSSProperties;
 
-  // Hidden only where they don't fit, and only until asked for. Kept in the
-  // accessibility tree either way (see the stylesheet) — "no buttons" is a
-  // statement about the screen, not about what a screen reader can reach.
-  const actionsHidden = narrow && !buttonsOn;
+  // Hidden only where the gesture already does their job — a finger — and only
+  // until asked for. Kept in the accessibility tree either way (see the
+  // stylesheet): "no buttons" is a statement about the screen, not about what a
+  // screen reader can reach.
+  const actionsHidden = touch && !buttonsOn;
 
   const hintText = touch
     ? eng.masteryMode
@@ -669,7 +687,7 @@ export function FlashcardScreen({ file, onBack }: FlashcardScreenProps) {
               showOrder={mode === 'standard'}
               randomOn={randomOn}
               onRandomToggle={onRandomToggle}
-              showButtonsOption={narrow}
+              showButtonsOption={touch}
               buttonsOn={buttonsOn}
               onButtonsToggle={toggleButtons}
               motionOn={motionOn}

@@ -328,9 +328,9 @@ export const Storage = {
     return this.set(SWIPE_HINT_KEY, seen);
   },
 
-  // The escape hatch for a narrow window: the flashcard's action buttons hide
-  // themselves once the column is phone-width, and this brings them back.
-  // Absent means hidden, so the swipe-only layout is what a phone gets by
+  // The escape hatch on touch: the flashcard's action buttons hide themselves
+  // wherever a finger is the primary pointer, and this brings them back. Absent
+  // means hidden, so the swipe-only layout is what a touch device gets by
   // default and the buttons are something you ask for.
   getCardButtons(): boolean {
     return this.get<boolean>(CARD_BUTTONS_KEY) === true;

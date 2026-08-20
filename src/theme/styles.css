@@ -11,6 +11,14 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  /* The flashcard is thrown clean off the side of the screen, and a page that
+     grew to follow it would answer the gesture with a scrollbar sliding in under
+     the hand making it — the one moment the layout must hold still. Nothing in
+     the app scrolls sideways at page level anyway; the tables and code panes
+     carry their own. `clip` rather than `hidden` so this stays a statement about
+     one axis: `hidden` would make the page a scroll container and take the
+     vertical scroll with it. */
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text-primary);
   font-family: var(--font-body);
@@ -2147,11 +2155,11 @@ button { font-family: inherit; cursor: pointer; }
   font-size: clamp(1rem, 0.9rem + 0.4vw, 1.2rem);
   line-height: 1.45;
 }
-/* Three ways a card can leave, and which one it takes says who dismissed it.
-   A verdict given by button files right (Know It) or refuses in place (Still
-   Learning) — the vocabulary the mode has always had. A verdict given by swipe
-   leaves the way it was thrown, in either direction, because a card thrown left
-   that files itself to the right reads as the throw having been overruled.
+/* Two ways a card can leave — one per direction, and every input uses them.
+   A swipe leaves the way it was thrown, because a card thrown left that files
+   itself to the right reads as the throw having been overruled; a button gives
+   the same verdict, so it takes the same arc from centre. (Still Learning used
+   to shake in place instead, which made one verdict look like two.)
 
    Both exits start from --exit-from/--exit-rot, which the screen sets to exactly
    where the finger let go — without an explicit `from`, the implicit one is the
@@ -2163,29 +2171,25 @@ button { font-family: inherit; cursor: pointer; }
 #flash-card.flash-exit-left {
   animation: flash-exit-left 350ms ease forwards;
 }
-#flash-card.flash-exit-shake {
-  animation: flash-shake 350ms ease;
-}
 /* Ends low and to the side rather than straight out, and tips as it goes: the
-   card is being filed, not merely leaving the screen. */
+   card is being filed, not merely leaving the screen. The drop and the tilt are
+   deliberately small — the card is transparent well before it lands, so what
+   these two numbers really decide is how far below the layout the flight
+   reaches, and anything past the chrome under the card would lengthen the page
+   and flash a vertical scrollbar for the last frames of a sort. */
 @keyframes flash-exit-right {
   from {
     transform: translate3d(var(--exit-from, 0px), 0, 0) rotate(var(--exit-rot, 0deg));
     opacity: 1;
   }
-  to { transform: translate(120%, 12%) rotate(8deg); opacity: 0; }
+  to { transform: translate(120%, 7%) rotate(5deg); opacity: 0; }
 }
 @keyframes flash-exit-left {
   from {
     transform: translate3d(var(--exit-from, 0px), 0, 0) rotate(var(--exit-rot, 0deg));
     opacity: 1;
   }
-  to { transform: translate(-120%, 12%) rotate(-8deg); opacity: 0; }
-}
-@keyframes flash-shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
+  to { transform: translate(-120%, 7%) rotate(-5deg); opacity: 0; }
 }
 .flash-hint {
   position: relative;
