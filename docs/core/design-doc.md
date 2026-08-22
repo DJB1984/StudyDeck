@@ -234,48 +234,61 @@ Bottom controls follow the mode. Standard shows only two icon-only arrow buttons
 
 ## Visual Design
 
-**Design language:** "Starfield" — a deep-space navy system. Solid, tonal-layered panels (no `backdrop-filter`/glass). One restrained accent (Starlight Blue) for everyday interactive/selected state; the multi-hue "Nebula" palette held back to two places — Home's hero gradient, and the deeply muted cast of Flashcards' Mastery atmosphere, where the hue describes the round but never a control. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
+**Design language:** "Star Atlas" (replaced "Starfield" on 2026-08-22) — the app as an engraved celestial atlas plate. An ink ground, ivory type, hairline rules and small brass annotation carrying structure instead of boxes, and one cool star-blue marking the single thing on any screen you can act on. No gradient fills, no colored glows, no gradient-clipped text, no radius above 4px, no card grids — those were, collectively, the signature that made the prior system read as machine-generated, which is what the redesign was called to fix. Product behavior is untouched: same screens, controls, flows and state. Distinct — not a Quizlet clone. Full rationale and Named Rules live in `DESIGN.md` (source of truth for the visual system); this section stays a technical summary in sync with it.
 
 **Color tokens:**
 ```css
---bg: #080d16;                        /* void navy base */
---surface: #11161f;                   /* solid panel fill */
---surface-hover: #1a2029;             /* panel raised/hover */
---border: rgba(255, 255, 255, 0.08);  /* hairline edge */
---scrollbar-thumb: rgba(255, 255, 255, 0.16);   /* thin bar, transparent track */
---scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
---accent: #3093ec;                    /* starlight blue */
---accent-light: #63b3ff;              /* hover/focus/text-on-dark */
---accent-deep: #0267c7;               /* button gradient base */
---nebula-gradient: conic-gradient(from 200deg, #ef852e, #c841a5, #3093ec, #ef852e); /* mark + Home hero only */
-/* Flashcard mode atmospheres — Nebula's one other sanctioned home. Each mode
-   owns tint / light / fill / veil; #flashcard-screen[data-mode] projects the
-   chosen family onto --mode-tint/-light/-fill/-veil. Inside that screen the
-   mode hue REPLACES the accent on filled buttons, switches and focus rings
-   (DESIGN.md, The Mode-Owns-Its-Screen Rule); .btn-danger is exempt. */
---mode-mastery-tint: #a2519a; --mode-mastery-light: #d68cc9; --mode-mastery-fill: #8f4489;
---text-primary: #e1e5eb;
---text-secondary: #79818d;
---correct: #5dc879;
---incorrect: #f75d59;
---radius: 16px;
---font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
---font-heading: 'Space Grotesk', var(--font-body);
---font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+--bg: #07080d;                        /* plate ink */
+--surface: #0d0f16;                   /* a plate laid on the ink */
+--surface-hover: #151823;             /* the same plate, one step up */
+--border: rgba(233, 230, 224, 0.10);  /* hairline rule, struck in the ivory */
+--border-strong: rgba(233, 230, 224, 0.22);
+--scrollbar-thumb: rgba(233, 230, 224, 0.16);   /* thin bar, transparent track */
+--scrollbar-thumb-hover: rgba(233, 230, 224, 0.32);
+--accent: #3a6dc0;                    /* star blue — flat fill, never a gradient */
+--accent-light: #93b8f5;              /* on-ink text, hover/focus rules, graph curve */
+--accent-deep: #24508f;               /* pressed fill */
+--accent-wash: rgba(58, 109, 192, 0.14);
+/* Brass — the engraver's annotation ink. Plate numbers, catalog labels, counts,
+   timestamps, answer letters, tick rules. NEVER a fill, never interactive:
+   brass marks the plate, blue marks the action (DESIGN.md, The Two-Inks Rule). */
+--brass: #c9a06a; --brass-dim: rgba(201, 160, 106, 0.42); --brass-wash: rgba(201, 160, 106, 0.09);
+/* Flashcard mode atmospheres. Each mode owns tint / light / fill / veil;
+   #flashcard-screen[data-mode] projects the chosen family onto
+   --mode-tint/-light/-fill/-veil. Inside that screen the mode hue REPLACES the
+   accent on filled buttons, switches and focus rings (DESIGN.md, The
+   Mode-Owns-Its-Screen Rule); .btn-danger is exempt. */
+--mode-mastery-tint: #8f6ec9; --mode-mastery-light: #c0aae8; --mode-mastery-fill: #614296;
+--text-primary: #e9e6e0;              /* ivory — printed ink, not screen white */
+--text-secondary: #8b8a8c;
+--correct: #63bd80;
+--incorrect: #e35f5a;
+--radius: 4px; --radius-md: 3px; --radius-sm: 2px;   /* corners, not curves */
+--label-tracking: 0.14em;             /* the plate-label voice */
+--font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+--font-heading: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+--font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 ```
 
-**Panel pattern (replaces the old glass-card recipe — no blur):**
+**Plate pattern** (`.glass-card` — the class name is historical, there is no glass) — used only by things that genuinely float (modals, drop region, share panel, round-complete card). Most content sits directly on the ink and is separated by rules instead:
 ```css
 background: var(--surface);
 border: 1px solid var(--border);
 border-radius: var(--radius);
+/* plus brass registration marks at the top-left and bottom-right corners,
+   drawn by ::before/::after — the plate's signature, and why it needs no shadow */
 ```
 
-**Typography:** Three self-hosted webfonts (`@fontsource/*`, no CDN): Inter for body/UI text, Space Grotesk for headings and the Home hero wordmark, JetBrains Mono for code/metadata (deck-JSON textarea, quiz timer). Question text 1.2rem/Inter, answer buttons 1rem/Inter. KaTeX inherits size.
+**Ruled-row pattern** — Home's library, the quiz's answers, Stats' breakdown are all one object. A full-width row, one hairline underneath, a brass marking in the left margin, `--brass-wash` on hover, and a full colored border only once the row is selected or judged. This replaced the `auto-fill minmax()` card grid.
+
+**Typography:** Three self-hosted webfonts (`@fontsource/*`, no CDN): **Newsreader** (serif) for headings *and* every reading role — quiz question text at 1.5rem/62ch, flashcard faces, the Stats score — always at weight 400, never bold; **IBM Plex Sans** for UI/chrome and answer text; **IBM Plex Mono** for code and for the plate-label voice. KaTeX inherits size.
+
+**The plate label** — every piece of metadata in the app (catalog headers, plate numbers, question counts, quiz timer, progress text, streak tally, flashcard hint, mode-pill labels, answer letters) is one voice: `--font-mono`, ~0.7rem, weight 500, `letter-spacing: var(--label-tracking)`, uppercase, `--brass`.
 
 **Animations:**
 - Screen transitions: fade + 4px vertical slide (150ms ease-out)
-- Answer button select: scale(0.97) on press, color fill on result
+- Button press: `translateY(1px)` — a key going down, not a bubble squashing (replaced `scale(0.97)`)
+- Answer row select: brass wash on hover, a full colored border on result
 - Flashcard flip: CSS 3D rotateY 180deg (400ms ease, preserve-3d)
 - Card sort, by button or by swipe (Know It): throw right and down + fade; Still Learning: the same throw, left
 - Card sort by swipe: exits the edge it was thrown toward, starting from the release offset/angle rather than from centre

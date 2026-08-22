@@ -1,7 +1,9 @@
 /*
- * StudyDeck component styles — "Starfield" deep-space system. Solid layered
- * panels on a near-black navy void (no backdrop-filter/glass anywhere —
- * that's the deliberate departure from the prior Dark Liquid Glass system).
+ * StudyDeck component styles — the "Star Atlas" system. The app is an engraved
+ * atlas plate: an ink ground, hairline rules struck in ivory, brass annotation
+ * in small letter-spaced mono, and one cool star-blue that means "act here".
+ * No blur, no glass, no gradient fills, no colored glows — depth comes from
+ * rules and space, the way it does on a printed plate.
  * Color tokens live in tokens.css; everything visual/layout lives here.
  */
 
@@ -66,10 +68,40 @@ html {
   padding: 32px 24px 64px;
 }
 
+/* The plate. Named .glass-card for historical reasons only — there has been no
+   glass in this system for two redesigns, and renaming it would touch fifteen
+   components for no visual gain. It is a flat plate on the ink, edged with a
+   hairline rule and cornered with brass registration marks (::before/::after
+   draw the top-left and bottom-right corners, the way a plate is marked up for
+   the press). The marks are decoration on a static surface, so they stay
+   pointer-events:none and never animate. */
 .glass-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+
+.glass-card::before,
+.glass-card::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--brass-dim);
+  pointer-events: none;
+}
+.glass-card::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.glass-card::after {
+  right: -1px;
+  bottom: -1px;
+  border-left: 0;
+  border-top: 0;
 }
 
 .glass-card:hover {
@@ -84,124 +116,231 @@ html {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Headings are the atlas's one serif voice — Newsreader, set light and open
+   rather than bold and tight. A dark UI heading almost always arrives as a
+   heavy sans; a quiet serif at the same size is the single loudest signal that
+   a person chose it. */
 h1, h2, h3 {
   margin: 0 0 8px;
   font-family: var(--font-heading);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
 }
-h1 { font-size: 2rem; }
-h2 { font-size: 1.4rem; }
-h3 { font-size: 1.1rem; }
+h1 { font-size: 2.6rem; line-height: 1.1; }
+h2 { font-size: 1.75rem; line-height: 1.2; }
+h3 { font-size: 1.2rem; line-height: 1.3; }
 
 .subtitle {
   color: var(--text-secondary);
   margin: 0 0 24px;
 }
 
+/* The plate label — the app's single metadata voice. Every catalog number,
+   count, timestamp, progress tally and answer letter is set this way, so the
+   chrome reads as one hand annotating the plate instead of six differently
+   tuned grey labels. Brass, never blue: annotation is not an action. */
+.plate-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
 button { font-family: inherit; cursor: pointer; }
 
+/* Buttons are stamped, not extruded: one flat ink, a 3px corner, no gradient
+   and no colored glow. Pressing translates the label a pixel down rather than
+   scaling it — a key going down, not a bubble squashing. */
 .btn {
-  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  background: var(--accent);
   color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 10px 20px;
-  font-size: 0.95rem;
-  box-shadow: 0 2px 10px rgba(2, 103, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  transition: transform 100ms ease, filter 150ms ease;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 9px 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  transition: background 140ms ease, border-color 140ms ease, transform 90ms ease;
 }
-.btn:active { transform: scale(0.97); }
-.btn:hover  { filter: brightness(1.12); }
+.btn:hover  { background: #4a7fd0; border-color: #4a7fd0; }
+.btn:active { transform: translateY(1px); background: var(--accent-deep); border-color: var(--accent-deep); }
 
 .btn-ghost {
   background: none;
   color: var(--text-secondary);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 8px 16px;
-  font-size: 0.9rem;
-  transition: color 150ms, border-color 150ms;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  transition: color 140ms, border-color 140ms, transform 90ms ease;
 }
-.btn-ghost:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
+.btn-ghost:hover  { color: var(--text-primary); border-color: var(--border-strong); }
+.btn-ghost:active { transform: translateY(1px); }
 
-/* Destructive variant of .btn — same shape, the --incorrect hue instead of the
-   accent, so "this removes something" reads before the label does. */
+/* Destructive variant of .btn — same stamp, the --incorrect ink instead of the
+   star blue, so "this removes something" reads before the label does. */
 .btn-danger {
   background: var(--incorrect);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--incorrect) 30%, transparent),
-              inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  border-color: var(--incorrect);
 }
+.btn-danger:hover  { background: #ea726d; border-color: #ea726d; }
+.btn-danger:active { background: #c94e49; border-color: #c94e49; }
 
 /* Home screen */
 #drop-zone {
-  padding: 40px 24px;
+  padding: 36px 24px;
   text-align: center;
+  background: none;
   border: 1px dashed var(--border);
 }
+/* Overrides .glass-card's hover fill — hovering the region means nothing; only
+   dragging a file over it does, and that state has its own fill below. */
+#drop-zone:hover { background: none; }
 #drop-zone.drag-over {
   background: var(--surface-hover);
   border-color: var(--accent-light);
+  border-style: solid;
 }
-#drop-zone p { color: var(--text-secondary); margin: 0 0 16px; }
+#drop-zone p { color: var(--text-secondary); margin: 0 0 18px; font-size: 0.95rem; }
 
-#file-history-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+/* --- The catalog ---------------------------------------------------------
+   A ruled list, not a card grid. Each entry is a row on the plate: plate
+   number in brass on the left, the title set in the serif at reading size,
+   annotation beneath it, and the row's two controls held at the right margin.
+   Rows are separated by one hairline rule apiece and nothing else — no boxes,
+   no per-row borders, no shadows. The hover state washes the row rather than
+   outlining it, so running down the list doesn't make ten rectangles blink. */
+.catalog-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.catalog-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.catalog-count { color: var(--brass); }
+
+#file-history-list {
+  list-style: none;
+  margin: 0 0 40px;
+  padding: 0;
+  border-top: 1px solid var(--border);
 }
 
-.file-card {
-  padding: 16px;
+.file-row {
   position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 4px;
+  padding: 16px 12px 16px 0;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background 150ms;
+  transition: background 140ms ease;
 }
-/* Room for BOTH corner controls (share + remove), not just the ×. */
-.file-card h3 { font-size: 1rem; padding-right: 52px; }
-.file-card .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+.file-row:hover { background: var(--brass-wash); }
+
+/* The plate number sits on the row's first baseline, aligned with the title —
+   it is a marking beside the entry, not a bullet floating above it. */
+.file-row-cat {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--brass-dim);
+  padding-left: 2px;
+  transition: color 140ms ease;
+}
+.file-row:hover .file-row-cat { color: var(--brass); }
+
+.file-row-body { min-width: 0; }
+.file-row-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.file-row .meta {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
 /* Flashcard-only mastery tally, inline in .meta where the question count sits
-   on quiz decks: inherits .meta's scale but accent-colored, so a deck's
-   progress reads as progress and not as more filename metadata. */
-.file-card .meta-flash { color: var(--accent-light); }
+   on quiz decks: inherits .meta's scale but star-blue, so a deck's progress
+   reads as progress and not as more filename metadata. */
+.file-row .meta-flash { color: var(--accent-light); }
+
 /* Share and remove sit in one row so the corner reads as a pair of controls
-   rather than two independently positioned glyphs. Only the row is absolutely
-   placed; the buttons inside it just flow. */
+   rather than two independently positioned glyphs. They hold a fixed column at
+   the right margin — always present in the layout so nothing reflows, but held
+   at low contrast until the row is hovered or one of them takes focus, since a
+   list of twenty rows should not be a list of forty buttons. */
 .file-card-actions {
-  position: absolute;
-  top: 12px;
-  right: 12px;
+  grid-column: 3;
+  grid-row: 1 / -1;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 2px;
+  opacity: 0.25;
+  transition: opacity 140ms ease;
 }
-.file-card .delete-btn,
-.file-card .share-btn {
+.file-row:hover .file-card-actions,
+.file-card-actions:focus-within { opacity: 1; }
+
+.file-row .delete-btn,
+.file-row .share-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
   font-size: 1.1rem;
   line-height: 1;
-  padding: 4px;
-  transition: color 150ms;
+  padding: 6px;
+  transition: color 140ms;
 }
 /* Share is the constructive one of the pair, so it takes the everyday accent
-   on hover while remove takes the alert hue — the color says which is which
+   on hover while remove takes the alert ink — the color says which is which
    before the tooltip does. */
-.file-card .share-btn { display: flex; }
-.file-card .share-btn svg { width: 17px; height: 17px; display: block; }
-.file-card .share-btn:hover { color: var(--accent-light); }
-.file-card .delete-btn:hover { color: var(--incorrect); }
+.file-row .share-btn { display: flex; }
+.file-row .share-btn svg { width: 17px; height: 17px; display: block; }
+.file-row .share-btn:hover { color: var(--accent-light); }
+.file-row .delete-btn:hover { color: var(--incorrect); }
+
+/* Under ~440px the plate-number column costs more than it gives; drop it and
+   let the title take the full measure. */
+@media (max-width: 440px) {
+  .file-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .file-row-cat { display: none; }
+  .file-card-actions { grid-column: 2; }
+}
 
 /* Rotating tagline (Home spec R14–R17) */
 .tagline {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  max-width: 34ch;
+  margin-bottom: 0;
 }
+/* The two rotating slots are set in the heading serif's italic — the atlas's
+   way of marking a term that stands in for others, and the one place body copy
+   is allowed to change voice mid-sentence. */
 .rotating-word {
   display: inline-block;
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 1.12em;
   color: var(--accent-light);
-  font-weight: 600;
+  font-weight: 400;
   transition: transform 250ms ease, opacity 250ms ease;
 }
 .rotating-word.entering {
@@ -226,30 +365,84 @@ button { font-family: inherit; cursor: pointer; }
   }
 }
 
-/* Home hero — the system's one Signature Moment (DESIGN.md): a radial navy
-   glow plus a static procedural starfield sit behind the header only. Every
-   other screen stays on the plain void background. */
+/* Home hero — the system's one Signature Moment (DESIGN.md). The old radial
+   glow behind the headline is gone: a colored blob under a title is the single
+   most-copied move in generated web design, and it was doing the work a real
+   chart does with linework. What replaces it is the plate's graticule — the
+   right-ascension / declination grid of a star atlas — struck at 2.5% ivory
+   and masked to fade out before it reaches the copy, so it reads as ruling
+   under the type rather than as a table around it. */
 .home-hero {
   position: relative;
-  overflow: hidden;
+  /* Its own stacking context, so the field below can hang past the header's box
+     and still paint UNDER everything that follows it in the column. Without the
+     isolation, a positioned z-index:0 starfield would sit on top of the catalog
+     rows, which are in normal flow. */
+  isolation: isolate;
+  overflow: visible;
   margin: -8px -8px 0;
   padding: 8px 8px 4px;
-  border-radius: var(--radius);
-  background: radial-gradient(ellipse 90% 100% at 15% 0%, var(--hero-glow) 0%, transparent 70%);
 }
-.starfield {
+/* The graticule — a star chart's right-ascension / declination ruling, struck
+   at 4% ivory on a 64px cell and masked so it dissolves before it reaches the
+   catalog. It replaces the radial glow that used to sit behind the headline: a
+   colored blob under a title is generated-design's most-copied move, and it was
+   doing with light what a chart does with linework. */
+.home-hero::before {
+  content: '';
   position: absolute;
-  inset: 0;
-  overflow: hidden;
+  inset: -8px -8px -60px;
   z-index: 0;
   pointer-events: none;
+  background:
+    repeating-linear-gradient(to right, rgba(233, 230, 224, 0.04) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(to bottom, rgba(233, 230, 224, 0.04) 0 1px, transparent 1px 64px);
+  -webkit-mask-image: linear-gradient(115deg, #000 0%, rgba(0, 0, 0, 0.5) 38%, transparent 76%);
+  mask-image: linear-gradient(115deg, #000 0%, rgba(0, 0, 0, 0.5) 38%, transparent 76%);
 }
+/* The field hangs 260px below the header and fades out over the last third of
+   that, so the first screenful reads as a patch of sky the page is sitting in
+   rather than as a banner with stars in it that stops on a ruled line. */
+.starfield {
+  position: absolute;
+  inset: -8px -8px -260px;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 96%);
+}
+/* The horizontal half of the same fade: no stars over the left column, where
+   the wordmark and the tagline live. A star sitting inside a word reads as a
+   typo, and the field is worth nothing if it costs the copy. */
+.starfield-inner {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.35) 34%, #000 56%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.35) 34%, #000 56%);
+}
+/* Stars carry magnitude now, not just size: the faint majority are plain ivory
+   dots, and the handful of bright ones get a four-point diffraction cross drawn
+   in ::before/::after. That cross is what an eye reads as "star" rather than
+   "dot", and it costs two pseudo-elements on six of forty-eight nodes. */
 .star {
   position: absolute;
   border-radius: 50%;
-  background: #fff;
+  background: #f4f1ea;
   animation: star-twinkle 4.5s ease-in-out infinite;
 }
+.star-bright::before,
+.star-bright::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: linear-gradient(to right, transparent, rgba(244, 241, 234, 0.5), transparent);
+  transform: translate(-50%, -50%);
+}
+.star-bright::before { width: 11px; height: 1px; }
+.star-bright::after  { width: 1px; height: 11px;
+  background: linear-gradient(to bottom, transparent, rgba(244, 241, 234, 0.5), transparent); }
+
 @keyframes star-twinkle {
   0%, 100% { opacity: var(--star-opacity, 0.6); }
   50% { opacity: calc(var(--star-opacity, 0.6) * 0.35); }
@@ -266,19 +459,37 @@ button { font-family: inherit; cursor: pointer; }
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 8px 24px;
-  padding: 24px 16px 8px;
+  padding: 40px 8px 28px;
 }
 .home-title-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: 14px;
 }
+/* The wordmark. The gradient-clipped text it replaces (white fading into pale
+   blue) is a signature of generated design and nothing else — here the name is
+   simply set, large, in the atlas serif with the tracking opened up, and given
+   a brass rule beneath it the way a plate title is ruled off from its contents.
+   One weight, one ink, no fill effect. */
 .home-title {
   margin: 0;
-  background: linear-gradient(180deg, #fff 0%, var(--text-hero-end) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-size: clamp(2.6rem, 2rem + 2.6vw, 4rem);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: var(--text-primary);
+  position: relative;
+  padding-bottom: 14px;
+}
+.home-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 92px;
+  height: 1px;
+  background: var(--brass);
 }
 #new-set-corner {
   display: flex;
@@ -306,7 +517,14 @@ button { font-family: inherit; cursor: pointer; }
    Prompt corner spanning row 2. .home-header-right goes display:contents so
    its two children are placed independently; the login modal's overlay is
    position:fixed, so it's out of flow and never takes a grid cell. */
+/* On a phone the column is the whole viewport, so a fade that clears the copy
+   on a 1280px page starts right on top of it here. Push the field further
+   right and let it stay faint — the sky is decoration, the sentence is not. */
 @media (max-width: 560px) {
+  .starfield-inner {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.28) 58%, rgba(0, 0, 0, 0.75) 84%);
+    mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.28) 58%, rgba(0, 0, 0, 0.75) 84%);
+  }
   #home-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -334,11 +552,12 @@ button { font-family: inherit; cursor: pointer; }
 
 /* Get-started card (Home spec R11/R12) */
 #get-started-card {
-  padding: 24px;
-  margin-bottom: 24px;
+  padding: 28px 26px;
+  margin-bottom: 22px;
 }
 #get-started-card h3 {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
 }
 .get-started-steps {
   display: flex;
@@ -352,25 +571,33 @@ button { font-family: inherit; cursor: pointer; }
 .get-started-step {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   color: var(--text-secondary);
   font-size: 0.95rem;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
+.get-started-step:last-child { border-bottom: 0; padding-bottom: 0; }
 .get-started-step .btn {
   flex-shrink: 0;
 }
+/* The step marker is a ruled brass square with a mono numeral, not a filled
+   blue disc. Blue is reserved for things you can act on (the Signal Rule), and
+   a step number is a marking on the plate — which is brass's whole job. */
 .step-num {
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(48, 147, 236, 0.18);
-  color: var(--accent-light);
-  font-size: 0.85rem;
-  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--brass-dim);
+  background: none;
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
 }
 .step-text {
   min-width: 0;
@@ -415,21 +642,22 @@ button { font-family: inherit; cursor: pointer; }
   padding: 18px 16px;
   cursor: pointer;
   text-align: left;
-  border: 2px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: none;
+  border-radius: var(--radius-md);
   transition: border-color 150ms, background 150ms;
   color: inherit;
   font: inherit;
 }
 .copy-prompt-modal-option:hover {
-  background: var(--surface-hover);
-  border-color: var(--accent-light);
+  background: var(--accent-wash);
+  border-color: var(--accent);
 }
 .copy-prompt-modal-option-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--accent-light);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--text-primary);
   margin-bottom: 6px;
 }
 .copy-prompt-modal-option-desc {
@@ -485,9 +713,9 @@ button { font-family: inherit; cursor: pointer; }
   max-width: 560px;
   margin: 0 auto 16px;
   display: block;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.32);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 0.85rem;
@@ -541,11 +769,11 @@ button { font-family: inherit; cursor: pointer; }
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--radius);
   z-index: 150;
   display: flex;
   flex-direction: column;
-  clip-path: inset(0 0 calc(100% - 40px) calc(100% - 40px) round 20px);
+  clip-path: inset(0 0 calc(100% - 40px) calc(100% - 40px) round var(--radius));
   transition: clip-path 260ms cubic-bezier(0.22, 1, 0.36, 1),
     background-color 260ms ease;
 }
@@ -639,9 +867,9 @@ button { font-family: inherit; cursor: pointer; }
 /* A clearly clickable, defined button — not plain ghost text — centered in
    the body row. */
 .auth-logout-btn {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(233, 230, 224, 0.07);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 500;
@@ -650,8 +878,8 @@ button { font-family: inherit; cursor: pointer; }
   transition: background 150ms ease, border-color 150ms ease;
 }
 .auth-logout-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(233, 230, 224, 0.14);
+  border-color: rgba(233, 230, 224, 0.28);
 }
 .login-modal-overlay {
   position: fixed;
@@ -697,9 +925,9 @@ button { font-family: inherit; cursor: pointer; }
   margin: 0;
 }
 .login-email-input {
-  background: rgba(255,255,255,0.06);
+  background: rgba(233, 230, 224, 0.05);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   color: var(--text-primary);
   font-size: 0.95rem;
@@ -777,23 +1005,29 @@ button { font-family: inherit; cursor: pointer; }
 }
 .abandon-btn:hover { color: var(--text-primary); }
 .progress-text {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* A ruled scale rather than a rounded pill: the track is a hairline the width
+   of the plate, and the fill is a solid bar sitting on it. */
 .progress-bar {
   flex: 1;
-  height: 4px;
-  background: var(--surface-hover);
-  border-radius: 2px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 0;
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
   width: 100%;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: 0;
   /* transform, not width — avoids layout thrash on every question advance. */
   transform-origin: left;
   transform: scaleX(0);
@@ -928,7 +1162,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .table-area tbody td {
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(233, 230, 224, 0.05);
 }
 .table-area tbody tr:last-child td {
   border-bottom: none;
@@ -962,50 +1196,78 @@ button { font-family: inherit; cursor: pointer; }
   background: linear-gradient(to left, var(--surface), transparent);
 }
 
+/* The question is the one long-form reading role in the app, so it takes the
+   atlas serif at generous leading — a study question is prose, and setting it
+   in the same UI sans as the buttons around it is what made the quiz screen
+   read as a form to fill in rather than something to think about. */
 .question-text {
-  font-size: 1.2rem;
-  line-height: 1.7;
-  margin-bottom: 28px;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  margin-bottom: 30px;
+  max-width: 62ch;
 }
+/* An answer is a ruled entry, not a raised tile: the row carries its own
+   hairline and a brass letter in the margin, and hovering washes it rather
+   than lifting it. Feedback still arrives as a full border + tint, because
+   right/wrong has to survive being glanced at. */
 .answer-btn {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 18px;
-  margin-bottom: 10px;
+  background: none;
+  /* Transparent on three sides, ruled on the fourth: at rest the list is four
+     hairlines, and a full border appears only when the row has been chosen or
+     judged. The border box is declared at full width all along so nothing
+     reflows when it colors in. */
+  border: 1px solid transparent;
+  border-bottom-color: var(--border);
+  border-radius: var(--radius-md);
+  padding: 15px 18px;
+  margin-bottom: 2px;
   color: var(--text-primary);
   font-size: 1rem;
-  transition: background 150ms, border-color 150ms, transform 100ms;
+  transition: background 140ms, border-color 140ms, transform 90ms;
 }
-.answer-btn:not(:disabled):not(.selected-answer):hover { background: var(--surface-hover); border-color: rgba(255,255,255,0.2); }
-.answer-btn:not(:disabled):active { transform: scale(0.97); }
+.answer-btn:not(:disabled):not(.selected-answer):hover {
+  background: var(--brass-wash);
+  border-bottom-color: var(--border-strong);
+}
+.answer-btn:not(:disabled):active { transform: translateY(1px); }
 .answer-btn:disabled { cursor: default; }
 .answer-btn.correct-answer {
-  background: rgba(93, 200, 121, 0.15) !important;
+  background: rgba(99, 189, 128, 0.12) !important;
   border-color: var(--correct) !important;
   opacity: 1 !important;
 }
 .answer-btn.wrong-answer {
-  background: rgba(247, 93, 89, 0.15) !important;
+  background: rgba(227, 95, 90, 0.12) !important;
   border-color: var(--incorrect) !important;
   opacity: 1 !important;
 }
 .answer-btn.selected-answer {
-  border-color: var(--accent-light);
-  background: rgba(48, 147, 236, 0.14);
+  border-color: var(--accent);
+  background: var(--accent-wash);
 }
+/* The answer letter is an annotation on the row — brass mono, like every other
+   marking on the plate — and it turns blue only on the row the student has
+   actually chosen, where it has become part of a selection. */
 .answer-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--accent-light);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--brass-dim);
   flex-shrink: 0;
   width: 18px;
+  transition: color 140ms;
 }
+.answer-btn:hover .answer-label { color: var(--brass); }
+.answer-btn.selected-answer .answer-label { color: var(--accent-light); }
 .answer-text { flex: 1; }
 
 /* multiSelect: same .answer-btn shell, plus a checkbox glyph. Only ever reflects
@@ -1029,9 +1291,9 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 12px 16px;
   margin-bottom: 8px;
   color: var(--text-primary);
@@ -1043,15 +1305,15 @@ button { font-family: inherit; cursor: pointer; }
      from there (see LONG_PRESS_MS). */
   touch-action: pan-y;
 }
-.order-item:not(.order-item-locked):hover { border-color: rgba(255,255,255,0.2); }
+.order-item:not(.order-item-locked):hover { border-color: var(--border-strong); }
 .order-item:not(.order-item-locked):active { cursor: grabbing; }
 .order-item-locked { cursor: default; }
 .order-item.correct-answer {
-  background: rgba(93, 200, 121, 0.15) !important;
+  background: rgba(99, 189, 128, 0.12) !important;
   border-color: var(--correct) !important;
 }
 .order-item.wrong-answer {
-  background: rgba(247, 93, 89, 0.15) !important;
+  background: rgba(227, 95, 90, 0.12) !important;
   border-color: var(--incorrect) !important;
 }
 /* The dragged item's current slot — same layout/height as a real row (so
@@ -1071,14 +1333,16 @@ button { font-family: inherit; cursor: pointer; }
 }
 /* Decorative only — the whole row is the grab target. */
 .order-handle {
-  color: var(--text-secondary);
+  color: var(--brass-dim);
   flex-shrink: 0;
   font-size: 1rem;
 }
 .order-index {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--accent-light);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--brass);
   flex-shrink: 0;
   width: 18px;
 }
@@ -1092,7 +1356,7 @@ button { font-family: inherit; cursor: pointer; }
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   color: var(--text-primary);
   font-size: 1rem;
@@ -1105,11 +1369,11 @@ button { font-family: inherit; cursor: pointer; }
 }
 .numeric-text-input.correct-answer {
   border-color: var(--correct) !important;
-  background: rgba(93, 200, 121, 0.15) !important;
+  background: rgba(99, 189, 128, 0.12) !important;
 }
 .numeric-text-input.wrong-answer {
   border-color: var(--incorrect) !important;
-  background: rgba(247, 93, 89, 0.15) !important;
+  background: rgba(227, 95, 90, 0.12) !important;
 }
 
 .numeric-slider-wrap {
@@ -1120,8 +1384,10 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 16px;
 }
 .numeric-slider-value {
+  font-family: var(--font-mono);
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--accent-light);
 }
 .numeric-slider-wrap.correct-answer .numeric-slider-value { color: var(--correct); }
@@ -1137,7 +1403,7 @@ button { font-family: inherit; cursor: pointer; }
 .numeric-slider:disabled { cursor: default; }
 .numeric-slider::-webkit-slider-runnable-track {
   height: 6px;
-  border-radius: 20px; /* pill token — clamps to the 6px track's half-height regardless */
+  border-radius: 1px; /* a ruled scale, not a pill — matches .progress-bar */
   border: 1px solid var(--border);
   /* --fill-pct is set inline per-render (NumericInput in QuizUI.tsx). Painting
      the fill on the track pseudo-element itself (not the bare input) keeps it
@@ -1146,9 +1412,9 @@ button { font-family: inherit; cursor: pointer; }
 }
 .numeric-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px;
+  width: 14px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: 1px;
   background: var(--accent);
   border: 2px solid var(--text-primary);
   margin-top: -7px;
@@ -1157,19 +1423,19 @@ button { font-family: inherit; cursor: pointer; }
 .numeric-slider:not(:disabled)::-webkit-slider-thumb:active { transform: scale(1.15); }
 .numeric-slider::-moz-range-track {
   height: 6px;
-  border-radius: 20px; /* pill token — clamps to the 6px track's half-height regardless */
+  border-radius: 1px; /* a ruled scale, not a pill — matches .progress-bar */
   background: var(--surface-hover);
   border: 1px solid var(--border);
 }
 .numeric-slider::-moz-range-progress {
   height: 6px;
-  border-radius: 20px; /* pill token — clamps to the 6px track's half-height regardless */
+  border-radius: 1px; /* a ruled scale, not a pill — matches .progress-bar */
   background: var(--accent);
 }
 .numeric-slider::-moz-range-thumb {
-  width: 18px;
+  width: 14px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: 1px;
   background: var(--accent);
   border: 2px solid var(--text-primary);
 }
@@ -1300,25 +1566,38 @@ button { font-family: inherit; cursor: pointer; }
 .quiz-nav-mid  { grid-column: 2; justify-self: center; }
 .quiz-nav-next { grid-column: 3; justify-self: end; }
 #quiz-timer {
-  color: var(--text-secondary);
-  font-size: 0.88rem;
+  color: var(--brass);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
 
+/* Every screen title is ruled off the same way the wordmark is — the heading
+   sits on a hairline that runs the width of the column, which is what keeps a
+   screen reading as a plate with a caption rather than as a page with an h2 on
+   it. The rule is the layout's only horizontal furniture; nothing else divides
+   a screen. */
 .screen-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 .screen-header h2 { margin: 0; }
 
 /* Mode screen */
 #mode-screen .deck-subtitle {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin: 0 0 32px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
+  margin: 0 0 36px;
 }
 
 .mode-grid {
@@ -1329,27 +1608,28 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .mode-card {
-  padding: 24px 20px;
+  padding: 22px 20px 20px;
   cursor: pointer;
   text-align: left;
-  border: 2px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: none;
+  border-radius: var(--radius-md);
   transition: border-color 150ms, background 150ms;
   user-select: none;
 }
-.mode-card:hover { background: var(--surface-hover); }
+.mode-card:hover { background: var(--brass-wash); border-color: var(--border-strong); }
 .mode-card.selected {
-  border-color: var(--accent-light);
-  background: rgba(48, 147, 236, 0.14);
+  border-color: var(--accent);
+  background: var(--accent-wash);
 }
 .mode-card .mode-icon {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
-  color: var(--text-secondary);
+  margin-bottom: 14px;
+  color: var(--brass-dim);
   transition: color 150ms;
 }
+.mode-card:hover .mode-icon { color: var(--brass); }
 .mode-card .mode-icon svg {
   width: 24px;
   height: 24px;
@@ -1359,8 +1639,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 .mode-card .mode-name {
   font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 400;
+  font-size: 1.3rem;
   color: var(--text-primary);
   margin-bottom: 6px;
 }
@@ -1402,10 +1682,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 .toggle-track {
   width: 38px;
-  height: 22px;
+  height: 20px;
   background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--radius-sm);
   position: relative;
   transition: background 200ms, border-color 200ms;
   flex-shrink: 0;
@@ -1413,12 +1693,12 @@ button { font-family: inherit; cursor: pointer; }
 .toggle-track::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
+  top: 2px;
+  left: 2px;
   width: 14px;
   height: 14px;
   background: var(--text-secondary);
-  border-radius: 50%;
+  border-radius: 1px;
   transition: transform 200ms, background 200ms;
 }
 .toggle-label input:checked + .toggle-track {
@@ -1426,7 +1706,7 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--accent);
 }
 .toggle-label input:checked + .toggle-track::after {
-  transform: translateX(16px);
+  transform: translateX(18px);
   background: white;
 }
 
@@ -1458,26 +1738,45 @@ button { font-family: inherit; cursor: pointer; }
   justify-content: center;
   pointer-events: none;
 }
+/* The score is the one number the whole screen exists to deliver, so it gets
+   the serif at display scale — the same voice as a screen title, not a bolded
+   UI figure. Everything around it drops to plate-label mono, so the contrast
+   between "the result" and "the readout" is a change of voice, not of size. */
 #stats-score-pct {
   font-family: var(--font-heading);
-  font-size: 1.7rem;
-  font-weight: 700;
+  font-size: 2.2rem;
+  font-weight: 400;
+  line-height: 1;
   color: var(--text-primary);
 }
 #stats-score-line {
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin-bottom: 6px;
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 400;
+  margin-bottom: 8px;
 }
 #stats-duration-line {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
 }
 
+/* Breakdown entries are catalog rows, matching Home's list: one hairline each,
+   no plate, no per-row box, and none of .glass-card's brass corner marks. */
 .breakdown-item {
-  padding: 14px 18px;
-  margin-bottom: 10px;
+  padding: 14px 4px;
+  margin-bottom: 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
 }
+.breakdown-item::before,
+.breakdown-item::after { display: none; }
+.breakdown-item:hover { background: none; }
 .breakdown-correct-top {
   display: flex;
   align-items: center;
@@ -1520,8 +1819,12 @@ button { font-family: inherit; cursor: pointer; }
 
 /* Review screen */
 .review-progress-text {
-  color: var(--text-secondary);
-  font-size: 0.88rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
   margin-left: auto;
 }
 .review-nav {
@@ -1552,17 +1855,17 @@ button { font-family: inherit; cursor: pointer; }
 @property --mode-tint {
   syntax: '<color>';
   inherits: true;
-  initial-value: #3093ec;
+  initial-value: #3a6dc0;
 }
 @property --mode-light {
   syntax: '<color>';
   inherits: true;
-  initial-value: #63b3ff;
+  initial-value: #93b8f5;
 }
 @property --mode-fill {
   syntax: '<color>';
   inherits: true;
-  initial-value: #1673cf;
+  initial-value: #35619f;
 }
 @property --mode-veil {
   syntax: '<color>';
@@ -1616,9 +1919,12 @@ button { font-family: inherit; cursor: pointer; }
    Scoped to this screen only — the accent is the app's default everywhere else,
    and .btn-danger is exempt because its red is the warning, not a theme. */
 #flashcard-screen .btn:not(.btn-danger) {
-  background: linear-gradient(180deg, var(--mode-tint), var(--mode-fill));
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--mode-fill) 40%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  background: var(--mode-fill);
+  border-color: var(--mode-fill);
+}
+#flashcard-screen .btn:not(.btn-danger):hover {
+  background: var(--mode-tint);
+  border-color: var(--mode-tint);
 }
 #flashcard-screen .toggle-label input:checked + .toggle-track {
   background: var(--mode-tint);
@@ -1648,7 +1954,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 3px;
   background: var(--surface);
   border: 1px solid color-mix(in srgb, var(--mode-tint) 22%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-md);
 }
 /* Width is one segment: the track's inner width (100% less the 3px padding on
    each side) split in half — so translateX(100%) lands the thumb exactly on
@@ -1663,7 +1969,7 @@ button { font-family: inherit; cursor: pointer; }
      the mode. Deeper than the ambience tint so the white label on top clears
      4.5:1 in both modes. */
   background: var(--mode-fill);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .mode-pill-thumb[data-mode="mastery"] {
@@ -1682,6 +1988,11 @@ button { font-family: inherit; cursor: pointer; }
 }
 .mode-pill-option span {
   display: block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
   color: var(--text-secondary);
   transition: color 200ms;
 }
@@ -1726,7 +2037,14 @@ button { font-family: inherit; cursor: pointer; }
 
 /* The mastery tally ("8 / 12 mastered") is mode-specific information, so it
    reads in the mode's own light. */
-.flash-progress-text { color: var(--mode-light); }
+.flash-progress-text {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--mode-light);
+}
 
 /* The streak bar — four segments, one per hit needed, above the card. Always
    rendered in Mastery rather than appearing on the first hit: a bar that arrives
@@ -1764,10 +2082,12 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: 0 0 8px color-mix(in srgb, var(--mode-light) 55%, transparent);
 }
 .flash-streak-label {
-  min-width: 62px; /* holds its width across "0 / 4" → "Mastered", so the bar can't shuffle sideways */
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  min-width: 74px; /* holds its width across "0 / 4" → "Mastered", so the bar can't shuffle sideways */
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-secondary);
 }
 .flash-streak[data-mastered='yes'] .flash-streak-label { color: var(--mode-light); }
@@ -1802,7 +2122,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 14px;
   background: var(--surface);
   border: 1px solid color-mix(in srgb, var(--mode-tint) 30%, var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 14px 34px rgb(0 0 0 / 0.42);
 }
 /* Each switch keeps a name/hint stack, so the panel reads as a short list of
@@ -2056,8 +2376,11 @@ button { font-family: inherit; cursor: pointer; }
      a two-line definition starts breaking across the card awkwardly. */
   padding: clamp(32px, 4.5vw, 56px);
   text-align: center;
-  font-size: clamp(1.3rem, 1.05rem + 0.85vw, 1.75rem);
-  line-height: 1.55;
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: clamp(1.45rem, 1.1rem + 1vw, 2.05rem);
+  line-height: 1.4;
+  letter-spacing: -0.005em;
   /* A tonal cast off the mode hue, not a wash — the panel is still Surface,
      lifted a few percent toward the atmosphere it's floating in. Depth stays
      tonal; no shadow is added at rest. */
@@ -2211,8 +2534,12 @@ button { font-family: inherit; cursor: pointer; }
 .flash-hint {
   position: relative;
   text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
   color: var(--text-secondary);
-  font-size: 0.85rem;
   /* A definite max rather than a definite height, so the line can collapse when
      it retires itself on touch (height:auto has nothing to animate from) without
      clipping a copy string that wraps on some narrow window. Two lines' worth of
@@ -2262,11 +2589,11 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   justify-content: center;
   width: 88px;
-  height: 48px;
+  height: 46px;
   background: var(--surface-hover);
   color: var(--text-primary);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   font-size: 1.25rem;
   line-height: 1;
   transition: background 150ms, border-color 150ms, transform 100ms ease;
@@ -2275,7 +2602,7 @@ button { font-family: inherit; cursor: pointer; }
   background: color-mix(in srgb, var(--surface-hover) 88%, #fff);
   border-color: color-mix(in srgb, var(--mode-tint) 45%, var(--border-strong));
 }
-.flash-nav-btn:active:not(:disabled) { transform: scale(0.96); }
+.flash-nav-btn:active:not(:disabled) { transform: translateY(1px); }
 .flash-nav-btn:disabled {
   opacity: 0.35;
   cursor: default;
@@ -2291,13 +2618,13 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 150ms, border-color 150ms, color 150ms, transform 100ms ease;
 }
@@ -2306,7 +2633,7 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--border);
   color: var(--text-primary);
 }
-.flash-undo-btn:active:not(:disabled) { transform: scale(0.94); }
+.flash-undo-btn:active:not(:disabled) { transform: translateY(1px); }
 .flash-undo-btn:disabled {
   opacity: 0.3;
   cursor: default;
@@ -2374,9 +2701,9 @@ button { font-family: inherit; cursor: pointer; }
    cold Supabase project should read as working, not stuck. */
 .share-modal-working { animation: btn-pulse 1.4s ease-in-out infinite; }
 .share-link-input {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(233, 230, 224, 0.05);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   color: var(--text-primary);
   font-family: var(--font-mono);

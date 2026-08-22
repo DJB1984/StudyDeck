@@ -422,13 +422,52 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
       ) : (
         // R22: returning users see their decks first, then the add-deck surface.
         <>
-          <div id="file-history-grid">
-            {history.map((file) => (
-              <div
+          {/* The library is a ruled catalog, not a card grid. A deck title is
+              prose of unpredictable length; three-across tiles truncate it and
+              stack identical bordered boxes, which is exactly the shape the
+              redesign was called to get rid of. Full-width rules let the title
+              run at reading size and give the plate number a column of its
+              own. Every handler here is unchanged — only the markup moved. */}
+          <div className="catalog-head">
+            <span className="plate-label">Your study sets</span>
+            <span className="catalog-rule" aria-hidden="true" />
+            <span className="plate-label catalog-count">
+              {String(history.length).padStart(2, '0')}
+            </span>
+          </div>
+          <ol id="file-history-list">
+            {history.map((file, i) => (
+              <li
                 key={file.title}
-                className="file-card glass-card"
+                className="file-row"
                 onClick={() => openCard(file)}
               >
+                {/* Plate number — the row's position in the catalog, not an id
+                    that means anything. It exists so the eye has a fixed left
+                    edge to run down, the way a chart index does. */}
+                <span className="file-row-cat" aria-hidden="true">
+                  {String(i + 1).padStart(3, '0')}
+                </span>
+                <div className="file-row-body">
+                  <h3 className="file-row-title">{file.title}</h3>
+                  {/* Flashcard decks show the Know It tally IN PLACE OF the
+                      question count — progress is what a returning student is
+                      looking for, and the count survives as its denominator.
+                      The tally is a live snapshot re-read from Storage on every
+                      render rather than persisted as its own value, so it can't
+                      drift from the piles the flashcard engine actually owns;
+                      never-opened decks read "0 / N known" via getFlashState's
+                      empty default. */}
+                  <div className="meta">
+                    {file.data.type === 'flashcard' ? (
+                      <FlashMeta file={file} />
+                    ) : (
+                      <>
+                        {file.count} questions · {file.lastOpened}
+                      </>
+                    )}
+                  </div>
+                </div>
                 <div className="file-card-actions">
                   <button
                     className="share-btn"
@@ -447,27 +486,9 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                     &times;
                   </button>
                 </div>
-                <h3>{file.title}</h3>
-                {/* Flashcard decks show the Know It tally IN PLACE OF the
-                    question count — progress is what a returning student is
-                    looking for, and the count survives as its denominator. The
-                    tally is a live snapshot re-read from Storage on every
-                    render rather than persisted as its own value, so it can't
-                    drift from the piles the flashcard engine actually owns;
-                    never-opened decks read "0 / N known" via getFlashState's
-                    empty default. */}
-                <div className="meta">
-                  {file.data.type === 'flashcard' ? (
-                    <FlashMeta file={file} />
-                  ) : (
-                    <>
-                      {file.count} questions · {file.lastOpened}
-                    </>
-                  )}
-                </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
           {addDeckSurface}
         </>
       )}

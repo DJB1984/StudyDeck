@@ -2,67 +2,68 @@
 name: StudyDeck
 description: A dependency-light, AI-agnostic web app for practicing, testing, and flashcard-drilling AI-generated study decks.
 colors:
-  void-navy: "#080d16"
-  surface: "#11161f"
-  surface-raised: "#1a2029"
-  border-hairline: "rgba(255, 255, 255, 0.08)"
-  scrollbar-thumb: "rgba(255, 255, 255, 0.16)"
-  starlight-blue: "#3093ec"
-  starlight-blue-light: "#63b3ff"
-  starlight-blue-deep: "#0267c7"
-  nebula-ember: "#ef852e"
-  nebula-pink: "#c841a5"
-  mode-standard-fill: "#1673cf"
-  mode-mastery-tint: "#a2519a"
-  mode-mastery-light: "#d68cc9"
-  mode-mastery-fill: "#8f4489"
-  text-primary: "#e1e5eb"
-  text-muted: "#79818d"
+  plate-ink: "#07080d"
+  surface: "#0d0f16"
+  surface-raised: "#151823"
+  border-hairline: "rgba(233, 230, 224, 0.10)"
+  border-strong: "rgba(233, 230, 224, 0.22)"
+  scrollbar-thumb: "rgba(233, 230, 224, 0.16)"
+  star-blue: "#3a6dc0"
+  star-blue-light: "#93b8f5"
+  star-blue-deep: "#24508f"
+  brass: "#c9a06a"
+  brass-dim: "rgba(201, 160, 106, 0.42)"
+  mode-standard-fill: "#35619f"
+  mode-mastery-tint: "#8f6ec9"
+  mode-mastery-light: "#c0aae8"
+  mode-mastery-fill: "#614296"
+  text-primary: "#e9e6e0"
+  text-muted: "#8b8a8c"
   on-accent: "#ffffff"
-  success-green: "#5dc879"
-  alert-red: "#f75d59"
+  success-green: "#63bd80"
+  alert-red: "#e35f5a"
 typography:
   display:
-    fontFamily: "'Space Grotesk', 'Inter', sans-serif"
-    fontSize: "2rem"
-    fontWeight: 700
-    lineHeight: 1.25
-    letterSpacing: "-0.01em"
+    fontFamily: "'Newsreader', 'Iowan Old Style', Georgia, serif"
+    fontSize: "clamp(2.6rem, 2rem + 2.6vw, 4rem)"
+    fontWeight: 400
+    lineHeight: 1.0
+    letterSpacing: "0.01em"
   heading:
-    fontFamily: "'Space Grotesk', 'Inter', sans-serif"
-    fontSize: "1.4rem"
-    fontWeight: 700
-    lineHeight: 1.3
-    letterSpacing: "-0.01em"
+    fontFamily: "'Newsreader', 'Iowan Old Style', Georgia, serif"
+    fontSize: "1.75rem"
+    fontWeight: 400
+    lineHeight: 1.2
+    letterSpacing: "-0.005em"
+  reading:
+    fontFamily: "'Newsreader', 'Iowan Old Style', Georgia, serif"
+    fontSize: "1.5rem"
+    fontWeight: 400
+    lineHeight: 1.5
+    letterSpacing: "-0.005em"
   body:
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    fontFamily: "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
-  question:
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    fontSize: "1.2rem"
-    fontWeight: 400
-    lineHeight: 1.7
-    letterSpacing: "normal"
   label:
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    fontSize: "0.85rem"
-    fontWeight: 400
+    fontFamily: "'IBM Plex Mono', ui-monospace, Consolas, monospace"
+    fontSize: "0.7rem"
+    fontWeight: 500
     lineHeight: 1.4
-    letterSpacing: "normal"
+    letterSpacing: "0.14em"
+    textTransform: "uppercase"
   mono:
-    fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace"
+    fontFamily: "'IBM Plex Mono', ui-monospace, Consolas, monospace"
     fontSize: "0.85rem"
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
 rounded:
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  pill: "20px"
+  sm: "2px"
+  md: "3px"
+  lg: "4px"
 spacing:
   xs: "8px"
   sm: "12px"
@@ -71,23 +72,23 @@ spacing:
   xl: "32px"
 components:
   button-primary:
-    backgroundColor: "{colors.starlight-blue}"
+    backgroundColor: "{colors.star-blue}"
     textColor: "{colors.on-accent}"
     rounded: "{rounded.md}"
-    padding: "10px 20px"
+    padding: "9px 20px"
   button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.text-muted}"
     rounded: "{rounded.md}"
     padding: "8px 16px"
-  panel-card:
+  plate:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.lg}"
     padding: "16px"
-  panel-selectable:
-    backgroundColor: "{colors.surface}"
-    rounded: "{rounded.lg}"
-    padding: "24px 20px"
+  catalog-row:
+    backgroundColor: "transparent"
+    borderBottom: "1px solid {colors.border-hairline}"
+    padding: "16px 12px 16px 0"
   input-text:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text-primary}"
@@ -99,182 +100,374 @@ components:
 
 ## Overview
 
-**Creative North Star: "Starfield"**
+**Creative North Star: "Star Atlas"**
 
-StudyDeck's surface is a deep-space navy void with solid, layered panels resting on it — flat fills stepped up in lightness (void → surface → surface-raised), edged with a hairline 8% white border. This is a deliberate departure from the prior "Dark Liquid Glass" identity: there is no `backdrop-filter` anywhere in the system. Depth now comes from tonal layering and a hairline edge, not translucency or blur.
+StudyDeck is an engraved celestial atlas plate. The ground is ink; the type is
+ivory, not screen-white; structure is carried by hairline rules and small brass
+annotation rather than by boxes; and one cool star-blue marks the single thing on
+any screen you can act on. The reference is an 18th-century sky chart and the
+instrument that produced it — printed, annotated, precise — not a product page.
 
-Starlight Blue is the system's one everyday accent, governing every primary button, progress fill, selected card, and focused input — its rarity is what makes it read as intentional. A second, multi-hue "Nebula" gradient (ember → pink → starlight blue) exists in the system, but it is reserved exclusively for Home's hero header — the system's one Signature Moment, mirroring how the prior system reserved the flashcard flip as its one expressive beat. Nebula never appears on a button, a selection state, or anything a visitor interacts with; if it did, Starlight Blue's rarity — and the reliability of "blue means interactive" — would break.
+This replaced the prior "Starfield" system on 2026-08-22, at Davis's call, for
+one stated reason: the app looked machine-generated. It was, materially, the
+default output palette of a code model — near-black navy, one saturated mid-blue,
+gradient-filled buttons wearing a colored glow, gradient-clipped display text, a
+radial glow blob behind the headline, Space Grotesk over Inter, and every surface
+built from the same recipe (one fill, one 8%-white hairline, one 16px radius)
+laid out in a symmetric `auto-fill` card grid. Each of those is defensible alone.
+Together they are a signature, and it was the signature that had to go.
 
-Typography moved from a zero-webfont, borrowed-OS-font system to three purposeful self-hosted faces: Inter for all body/UI copy, Space Grotesk for headings and the hero wordmark, and JetBrains Mono for code/metadata. Density, spacing scale, layout grid, and screen-transition motion are unchanged from the prior system — this redesign replaces the *material and palette*, not the product's structure or interaction model.
+**What did NOT change: the product.** Every screen, control, flow, interaction
+and piece of state is exactly as designed — the mode ladder, the Mastery drill
+and its gaps, the swipe vocabulary, the sharing model, the flashcard-as-stage
+sizing. This redesign replaced the *material and composition*: color, type, edge,
+rhythm, and how information is arranged on a page. Nothing about how the app
+behaves moved.
 
 **Key Characteristics:**
-- Solid tonal-layered panels on a deep-space navy void — no blur, no translucency anywhere
-- One accent (Starlight Blue) for everyday interactive/selected state; Nebula reserved to two places — Home's hero gradient, and the muted per-mode casts of the two Flashcard atmospheres
-- Three purposeful webfonts (Inter / Space Grotesk / JetBrains Mono), replacing the prior system-font-only rule
-- Correct/incorrect green and red are feedback-only, never decorative (carried over unchanged)
-- Procedural star fields appear in exactly two places: the static decoration behind Home's header, and Flashcards' live per-mode atmosphere
+- Ink ground, ivory type, brass annotation, one star-blue for action
+- Structure comes from hairline rules and space — lists are ruled, not tiled
+- Corners, not curves: a 4px maximum radius exists to stop 1px edges chipping
+- Buttons are stamped flat — no gradient fill, no colored glow, ever
+- A serif (Newsreader) carries every heading AND every reading role — questions,
+  flashcard faces, the score — while a sans (IBM Plex) carries the chrome
+- Every piece of metadata in the app is one voice: small letter-spaced uppercase
+  brass mono
+- Correct/incorrect green and red are feedback-only, never decorative
+- Procedural stars appear in exactly two places: the field behind Home's header,
+  and Flashcards' live per-mode atmosphere
 
 ## Colors
 
-A near-black navy canvas with tonal-layered solid panels, one confident blue accent, and a reserved multi-hue gradient held back for exactly one moment.
+### The Two Inks
 
-### Primary
-- **Starlight Blue** (`#3093ec`): the system's one everyday accent fill — primary buttons (as a top-to-bottom gradient into Starlight Blue Deep), progress-bar fill, selected-card border/tint, toggle-on state, focused-input border (as Starlight Blue Light). Never used as a background wash.
-- **Starlight Blue Light** (`#63b3ff`): the accent's "active/light" counterpart — hover/focus borders, link/label color on dark surfaces, flashcard answer text, graph line color.
-- **Starlight Blue Deep** (`#0267c7`): the gradient base for filled buttons and the slider fill's leading edge.
+The system runs on two marking colors, and the distinction between them is the
+whole grammar:
 
-### Nebula (reserved — see Named Rules)
-- **Nebula Ember** (`#ef852e`) / **Nebula Pink** (`#c841a5`): combine with Starlight Blue in a conic gradient (`--nebula-gradient`) used by exactly one thing: the radial glow behind Home's hero header. Never appears on interactive chrome.
+- **Star Blue** (`#3a6dc0`) — the color of a hot main-sequence star, and the one
+  color that means *you can act on this* or *this is selected*. Primary buttons,
+  progress fill, selected borders, focused inputs. Cobalt rather than azure: it
+  has to read as a star seen through glass, not as a hyperlink.
+- **Brass** (`#c9a06a`) — the engraver's annotation ink. Plate numbers, catalog
+  labels, counts, timestamps, the letter beside an answer, tick rules, step
+  markers. Brass is never a fill and never interactive.
 
-### Flashcard Mode Atmospheres (Nebula's one other home)
-Nebula's second sanctioned appearance, and its only one outside Home: the two Flashcard study modes. Each mode owns a four-token family (`--mode-{name}-tint / -light / -fill / -veil`), projected onto the screen through four scoped properties (`--mode-tint`, `--mode-light`, `--mode-fill`, `--mode-veil`) that `#flashcard-screen[data-mode]` reassigns.
-
-- **Standard** — Starlight Blue (`#3093ec` / `#63b3ff` / fill `#1673cf`): the system's everyday accent, unchanged. The mode that adds nothing also changes nothing.
-- **Mastery** — muted Pink (`#a2519a` / `#d68cc9` / fill `#8f4489`): Nebula Pink pulled far down in saturation into a deep-space cast.
-
-`-tint` is the identity hue (rims, the card's tonal cast, the hint dot); `-light` is the readable-on-void variant (flipped-card answer text, the progress tally, the ambient particles); `-fill` is a deliberately deeper tone used where white sits on top — the pill's label and the filled button's gradient base — so every mode clears 4.5:1; `-veil` is the radial ground wash. All four are registered via `@property` as `<color>`, so switching modes interpolates the hue over 700ms instead of snapping.
+Supporting stops: **Star Blue Light** (`#93b8f5`) for on-ink text, hover rules,
+graph curves and flashcard answer copy; **Star Blue Deep** (`#24508f`) for the
+pressed state; **Brass Dim** (`rgba(201,160,106,0.42)`) for marks that should be
+felt rather than read; **Brass Wash** (`rgba(201,160,106,0.09)`) for the hover
+state of any ruled row.
 
 ### Neutral
-- **Void Navy** (`#080d16`): the page background — a near-black with a cool navy undertone, never pure `#000`.
-- **Surface** (`#11161f`): the solid fill for every panel/card at rest.
-- **Surface Raised** (`#1a2029`): the same surfaces on hover, or a card's next tonal step up — a lightness step, not a hue change.
-- **Border Hairline** (`rgba(255, 255, 255, 0.08)`): the 1px edge on every panel.
-- **Scrollbar Thumb** (`rgba(255, 255, 255, 0.16)`, hover `0.32`) on a transparent track: the same white-alpha ladder the borders sit on, one step above the hairline. Deliberately not the accent — see Scrollbars under Components.
-- **Text Primary** (`#e1e5eb`): primary text — a cool off-white, never pure `#fff` outside the hero gradient's top stop.
-- **Text Muted** (`#79818d`): secondary/meta text — timestamps, hints, subtitles, progress labels.
+- **Plate Ink** (`#07080d`): the page. Near-black with barely any cast — the navy
+  of the prior system was itself part of the generated look.
+- **Surface** (`#0d0f16`): a plate laid on the ink — modals, the code editor, the
+  flashcard, the JSON box. Used far less than the fill it replaced; most content
+  now sits directly on the ink.
+- **Surface Raised** (`#151823`): the same plate lifted one step.
+- **Border Hairline** (`rgba(233,230,224,0.10)`) / **Border Strong** (`0.22`):
+  every rule in the system, struck in the ivory rather than in white.
+- **Text Primary** (`#e9e6e0`): ivory. Printed ink, not screen white — the half
+  step of warmth is most of what separates this page from a dark-mode template.
+- **Text Muted** (`#8b8a8c`): secondary copy.
+
+### Flashcard Mode Atmospheres
+Each study mode owns a four-token family (`--mode-{name}-tint / -light / -fill /
+-veil`), projected through four scoped properties that
+`#flashcard-screen[data-mode]` reassigns. All four are registered via `@property`
+as `<color>`, so a mode switch interpolates over 700ms instead of snapping.
+
+- **Standard** — Star Blue (`#3a6dc0` / `#93b8f5` / fill `#35619f`): the app's
+  everyday accent, unchanged. The mode that adds nothing also changes nothing.
+- **Mastery** — ionized violet (`#8f6ec9` / `#c0aae8` / fill `#614296`): the one
+  hue in the system that is neither star nor brass, which is exactly why it can
+  mean "you are somewhere else now."
+
+`-tint` is the identity hue (rims, the card's tonal cast); `-light` is the
+readable-on-ink variant (flipped-card answer copy, the tally, ambient particles);
+`-fill` is deliberately deeper, used where white sits on top, so every mode clears
+4.5:1; `-veil` is the radial ground wash.
 
 ### Semantic
-- **Success Green** (`#5dc879`): correct-answer highlight only.
-- **Alert Red** (`#f75d59`): incorrect-answer highlight, delete-button hover, error-toast border.
+- **Success Green** (`#63bd80`): correct-answer highlight only.
+- **Alert Red** (`#e35f5a`): incorrect-answer highlight, delete hover, error
+  toast, and the flashcard's Still Learning verdict.
 
 ### Named Rules
-**The Signal Rule.** Starlight Blue is the only color that means "you can act on this" or "this is selected." It appears on exactly one thing per view — the current primary action, the active selection, or the in-progress fill — and never as decoration.
 
-**The Nebula-Is-Rare Rule.** Nebula has exactly two sanctioned homes system-wide: the full-saturation conic gradient behind Home's hero, and the deeply muted cast of Flashcards' Mastery atmosphere. Nowhere else — never a button fill, never a chart or decoration color. Anything beyond those two breaks both Nebula's own impact and Starlight Blue's claim to "interactive."
+**The Two-Inks Rule.** Blue marks actions; brass marks the plate. A number, a
+label, a count, a letter, a rule or a tick is brass — it annotates, and annotation
+is never clickable. Anything the student can act on or has selected is blue, and
+there is one such thing per view. Putting a count in blue, or a button in brass,
+breaks the only distinction the chrome makes.
 
-**The Mode-Owns-Its-Screen Rule.** Inside the Flashcard screen the mode's hue *replaces* Starlight Blue as the accent: ambience, rims and tonal casts take it, and so does every control that would otherwise be blue — the filled button, the switches, the pill's thumb, focus rings. The screen therefore still has exactly one color meaning "act here" (The Signal Rule holds; the color it resolves to is what changed). Nothing outside `#flashcard-screen` is touched — the mode hue never leaks past that screen, and Starlight Blue remains the app's accent everywhere else. Alert Red is the one exception inside the screen: a destructive button's red is a warning, not a theme.
+**The Signal Rule.** Star Blue appears on exactly one thing per view — the current
+primary action, the active selection, or the in-progress fill — and never as
+decoration.
 
-This reversed an earlier rule (the *Atmosphere-Is-Not-A-Control Rule*, which held every control on the screen to Starlight Blue); changed 2026-08-18 at Davis's call, because a blue Know It button on a purple Mastery screen read as a leftover from the other mode rather than as a signal.
+**The Mode-Owns-Its-Screen Rule.** Inside the Flashcard screen the mode's hue
+*replaces* Star Blue as the accent: ambience, rims, tonal casts, and every control
+that would otherwise be blue — the filled button, the switches, the pill's thumb,
+focus rings. The screen therefore still has exactly one color meaning "act here."
+Nothing outside `#flashcard-screen` is touched. Alert Red is the one exception
+inside the screen: a destructive button's red is a warning, not a theme.
 
-**The Feedback-Only Rule.** Success Green and Alert Red exist solely to answer "was this right or wrong." They never appear as generic UI accents, chart colors, or decoration outside a quiz-feedback context. Its one extension: Alert Red also carries the flashcard's **Still Learning** swipe, which is the same answer given about oneself. Green is *not* the counterpart there — Know It wears the mode's own hue, because inside the Flashcard screen that hue already means "the good direction" (The Mode-Owns-Its-Screen Rule), and green would put a third color on a screen that has two.
+**The Feedback-Only Rule.** Success Green and Alert Red exist solely to answer
+"was this right or wrong." Its one extension: Alert Red also carries the
+flashcard's **Still Learning** swipe, which is the same answer given about
+oneself. Green is *not* the counterpart there — Know It wears the mode's own hue,
+because inside the Flashcard screen that hue already means "the good direction."
+
+**The No-Glow Rule.** Nothing in this system emits light. No gradient-filled
+button, no colored box-shadow, no glow behind a headline, no gradient-clipped
+text. A glowing blue button on a dark page is the most-copied artifact in
+generated web design, and removing it is most of why this app no longer reads as
+one. The exceptions are two, both inside the flashcard, both motion: the swipe
+verdict's edge glow, and the drag shadow.
 
 ## Typography
 
-**Display/Heading Font:** `'Space Grotesk', 'Inter', sans-serif` — self-hosted (`@fontsource/space-grotesk`, weights 600/700).
-**Body Font:** `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` — self-hosted (`@fontsource/inter`, weights 400/500/600/700).
-**Label/Mono Font:** `'JetBrains Mono', ui-monospace, Consolas, monospace` — self-hosted (`@fontsource/jetbrains-mono`, weights 400/500), used for the deck-JSON paste textarea and the quiz timer.
+**Display / Heading / Reading:** `'Newsreader', 'Iowan Old Style', Georgia, serif`
+— self-hosted (`@fontsource/newsreader`, 400/500/600 plus 400 italic).
+**Body / UI:** `'IBM Plex Sans', -apple-system, …` — self-hosted
+(`@fontsource/ibm-plex-sans`, 400/500/600/700).
+**Label / Mono:** `'IBM Plex Mono', ui-monospace, Consolas, monospace` —
+self-hosted (`@fontsource/ibm-plex-mono`, 400/500).
 
-**Character:** A geometric, slightly technical display face (Space Grotesk) sits over a highly legible workhorse body face (Inter) — headings feel considered without becoming decorative, and body copy stays maximally readable at study-session length.
+**Character:** a quiet literary serif over an engineered sans. Newsreader is set
+at weight 400 everywhere, never bold — an atlas plate's authority comes from the
+setting, not from the weight. IBM Plex Sans is deliberately not a neutral
+workhorse: its quirks are what keep the chrome from reading as a system default.
+The pair that came before — Space Grotesk over Inter — are both excellent and
+both, together, the house fonts of AI-generated sites.
 
 ### Hierarchy
-- **Display** (700, `2rem`, `1.25` line-height, Space Grotesk): `h1` only — currently just Home's "StudyDeck" hero wordmark, rendered with the gradient-text treatment (see Components).
-- **Heading** (700, `1.4rem`/`1.1rem`, Space Grotesk): `h2`/`h3` — screen titles ("Results", "Flashcards"), modal titles, mode-card names.
-- **Question** (400, `1.2rem`, `1.7` line-height, Inter): the primary reading role — quiz question text and flashcard front/back copy. Flashcard copy is the one fluid role in the system: `clamp(1.3rem, 1.05rem + 0.85vw, 1.75rem)` at `1.55`, because the card it sits in is itself sized off the viewport (see Flashcard, below) and fixed type in a growing frame reads as an under-filled card rather than a generous one.
-- **Body** (400, `1rem`, Inter): default UI copy, answer-button and button label text.
-- **Label** (400, `0.72–0.9rem`, usually Text Muted, Inter): the workhorse size for surrounding chrome — meta text, progress labels, hints, breakdown rows, form descriptions.
-- **Mono** (400, `0.85rem`, JetBrains Mono): the deck-JSON paste textarea and the quiz session timer; never used for prose.
+- **Display** (400, `clamp(2.6rem, 2rem + 2.6vw, 4rem)`, Newsreader): `h1` only —
+  Home's and Share's wordmark, plain ivory under a brass rule.
+- **Heading** (400, `1.75rem` / `1.2rem`, Newsreader): `h2`/`h3` — screen titles,
+  modal titles, mode-card names, deck titles in the catalog.
+- **Reading** (400, `1.5rem`, Newsreader, `1.5` leading, `62ch` measure): quiz
+  question text. Flashcard faces take the same voice at
+  `clamp(1.45rem, 1.1rem + 1vw, 2.05rem)`, fluid because the card they sit in is
+  itself sized off the viewport. **The serif carries reading, not just headings** —
+  a study question set in the same sans as the buttons around it reads as a form
+  to fill in rather than as something to think about.
+- **Body** (400, `1rem`, IBM Plex Sans): UI copy, answer text, button labels
+  (`0.8rem` with `0.06em` tracking on buttons).
+- **Plate Label** (500, `0.66–0.72rem`, IBM Plex Mono, `0.14em` tracking,
+  uppercase, brass): the app's single metadata voice — catalog headers, plate
+  numbers, question counts, the quiz timer, progress text, the streak tally, the
+  flashcard hint, mode-pill labels, answer letters. See the rule below.
+- **Mono** (400, `0.85rem`, IBM Plex Mono): the JSON paste box and code editor.
 
 ### Named Rules
-**The Three-Voice Rule.** Every text role resolves to exactly one of three faces — Space Grotesk (headings), Inter (everything else prose/UI), JetBrains Mono (code/timestamps/metadata). A fourth face, or using Space Grotesk below heading scale, breaks the system.
+
+**The One-Annotation-Voice Rule.** Every piece of metadata in the app is set the
+same way: small, letter-spaced, uppercase, brass, mono. Not "grey small text tuned
+per screen" — one voice, so the chrome reads as a single hand annotating the
+plate. Before this rule there were six differently-sized muted labels doing the
+same job; the difference between them was noise a reader had to filter.
+
+**The Three-Voice Rule.** Every text role resolves to exactly one of three faces —
+Newsreader (headings *and* reading), IBM Plex Sans (UI/chrome), IBM Plex Mono
+(annotation and code). A fourth face breaks the system, and so does bolding
+Newsreader.
 
 ## Layout
 
-Unchanged from the prior system: a single centered column, `max-width: 960px`, with `32px` top / `24px` side / `64px` bottom padding. No sidebar, no multi-column dashboard, no persistent chrome outside that column. One full-page screen mounts at a time and fades/slides in (150ms). Responsive behavior comes from CSS Grid `auto-fill`/`auto-fit` + `minmax()` rather than explicit breakpoints. The spacing scale (`8 / 12 / 16 / 24 / 32px`) governs gaps and internal padding consistently.
+A single centered column, `max-width: 960px`, `32px` top / `24px` side / `64px`
+bottom padding. No sidebar, no persistent chrome. One full-page screen mounts at a
+time and fades/slides in (150ms). The spacing scale (`8 / 12 / 16 / 24 / 32px`)
+governs gaps and internal padding.
 
-Every screen is a top-anchored document inside that column, with one exception: Flashcards fills the viewport height and sizes its card off the leftover space (see Components → Flashcard). It qualifies because the card is the screen's entire content; a screen with a list, a form, or a results breakdown on it does not, however much void sits under it.
+**Lists are ruled, not tiled.** Home's library, the quiz's answers and Stats'
+breakdown are all the same object: full-width rows separated by one hairline
+apiece, with a brass marking in the left margin and the row's controls held at the
+right. This replaced an `auto-fill minmax()` card grid, which truncated deck
+titles into identical bordered tiles — the exact shape the redesign was called to
+remove. A grid of identical boxes is what a layout looks like when nobody decided
+anything about the content.
+
+Every screen is a top-anchored document inside that column, with one exception:
+Flashcards fills the viewport height and sizes its card off the leftover space. It
+qualifies because the card is the screen's entire content.
 
 ## Elevation & Depth
 
-No blur, no translucency, no shadow-based elevation at rest. Depth comes entirely from solid tonal layering: Void Navy (page) → Surface (panel) → Surface Raised (panel hover, or a nested/next-step surface), each a flat fill one lightness step up from the last, edged with a 1px Border Hairline. A panel reads as "raised" purely through that lightness contrast against its background, never through shadow or blur.
+There is no elevation. No blur, no translucency, no shadow at rest, and — new in
+this system — **almost no fill**. Depth comes from rules and space: content sits
+directly on the ink, and a hairline says where one thing ends and the next begins.
+Surface is reserved for objects that genuinely float above the page (modals, the
+flashcard, the code editor) or that need to be legible against a running field
+(the JSON box).
 
 ### Shadow Vocabulary
-- **Floating-drag** (`box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4)`): the order-list item currently being dragged.
-- **Tooltip-lift** (`box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45)`): the graph axis-label hover tooltip.
+- **Floating-drag** (`0 8px 24px rgba(0,0,0,0.4)`): the order-list item being dragged.
+- **Card-in-flight** (`0 14px 34px rgb(0 0 0 / 0.42)`): the flashcard mid-throw.
+- **Tooltip-lift** (`0 4px 14px rgba(0,0,0,0.45)`): the graph axis-label tooltip.
 
-### Named Rules
-**The Shadow-Is-Motion Rule.** Shadow appears only on an element the user is actively moving or hovering out of flow — never on a static, at-rest surface. If a new component needs a shadow at rest, that's a signal it isn't actually part of this system.
+**The Shadow-Is-Motion Rule.** Shadow appears only on an element the user is
+actively moving — never on a static, at-rest surface.
 
 ## Shapes
 
-`16px` radius (the `--radius` token) is the system's signature curve: every panel, the flashcard, graph containers, and the error toast all share it. Interactive controls step down to `12px` (buttons, inputs, answer/order rows); the smallest chrome (icon buttons, drag/order step buttons, tooltips) uses `8px`. Fully circular elements — the step-number badge, the auth avatar circle, toggle-switch tracks/thumbs — use `50%` or a radius equal to half their own height. Border weight is still the system's tell for interactivity: static surfaces get a 1px Border Hairline; anything clickable/selectable (mode cards, copy-prompt option cards) steps up to 2px, then shifts to Starlight Blue Light + a faint blue tint when selected.
+**Corners, not curves.** `4px` (`--radius`) is the system's maximum, on plates and
+the flashcard; controls step down to `3px` (`--radius-md`) and the smallest chrome
+to `2px`. The radius exists to stop a 1px edge looking chipped, not to soften
+anything. The prior system's `16px` signature curve, its `999px` pills and its
+`50%` discs are all gone — a rounded pill on a ruled plate is the one shape that
+gives the game away. Circles survive only where the object genuinely is one: the
+auth avatar.
+
+Border weight no longer signals interactivity — everything is 1px, and the
+distinction is carried by color instead (a ruled row washes brass on hover; a
+selected one takes a full Star Blue border).
 
 ## Components
 
 ### Buttons
-- **Shape:** `12px` radius.
-- **Primary:** a top-to-bottom gradient from Starlight Blue into Starlight Blue Deep, white text, `10px 20px` padding, a soft blue glow shadow (`0 2px 10px rgba(2,103,199,0.35)`); hover brightens via `filter: brightness(1.12)`, press scales to `0.97`. The only element permitted this gradient fill — no other component uses it.
-- **Ghost:** transparent fill, Text Muted text, `1px` Border Hairline; hover brightens text to Text Primary and the border. Used for secondary/dismissive actions.
-- **Disabled:** `opacity: 0.35`, default cursor, no hover or press response.
+- **Shape:** `3px` radius, `0.8rem` label at `0.06em` tracking.
+- **Primary:** flat Star Blue fill, white text, 1px border of the same color, no
+  shadow. Hover lightens to `#4a7fd0`; press drops the button `1px` and darkens to
+  Star Blue Deep — a key going down, not a bubble squashing.
+- **Ghost:** transparent, muted text, hairline border; hover brightens both.
+- **Disabled:** `opacity: 0.35`, no hover or press response.
 
-### Cards / Containers
-- **Corner Style:** `16px` radius, uniform across every card type.
-- **Background:** Surface at rest, brightening to Surface Raised on hover.
-- **Shadow Strategy:** none — see Elevation & Depth.
-- **Border:** `1px` Border Hairline on static cards; the selectable variant (mode cards, copy-prompt options) uses `2px` and shifts to Starlight Blue Light with a faint blue tint (`rgba(48, 147, 236, 0.14)`) when selected.
-- **Internal Padding:** `16px` for a standard card, `24px 20px` for larger selectable cards, `28px` for modal cards.
+### Plates (`.glass-card`)
+The class name is historical — there has been no glass in this system for two
+redesigns, and renaming it would touch fifteen components for no visual gain.
+- Surface fill, 1px hairline, `4px` radius.
+- **Brass registration marks** at the top-left and bottom-right corners
+  (`::before` / `::after`, 9px, `--brass-dim`) — the way a plate is marked up for
+  the press. This is the plate's signature and the reason it needs no shadow.
+- Used only by objects that float: modals, the drop region, the share panel, the
+  round-complete card. Ruled rows explicitly opt out of the corner marks.
+
+### Catalog Row
+Home's library and Stats' breakdown. Grid of `46px` plate number / content /
+controls. Brass mono number on the row's first baseline, deck title in Newsreader
+at `1.25rem`, plate-label metadata beneath, one hairline underneath, brass wash on
+hover. The row's two controls hold a fixed column so nothing reflows, at 25%
+opacity until the row is hovered or one of them takes focus — twenty rows should
+not read as forty buttons. Below `440px` the number column is dropped.
+
+### Answer Row
+`border: 1px solid transparent` with only `border-bottom-color` set at rest, so
+the list reads as four rules; brass mono letter in the margin; brass wash on
+hover. A full colored border appears only once the row is selected or judged, and
+because the border box is declared at full width all along, nothing reflows when
+it colors in.
 
 ### Inputs / Fields
-- **Style:** solid dark fill (Surface, or `rgba(0,0,0,0.25)` for the larger JSON textarea), `1px` Border Hairline, `10–12px` radius.
-- **Focus:** border shifts to Starlight Blue Light — a clean color-only cue, no glow or ring.
-- **Error / Disabled:** no inline field-error state exists; errors surface globally via the toast.
+Solid dark fill, 1px hairline, `3px` radius. **Focus shifts the border to Star
+Blue Light** — a color-only cue, never a glow or ring.
 
-### Navigation (Progress Header)
-No persistent top nav — each screen is a full-page state. Practice, Test, and Review share one Progress Header: a ghost ✕ "abandon" icon, a compact progress-text label, and a `4px` Surface-Raised track filled by Starlight Blue as the session advances.
+### Progress Header
+A ghost ✕, a plate-label progress readout, and a `3px` hairline track filled
+square (no radius) by Star Blue.
 
 ### Home Hero (signature moment)
-Home's header sits inside `.home-hero`: a radial navy glow plus a static procedural starfield (`Starfield.tsx` — ~48 small dots at fixed pseudo-random positions, gently twinkling, `prefers-reduced-motion`-aware) behind the title row only. The "StudyDeck" `h1` renders with a top-to-bottom white-to-Text-Hero-End (`#abbfdf`) gradient-text treatment, standing alone as the wordmark. This is the only screen with either the starfield or the gradient text; everywhere else stays on the plain Void Navy background with solid Text Primary type.
+Three things, none of them a glow:
+1. **The graticule** — a star chart's right-ascension/declination ruling, struck
+   at 4% ivory on a 64px cell and masked diagonally so it dissolves before it
+   reaches the catalog. This is what replaced the radial glow blob behind the
+   headline.
+2. **The star field** (`Starfield.tsx`) — 48 stars carrying *magnitude*, not just
+   size: a heavily dim-skewed distribution where only the top ~12% earns a
+   four-point diffraction cross. The field hangs 260px below the header and fades
+   out, so the first screenful reads as a patch of sky the page sits in rather
+   than a banner with stars in it that stops on a ruled line. It is masked on the
+   horizontal axis too — the left column is type, the right is sky — because a
+   star sitting inside a word reads as a typo.
+3. **The wordmark** — "StudyDeck" set plain in Newsreader with the tracking
+   opened, ruled off underneath with a 92px brass line. One weight, one ink, no
+   fill effect. It replaced a white-to-pale-blue gradient-clipped treatment.
 
 ### Flashcard (signature interaction)
-A real 3D CSS flip (`perspective: 1400px`, `rotateY(180deg)`, `400ms ease`) reveals the answer in the mode's own light. **A verdict looks the same however it is given:** Know It throws the card off to the right, Still Learning throws it off to the left, and a button press runs the same arc a swipe does — from centre rather than from where a finger let go, wearing the same rim and the same word. Still Learning used to shake in place instead, which made one verdict read as two different vocabularies depending on which hand you used.
+Unchanged in behavior; restated for completeness. A real 3D CSS flip
+(`perspective: 1400px`, `400ms`) reveals the answer in the mode's own light. **A
+verdict looks the same however it is given:** Know It throws the card right, Still
+Learning throws it left, and a button press runs the same arc a swipe does.
 
-**The card is also draggable, by any pointer.** One Pointer Events path covers finger, pen and mouse, so a desktop click-drag gets exactly what a phone swipe gets — a card that visibly moves under a mouse has to be a card you can throw with one. Right is forward in both modes (next card / Know It), left is back (previous card / Still Learning), the same axis split the arrow keys use. The card follows the finger with a slight tilt, springs home over 300ms on a release short of commitment, and on commitment carries on off the edge it was thrown toward. **The flight is bounded, not free:** the tilt caps at 6°, the exit's drop and turn stay inside the chrome below the card, and the page clips its own horizontal overflow — a card thrown off the screen must never answer the throw with a scrollbar sliding in under the hand making it.
+**The card is draggable by any pointer** — one Pointer Events path covers finger,
+pen and mouse. Right is forward in both modes (next card / Know It), left is back
+(previous / Still Learning), matching the arrow keys. The card follows the finger
+with a tilt capped at 6°, springs home over 300ms short of commitment, and carries
+on off the edge on commitment. The page clips its own horizontal overflow — a card
+thrown off screen must never answer the throw with a scrollbar.
 
-In **Mastery**, the drag is a crossfade: the card's own words fade out and the verdict fades in where they were, with a rim, an edge wash and a glow in that verdict's color — one `--swipe-p` property drives all of it, so what you're about to do is legible from the corner of the eye at any point in the gesture. **Know It wears the mode's hue; Still Learning wears Alert Red** (see The Feedback-Only Rule). **Standard gets no cue** — it records nothing, so a color that promises a consequence would be lying; there the card just follows the finger.
+In **Mastery** the drag is a crossfade: the card's words fade out and the verdict
+fades in where they were, driven by one `--swipe-p` property. **Know It wears the
+mode's hue; Still Learning wears Alert Red. Standard gets no cue** — it records
+nothing, so a color promising a consequence would be lying.
 
-**On touch the buttons are gone and the gesture is the whole interface** — the card is the screen and the thumb is the input, so the verdicts move into the swipe and stop taking height from the card. The test is the hands, not the window: `(pointer: coarse)` at any width, so a tablet held in landscape sorts by gesture and a desktop window dragged to phone width keeps its buttons, because a mouse has nothing to throw a card with that a button doesn't do better. Two things survive on touch: Undo, which moves up into the options row just after the mode pill (on every screen size — it is a correction, not a choice, and it is the one action no direction can express), and the buttons themselves in the accessibility tree, since a phone screen reader has no gesture to sort with. Settings goes icon-only below 560px so the row stays on one line — that one is genuinely about width. A **Card buttons** switch appears in Settings on touch only, for a tablet that would rather tap.
+**On touch the buttons are gone and the gesture is the whole interface.** The test
+is `(pointer: coarse)` at any width, not a breakpoint. Undo survives in the options
+row at every size; the buttons survive in the accessibility tree; a **Card buttons**
+switch in Settings brings them back on touch.
 
-**The card is sized as a stage, not as a panel.** Flashcards is the one screen in the app with a single object on it and nothing below the fold, so `#flashcard-screen` is a full-height flex column (`100dvh` less `#app`'s padding and the ambience canvas's bottom overhang) and the card takes every pixel the chrome above it doesn't — `flex: 1` between a `280px` floor and a `500px` ceiling, `760px` wide at most. That puts a full-size card at roughly 3:2, the proportions of a 6×4 index card, which is what lets a one-word front read as generous rather than as empty. Because the floor is fixed, the width steps down with the viewport height (`640px` under `820px` tall, `560px` under `680px`) so a short window gets a smaller card instead of a letterboxed one. Padding and type scale with the frame.
-
-This is the only screen permitted to claim the viewport this way. Every other screen stays a top-anchored document in the standard column — the flashcard earns it by being the entire content of its screen.
+**The card is sized as a stage, not as a panel** — `#flashcard-screen` is a
+full-height flex column and the card takes every pixel the chrome doesn't,
+`flex: 1` between a `280px` floor and a `500px` ceiling, `760px` wide at most. Its
+faces are set in Newsreader, the same reading voice as a quiz question.
 
 ### Flashcard Atmosphere (second signature moment)
-Behind the flashcard sits `FlashAmbience.tsx`, a Canvas 2D field that gives each study mode its own physics — the visible difference between the two modes, and the only animated decoration in the app outside Home's starfield.
-
-- **Standard** — stars breathe in place around fixed homes and twinkle out of phase. Nothing travels, because nothing is at stake.
-- **Mastery** — an accretion disc: inner particles sweep faster than outer ones around a foreshortened ellipse, with a central core whose brightness scales with the share of the deck already mastered.
-
-Both are pure functions of `(particle, time)` over one fixed pool, so a mode switch **crossfades by lerping each particle between its two mode positions** — the field physically flies from one behavior into the other over 700ms, matched to the CSS `@property` hue transition. Sorting a card fires a small expanding ring off the Mastery core. The canvas overhangs the active area and carries a radial vignette mask so no edge of it is ever visible as a line; it pauses when the tab is hidden or it scrolls out of view, and under `prefers-reduced-motion` it renders one composed still frame per mode.
-
-**It is frozen by default.** Decoration is opt-in on a study screen — a compact "Play motion" button in the options row starts it, the label names the action it will take rather than asking anyone to read state off a switch, and the choice is remembered per device. The atmosphere survives the freeze intact: hue, card rim, tonal cast and a composed still frame all read exactly as they do in motion, so the default costs the mode nothing. Motion off also suppresses the 700ms hue interpolation — the effect is one thing, and half of it left running on a screen someone asked to hold still is worse than none of it.
+`FlashAmbience.tsx`, a Canvas 2D field giving each mode its own physics.
+**Standard** — stars breathe in place; nothing travels, because nothing is at
+stake. **Mastery** — an accretion disc, inner particles sweeping faster than
+outer, with a core whose brightness scales with the share of the deck mastered.
+Both are pure functions of `(particle, time)` over one pool, so a mode switch lerps
+each particle between its two positions over 700ms. **It is frozen by default** —
+decoration is opt-in on a study screen; a "Play motion" button starts it and the
+choice is remembered per device.
 
 ### Mode Icons
-Practice/Test/Review use small `24px` line-SVG icons (`stroke="currentColor"`, `1.6` stroke width, no fill) instead of color emoji — Text Muted at rest, Starlight Blue Light when the card is selected. Replaces the prior full-color-emoji icons, which were the one ornamental element left over from before this redesign.
+`24px` line SVGs (`stroke="currentColor"`, no fill) — **Brass Dim** at rest, Brass
+on hover, Star Blue Light when selected. They are markings before they are buttons.
 
 ### Scrollbars
-- **Style:** a thin bar with a transparent track and a `rgba(255,255,255,0.16)` thumb, brightening to `0.32` on hover. Because the track carries no fill, the same bar reads correctly over the Void Navy page and inside a panel or the JSON textarea.
-- **Not the accent.** A scrollbar is present on every long screen at once, so a Starlight Blue thumb would put the app's one "act here" color on chrome the student never needs to look at (The Signal Rule). The scrollbar belongs to the tonal ladder, like a border.
-- **Standard properties first.** `scrollbar-width`/`scrollbar-color` are set once on `html` and inherit to every scroll container, so macOS keeps its native overlay behavior — `::-webkit-scrollbar` would force a permanent gutter there. The `-webkit-` rules exist only inside `@supports not (scrollbar-color: auto)`, for Chrome < 121 and Safari < 18.2.
+Thin, transparent track, `rgba(233,230,224,0.16)` thumb → `0.32` on hover.
+`scrollbar-width`/`scrollbar-color` set once on `html`; `::-webkit-scrollbar` rules
+live only inside `@supports not (scrollbar-color: auto)`, so macOS keeps its native
+overlay behavior. **Not the accent** — a scrollbar is on every long screen at once,
+and belongs to the neutral ladder like a rule.
 
 ### Toggle
-- **Style:** a `38×22px` pill track (Surface Raised fill, Border Hairline) with a `14px` circular thumb. Checked state fills the track Starlight Blue and slides the thumb to white.
+A `38×20px` track at `2px` radius with a `14px` square thumb. Checked fills the
+track Star Blue and slides the thumb to white. Deliberately not a pill.
 
 ### Segmented Pill
-- **Style:** a fully-rounded track (Panel fill, Border Hairline, `3px` padding) holding equal-width labels, with a Starlight Blue thumb one segment wide (`calc((100% - 6px) / n)`) that slides between them by `translateX(100% × index)` (`220ms`, `cubic-bezier(0.4, 0, 0.2, 1)`, suppressed under `prefers-reduced-motion`). The selected label turns white; unselected stay Text Muted.
-- **Use for:** picking between two or three named, mutually exclusive modes of the same activity (Flashcards' Standard / Mastery). Use the Toggle instead for an on/off option layered on top of a default — a toggle leaves its off state unnamed, which is exactly wrong when the choices are all real modes. Cap it at three: past that the labels get too narrow to read at this size, and it wants a dropdown.
-- **Markup:** visually-hidden radios inside the labels (same hidden-input treatment as Toggle) so the group is keyboard-operable and announces as one control.
+A `3px` radius track (not `999px`) holding equal-width labels, with a thumb one
+segment wide sliding by `translateX(100% × index)` over 220ms. Labels are set in
+the plate-label voice; the selected one turns white. Radios are visually hidden
+inside the labels so the group is keyboard-operable. Cap it at three.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep Starlight Blue reserved for the single actionable or selected element per view (The Signal Rule).
-- **Do** build new surfaces from the panel recipe — Surface fill, `1px` Border Hairline, `16px` radius — rather than reintroducing blur/glass.
-- **Do** use Inter for body/UI text, Space Grotesk only at heading scale, and JetBrains Mono strictly for code/metadata (The Three-Voice Rule).
-- **Do** let Success Green and Alert Red appear only as quiz correct/incorrect feedback (The Feedback-Only Rule).
+- **Do** keep Star Blue for the one actionable/selected element per view, and
+  brass for everything that annotates (The Two-Inks Rule).
+- **Do** build new structure from rules and space before reaching for a plate —
+  most content in this system sits directly on the ink.
+- **Do** set every piece of metadata in the plate-label voice (The
+  One-Annotation-Voice Rule).
+- **Do** use Newsreader for headings *and* reading roles, at weight 400.
+- **Do** let Success Green and Alert Red appear only as correct/incorrect feedback
+  (The Feedback-Only Rule).
 
 ### Don't:
-- **Don't** add `backdrop-filter`/blur anywhere — this system is solid, tonal-layered panels, not glass.
-- **Don't** use the Nebula gradient on anything interactive, or take its hues anywhere beyond Home's hero and the Flashcard mode atmospheres (The Nebula-Is-Rare Rule).
-- **Don't** let a mode's hue out of `#flashcard-screen` — inside it the mode hue is the accent and every blue control follows it, but the rest of the app stays Starlight Blue (The Mode-Owns-Its-Screen Rule).
-- **Don't** add drop shadows to static, at-rest surfaces — depth comes from tonal layering, not elevation (The Shadow-Is-Motion Rule).
-- **Don't** add bright, multi-color, gamified educational-app styling — badges, confetti, mascots, cheerful illustration, color emoji icons. The project is explicitly "not a Quizlet clone."
-- **Don't** style focus states with a glow or ring. The established cue is a border-color shift to Starlight Blue Light — or, inside the Flashcard screen, to the mode's `-light` (The Mode-Owns-Its-Screen Rule).
+- **Don't** add a gradient fill, a colored glow, a glowing shadow, or
+  gradient-clipped text anywhere (The No-Glow Rule). This is the single rule that
+  keeps the app from sliding back into looking generated.
+- **Don't** reintroduce radii above `4px`, pills, or discs. Corners are the system.
+- **Don't** lay content out as a grid of identically-bordered cards. If the content
+  is a list, rule it.
+- **Don't** add `backdrop-filter`/blur — this system is ink and rules, not glass.
+- **Don't** let a mode's hue out of `#flashcard-screen`.
+- **Don't** add drop shadows to static, at-rest surfaces (The Shadow-Is-Motion
+  Rule).
+- **Don't** add bright, multi-color, gamified educational-app styling — badges,
+  confetti, mascots, cheerful illustration, color emoji icons. The project is
+  explicitly "not a Quizlet clone."
+- **Don't** style focus with a glow or ring. The cue is a border shift to Star Blue
+  Light — or, inside the Flashcard screen, to the mode's `-light`.

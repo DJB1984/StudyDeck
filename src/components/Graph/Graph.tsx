@@ -11,11 +11,17 @@ import type { ChartConfiguration } from 'chart.js';
 import type { GraphSpec } from '../../types';
 import { Katex } from '../Math/Katex';
 
+// Canvas can't read CSS custom properties, so the plate's inks are mirrored
+// here as literals. Kept 1:1 with tokens.css — a graph drawn in the old white
+// greys on an ivory-ruled plate is the one place the two systems can visibly
+// disagree. Grid and border are the same ivory-alpha ladder as --border; the
+// curve is --accent-light.
 const DARK = {
-  grid: 'rgba(255,255,255,0.06)',
-  tick: 'rgba(225,229,235,0.5)',
-  border: 'rgba(255,255,255,0.12)',
+  grid: 'rgba(233,230,224,0.06)',
+  tick: 'rgba(233,230,224,0.45)',
+  border: 'rgba(233,230,224,0.12)',
 };
+const CURVE = '#93b8f5';
 
 function axisBase() {
   return {
@@ -66,10 +72,10 @@ function buildChart(graph: GraphSpec, canvas: HTMLCanvasElement): Chart {
         {
           data: points,
           showLine: true,
-          borderColor: '#63b3ff',
+          borderColor: CURVE,
           borderWidth: 2,
           pointRadius: graph.type === 'equation' ? 0 : 3,
-          pointBackgroundColor: '#63b3ff',
+          pointBackgroundColor: CURVE,
           fill: false,
           tension: 0,
         },

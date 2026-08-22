@@ -88,7 +88,14 @@ Practice shows live feedback with retries (retries don't affect stats); Test sho
 
 ### Visual design
 
-"Starfield" deep-space aesthetic — solid tonal-layered panels (no `backdrop-filter`/glass), one restrained accent (Starlight Blue), a reserved multi-hue Nebula gradient held back for Home's hero only. **`DESIGN.md`** at the repo root is the source of truth for the full system (palette, typography, named rules); `docs/core/design-doc.md`'s Visual Design section is a synced technical summary. Color tokens live in `src/theme/tokens.css` (isolated so a shared cross-project theme can swap in later); component styles in `src/theme/styles.css`. Use the existing `--bg`/`--surface`/`--accent`/etc. tokens rather than introducing new colors.
+"Star Atlas" aesthetic (replaced "Starfield" on 2026-08-22, at Davis's call — the app read as machine-generated) — the app as an engraved celestial atlas plate: an ink ground, ivory type, hairline rules and small brass annotation instead of boxes, one cool star-blue for the single actionable thing per view. **`DESIGN.md`** at the repo root is the source of truth for the full system (palette, typography, named rules); `docs/core/design-doc.md`'s Visual Design section is a synced technical summary. Color tokens live in `src/theme/tokens.css` (isolated so a shared cross-project theme can swap in later); component styles in `src/theme/styles.css`. Use the existing `--bg`/`--surface`/`--accent`/`--brass`/etc. tokens rather than introducing new colors.
+
+**The redesign changed material and composition only — no workflow, control, flow or piece of state moved.** Four things in particular are load-bearing and are the reasons the old look read as generated; don't reintroduce any of them without asking:
+
+- **No glow, ever** — no gradient-filled buttons, no colored box-shadows, no glow behind a headline, no gradient-clipped text. Buttons are flat stamps that translate 1px on press.
+- **Corners, not curves** — `--radius` is 4px and is the system maximum; controls are 3px, small chrome 2px. No pills (`999px`), no discs (`50%`) except the auth avatar.
+- **Lists are ruled, not tiled** — Home's library, quiz answers and the Stats breakdown are full-width rows separated by one hairline each. The old `auto-fill minmax()` card grid is gone.
+- **Two inks** — star-blue means "act on this / this is selected"; brass (`--brass`) means "this is a marking on the plate" and is never interactive. Every piece of metadata in the app shares one voice: small letter-spaced uppercase brass mono.
 
 ## Deployment (live site)
 
