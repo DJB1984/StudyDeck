@@ -440,8 +440,8 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
               prose of unpredictable length; three-across tiles truncate it and
               stack identical bordered boxes, which is exactly the shape the
               redesign was called to get rid of. Full-width rules let the title
-              run at reading size and give the plate number a column of its
-              own. Every handler here is unchanged — only the markup moved. */}
+              run at reading size, flush with the section label above it. Every
+              handler here is unchanged — only the markup moved. */}
           <div className="catalog-head">
             <span className="plate-label">Your study sets</span>
             <span className="catalog-rule" aria-hidden="true" />
@@ -450,18 +450,12 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
             </span>
           </div>
           <ol id="file-history-list">
-            {history.map((file, i) => (
+            {history.map((file) => (
               <li
                 key={file.title}
                 className="file-row"
                 onClick={() => openCard(file)}
               >
-                {/* Plate number — the row's position in the catalog, not an id
-                    that means anything. It exists so the eye has a fixed left
-                    edge to run down, the way a chart index does. */}
-                <span className="file-row-cat" aria-hidden="true">
-                  {String(i + 1).padStart(3, '0')}
-                </span>
                 <div className="file-row-body">
                   <h3 className="file-row-title">{file.title}</h3>
                   {/* Flashcard decks show the Know It tally IN PLACE OF the

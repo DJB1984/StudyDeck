@@ -249,7 +249,7 @@ Bottom controls follow the mode. Standard shows only two icon-only arrow buttons
 --accent-light: #93b8f5;              /* on-ink text, hover/focus rules, graph curve */
 --accent-deep: #24508f;               /* pressed fill */
 --accent-wash: rgba(58, 109, 192, 0.14);
-/* Brass — the engraver's annotation ink. Plate numbers, catalog labels, counts,
+/* Brass — the engraver's annotation ink. Catalog labels, counts,
    timestamps, answer letters, tick rules. NEVER a fill, never interactive:
    brass marks the plate, blue marks the action (DESIGN.md, The Two-Inks Rule). */
 --brass: #c9a06a; --brass-dim: rgba(201, 160, 106, 0.42); --brass-wash: rgba(201, 160, 106, 0.09);
@@ -283,7 +283,7 @@ border-radius: var(--radius);
 
 **Typography:** Three self-hosted webfonts (`@fontsource/*`, no CDN): **Newsreader** (serif) for headings *and* every reading role — quiz question text at 1.5rem/62ch, flashcard faces, the Stats score — always at weight 400, never bold; **IBM Plex Sans** for UI/chrome and answer text; **IBM Plex Mono** for code and for the plate-label voice. KaTeX inherits size.
 
-**The plate label** — every piece of metadata in the app (catalog headers, plate numbers, question counts, quiz timer, progress text, streak tally, flashcard hint, mode-pill labels, answer letters) is one voice: `--font-mono`, ~0.7rem, weight 500, `letter-spacing: var(--label-tracking)`, uppercase, `--brass`.
+**The plate label** — every piece of metadata in the app (catalog headers, catalog counts, question counts, quiz timer, progress text, streak tally, flashcard hint, mode-pill labels, answer letters) is one voice: `--font-mono`, ~0.7rem, weight 500, `letter-spacing: var(--label-tracking)`, uppercase, `--brass`.
 
 **Animations:**
 - Screen transitions: fade + 4px vertical slide (150ms ease-out)

@@ -1,9 +1,10 @@
 // AuthButton — Home screen header element.
 // Logged out: ghost "Log in" button. Logged in: a circular avatar (generic
 // person icon, matching the app's solid panel surfaces rather than a solid
-// per-email color) that smoothly grows into a panel showing the
-// email and a "Log out" button (see styles.css .auth-panel for the
-// animation). Also owns the two pieces of app-startup auth wiring that
+// per-email color) that drops a ruled account plate beneath it — the email
+// under a brass plate marking, and a full-width "Log out" row under a
+// hairline (see styles.css .auth-menu). Also owns the two pieces of
+// app-startup auth wiring that
 // belong nowhere else: detecting an expired/used magic link in the URL (R6),
 // and kicking off migration exactly once per real sign-in (R11/R14, via
 // SupabaseClient.onSignedIn).
@@ -18,22 +19,14 @@ import { syncOnLogin } from './migration';
 // avatar convention used by Gmail/Slack/etc. Two circles: the shoulder
 // circle's center sits below the viewBox, so only its top arc shows —
 // SVG clips to its viewBox by default, no extra CSS needed.
-function PersonIcon() {
+function PersonIcon({ className = 'auth-person-icon' }: { className?: string }) {
   return (
-    <svg className="auth-person-icon" viewBox="0 0 100 100" aria-hidden="true">
+    <svg className={className} viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="38" r="20" />
       <circle cx="50" cy="112" r="46" />
     </svg>
   );
 }
-
-// Must match .auth-panel-header's icon width + gap + padding in styles.css —
-// kept as constants here (rather than reading computed styles) since they're
-// simple, stable design values used to compute the content-fit panel width.
-const ICON_AREA_WIDTH = 20 + 12; // icon + gap to the email text
-const PANEL_TEXT_PAD_LEFT = 13;
-const PANEL_TEXT_PAD_RIGHT = 13;
-const PANEL_COLLAPSED_SIZE = 40;
 
 // R6: Supabase redirects an expired/already-used magic link back with
 // `#error=...&error_code=otp_expired...` in the URL hash rather than through
@@ -54,33 +47,26 @@ export function AuthButton() {
   const [modalOpen, setModalOpen] = useState(false);
   const [expiredError, setExpiredError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const emailTextRef = useRef<HTMLSpanElement>(null);
-  const [expandedWidth, setExpandedWidth] = useState(PANEL_COLLAPSED_SIZE);
-
-  // Content-fit expanded width: measures the email text's actual rendered
-  // width so the panel is only ever as wide as it needs to be. Without this,
-  // a fixed width leaves asymmetric empty space after short emails — this is
-  // what makes the row look properly centered rather than lopsided.
-  useEffect(() => {
-    if (emailTextRef.current) {
-      setExpandedWidth(
-        emailTextRef.current.scrollWidth +
-          ICON_AREA_WIDTH +
-          PANEL_TEXT_PAD_LEFT +
-          PANEL_TEXT_PAD_RIGHT,
-      );
-    }
-  }, [email]);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    // Deferred one tick so the avatar's own click (which set menuOpen=true)
+    // A click anywhere outside the avatar or its plate closes the menu; one
+    // inside (selecting the email text, say) leaves it open. Deferred one
+    // tick so the avatar's own click — the one that set menuOpen=true —
     // doesn't immediately close it again via this same listener.
-    const id = window.setTimeout(() => document.addEventListener('click', close), 0);
+    const onClick = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    const id = window.setTimeout(() => document.addEventListener('click', onClick), 0);
+    document.addEventListener('keydown', onKey);
     return () => {
       window.clearTimeout(id);
-      document.removeEventListener('click', close);
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('keydown', onKey);
     };
   }, [menuOpen]);
 
@@ -117,7 +103,10 @@ export function AuthButton() {
   if (!loggedIn) {
     return (
       <>
-        <button className="btn-ghost auth-login-btn" onClick={() => setModalOpen(true)}>
+        {/* Same glyph as the logged-in avatar — see .auth-login-btn in
+            styles.css for why the two states share it. */}
+        <button className="auth-login-btn" onClick={() => setModalOpen(true)}>
+          <PersonIcon className="auth-login-icon" />
           Log in
         </button>
         {modalOpen && (
@@ -137,38 +126,37 @@ export function AuthButton() {
     );
   }
 
-  // Header and body stay in the DOM always (never conditionally rendered) —
-  // the "expanded" class alone drives the animation, both opening AND
-  // closing. Conditionally rendering would unmount the panel the instant
-  // menuOpen flips false, skipping the close transition entirely.
+  // The plate stays in the DOM always (never conditionally rendered) — the
+  // "open" class alone drives it, both opening AND closing. Conditional
+  // rendering would unmount the plate the instant menuOpen flips false,
+  // skipping the close transition entirely.
   //
-  // The panel is a solid surface (var(--surface)/var(--surface-hover)) in
-  // BOTH collapsed and expanded states — matching the app's other panels,
-  // and avoiding a jarring material change mid-transition. The person icon
-  // stays a fixed-size, fixed-position badge;
-  // the email and Log out button slide/fade in next to and below it.
+  // The avatar itself never moves or changes shape: the menu is a separate
+  // plate set down beneath it. That's the whole difference from the old
+  // grow-from-circle morph — no control in this system changes its own
+  // geometry, and nothing rounds past the 4px system maximum.
   return (
-    <div className="auth-avatar-wrap">
-      <div
-        className={'auth-panel' + (menuOpen ? ' expanded' : '')}
-        style={{ width: expandedWidth }}
+    <div className="auth-avatar-wrap" ref={wrapRef}>
+      <button
+        className="auth-avatar-btn"
+        onClick={() => setMenuOpen((v) => !v)}
+        title={email ?? undefined}
+        aria-label="Account"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
       >
-        <button
-          className="auth-panel-header"
-          onClick={() => setMenuOpen((v) => !v)}
-          title={email ?? undefined}
-          aria-expanded={menuOpen}
-        >
-          <PersonIcon />
-          <span className="auth-email-slide" ref={emailTextRef}>
+        <PersonIcon />
+      </button>
+      <div className={'auth-menu' + (menuOpen ? ' open' : '')}>
+        <div className="auth-menu-id">
+          <span className="auth-menu-label">Signed in</span>
+          <span className="auth-menu-email" title={email ?? undefined}>
             {email}
           </span>
-        </button>
-        <div className="auth-panel-body">
-          <button className="auth-logout-btn" onClick={handleLogout}>
-            Log out
-          </button>
         </div>
+        <button className="auth-logout-btn" onClick={handleLogout}>
+          Log out
+        </button>
       </div>
     </div>
   );

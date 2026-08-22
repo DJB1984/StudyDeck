@@ -344,12 +344,15 @@ redesigns, and renaming it would touch fifteen components for no visual gain.
   round-complete card. Ruled rows explicitly opt out of the corner marks.
 
 ### Catalog Row
-Home's library and Stats' breakdown. Grid of `46px` plate number / content /
-controls. Brass mono number on the row's first baseline, deck title in Newsreader
-at `1.25rem`, plate-label metadata beneath, one hairline underneath, brass wash on
-hover. The row's two controls hold a fixed column so nothing reflows, at 25%
-opacity until the row is hovered or one of them takes focus — twenty rows should
-not read as forty buttons. Below `440px` the number column is dropped.
+Home's library and Stats' breakdown. Grid of content / controls. Deck title in
+Newsreader at `1.25rem` flush with the section label above it, plate-label
+metadata beneath, one hairline underneath, brass wash on hover. The row's two
+controls hold a fixed column so nothing reflows, at 25% opacity until the row is
+hovered or one of them takes focus — twenty rows should not read as forty
+buttons. The row carried a brass plate number in a `46px` left column until
+2026-08-22; it was dropped (Davis's call) — a running 001/002/003 down the
+margin annotated nothing the student needed, and the title reads better flush
+left. Don't reintroduce it. The catalog head keeps its total count.
 
 ### Answer Row
 `border: 1px solid transparent` with only `border-bottom-color` set at rest, so

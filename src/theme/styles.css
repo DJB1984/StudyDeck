@@ -237,7 +237,7 @@ button { font-family: inherit; cursor: pointer; }
 .file-row {
   position: relative;
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 0 4px;
   padding: 16px 12px 16px 0;
@@ -246,19 +246,6 @@ button { font-family: inherit; cursor: pointer; }
   transition: background 140ms ease;
 }
 .file-row:hover { background: var(--brass-wash); }
-
-/* The plate number sits on the row's first baseline, aligned with the title —
-   it is a marking beside the entry, not a bullet floating above it. */
-.file-row-cat {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: var(--brass-dim);
-  padding-left: 2px;
-  transition: color 140ms ease;
-}
-.file-row:hover .file-row-cat { color: var(--brass); }
 
 .file-row-body { min-width: 0; }
 .file-row-title {
@@ -286,7 +273,7 @@ button { font-family: inherit; cursor: pointer; }
    at low contrast until the row is hovered or one of them takes focus, since a
    list of twenty rows should not be a list of forty buttons. */
 .file-card-actions {
-  grid-column: 3;
+  grid-column: 2;
   grid-row: 1 / -1;
   align-self: center;
   display: flex;
@@ -315,14 +302,6 @@ button { font-family: inherit; cursor: pointer; }
 .file-row .share-btn svg { width: 17px; height: 17px; display: block; }
 .file-row .share-btn:hover { color: var(--accent-light); }
 .file-row .delete-btn:hover { color: var(--incorrect); }
-
-/* Under ~440px the plate-number column costs more than it gives; drop it and
-   let the title take the full measure. */
-@media (max-width: 440px) {
-  .file-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .file-row-cat { display: none; }
-  .file-card-actions { grid-column: 2; }
-}
 
 /* Rotating tagline (Home spec R14–R17) */
 .tagline {
@@ -407,11 +386,12 @@ button { font-family: inherit; cursor: pointer; }
    under the type rather than as a table around it. */
 .home-hero {
   position: relative;
-  /* Its own stacking context, so the field below can hang past the header's box
-     and still paint UNDER everything that follows it in the column. Without the
-     isolation, a positioned z-index:0 starfield would sit on top of the catalog
-     rows, which are in normal flow. */
-  isolation: isolate;
+  /* Deliberately NOT its own stacking context. The graticule and the starfield
+     hang past the header's box and must paint UNDER everything that follows in
+     the column — they get there on z-index:-1 (see below) rather than on
+     `isolation: isolate` here. Isolating the hero also trapped everything the
+     header owns at the hero's level, which put the account menu and the login
+     overlay under the catalog rows however high their z-index went. */
   overflow: visible;
   margin: -8px -8px 0;
   padding: 8px 8px 4px;
@@ -425,7 +405,9 @@ button { font-family: inherit; cursor: pointer; }
   content: '';
   position: absolute;
   inset: -8px -8px -60px;
-  z-index: 0;
+  /* Behind the column's in-flow content — the ruling passes under the catalog,
+     it does not lie on top of it. */
+  z-index: -1;
   pointer-events: none;
   background:
     repeating-linear-gradient(to right, rgba(233, 230, 224, 0.04) 0 1px, transparent 1px 64px),
@@ -439,7 +421,8 @@ button { font-family: inherit; cursor: pointer; }
 .starfield {
   position: absolute;
   inset: -8px -8px -260px;
-  z-index: 0;
+  /* Same as the graticule: painted under the column, not over it. */
+  z-index: -1;
   pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 96%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 96%);
@@ -770,158 +753,172 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* Auth */
-.auth-login-btn { flex-shrink: 0; }
+/* Logged out and logged in are the SAME control in two forms: the login button
+   carries the avatar's person icon, its surface material and its exact 40px
+   height, so signing in reads as that control filling in rather than as one
+   widget being swapped for an unrelated one. It also puts the button on the
+   header's baseline — as a bare .btn-ghost it stood 5px shorter than both the
+   avatar and Copy Prompt beside it. Ghost ink, never blue: Copy Prompt is the
+   header's one action (The Signal Rule). */
+.auth-login-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 15px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease,
+    transform 90ms ease;
+}
+.auth-login-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.auth-login-btn:active { transform: translateY(1px); }
+/* Sized and inked to match .auth-person-icon in the collapsed avatar, so the
+   two states show the same glyph at the same weight. */
+.auth-login-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
 
-/* Fixed-size placeholder so the header row never shifts — the actual panel
-   below is absolutely positioned over this, anchored top-right, and grows
-   OUTSIDE these bounds when expanded without disturbing sibling layout.
-   40px matches .btn's rendered height (Copy Prompt) so the collapsed circle
-   lines up with it exactly. */
+/* The avatar's anchor. Fixed 40px so the header row never shifts, and the
+   menu below is absolutely positioned off it — the plate hangs over the page
+   rather than pushing anything around. 40px matches .btn's rendered height
+   (Copy Prompt), so the disc sits on the header's baseline beside it. */
 .auth-avatar-wrap {
   position: relative;
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-}
-
-/* The whole logged-in control is ONE element that IS the avatar circle —
-   there's no separate circular badge sitting inside it. It's a solid
-   surface (var(--surface)/var(--surface-hover)) in BOTH collapsed and
-   expanded states, matching the app's other panels — deliberately NOT a
-   solid per-email color, so growing from circle to panel never has to morph
-   between two different visual materials. Anchored to its top-right corner
-   (fixed screen position), so it only ever grows to the left and downward —
-   never disturbing where the Copy Prompt button sits. */
-/* The box is ALWAYS laid out at its full natural size (width from the inline
-   style in AuthButton.tsx, height auto to content) — collapsed vs. expanded
-   is purely a clip-path crop down to the top-right 40x40 rounded square, not
-   a real resize. That's deliberate: animating width/height/max-height is a
-   layout property (forces reflow every frame); clip-path is compositor-only,
-   so the grow/shrink stays smooth AND doesn't distort the always-visible
-   person icon the way scaling the whole box would. clip-path also clips the
-   hit-test region the same as the paint (per spec, browsers restrict pointer
-   events to the visible clipped area), so the "phantom" wide box while
-   collapsed never steals clicks meant for whatever sits to its left (e.g.
-   Copy Prompt). */
-.auth-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: auto;
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   z-index: 150;
-  display: flex;
-  flex-direction: column;
-  clip-path: inset(0 0 calc(100% - 40px) calc(100% - 40px) round var(--radius));
-  transition: clip-path 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 260ms ease;
-}
-.auth-panel.expanded {
-  clip-path: inset(0 0 0 0 round 20px);
-  background-color: var(--surface-hover);
-}
-.auth-panel.expanded .auth-person-icon {
-  right: 13px;
 }
 
-/* Header row: the person icon is ABSOLUTELY positioned, not a flex child —
-   at the 40px collapsed width, the icon (20px) plus the flex-shrink:0 email
-   span (needed so its measured width isn't compressed, see AuthButton.tsx)
-   don't fit the padded content box and overflow gets clipped asymmetrically
-   by row-reverse packing, which is what made the icon look off-center. Fixed
-   positioning (top/right, centered via translateY) keeps it dead-center in
-   the circle and exactly 13px from the right edge regardless of container
-   width or what the email span is doing. */
-.auth-panel-header {
-  position: relative;
+/* The one disc in the system (DESIGN.md's stated exception to Corners, Not
+   Curves): an avatar reads as a person, and a person is not a plate. Ghost
+   ink, never blue — Copy Prompt is the header's one action (The Signal
+   Rule), so an open account menu marks itself with a stronger rule and
+   brighter glyph rather than by taking the star blue. */
+.auth-avatar-btn {
   display: flex;
   align-items: center;
-  width: 100%;
+  justify-content: center;
+  width: 40px;
   height: 40px;
-  flex-shrink: 0;
   padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.auth-avatar-btn:hover,
+.auth-avatar-btn[aria-expanded='true'] {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.auth-avatar-btn:hover .auth-person-icon,
+.auth-avatar-btn[aria-expanded='true'] .auth-person-icon {
+  fill: var(--text-primary);
+}
+.auth-avatar-btn:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
 }
 .auth-person-icon {
-  position: absolute;
-  top: 50%;
-  /* (40px collapsed circle - 20px icon) / 2 = 10px — true center. The
-     expanded state overrides this to 13px, matching the email's left-side
-     margin for a balanced look in the wider panel; these are genuinely
-     different values for different container widths, not a typo. */
-  right: 10px;
-  transform: translateY(-50%);
   width: 20px;
   height: 20px;
   fill: var(--text-secondary);
-  transition: right 260ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.auth-email-slide {
-  display: inline-block;
-  flex-shrink: 0;
-  /* Reserve the icon's footprint (13px right padding + 20px icon + 12px
-     gap) on the right so the sliding-in text never renders under it. */
-  margin-left: 13px;
-  margin-right: 45px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  font-weight: 400;
-  color: var(--text-primary);
-  opacity: 0;
-  transform: translateX(10px);
-  transition: opacity 200ms ease, transform 220ms ease;
-}
-.auth-panel.expanded .auth-email-slide {
-  opacity: 1;
-  transform: translateX(0);
-  transition-delay: 90ms;
+  transition: fill 140ms ease;
 }
 
-/* Body row(s) — currently just Log out, laid out so more rows (account
-   info, etc.) can be added below it later without restructuring. Hidden via
-   opacity+visibility (not conditional rendering) so it can fade in/out
-   smoothly, and can't be focused or clicked while visually collapsed. A
-   small downward slide (translateY) makes it read as "sliding out" from
-   under the header, not just fading in place. */
-.auth-panel-body {
-  padding: 2px 14px 14px;
-  display: flex;
-  justify-content: center;
+/* The account plate. Right-anchored under the disc: the avatar sits in the
+   header's far corner, so a menu hung off its left edge would run off a
+   narrow viewport. Kept mounted and hidden (not conditionally rendered) so
+   it animates on the way out as well as in; visibility:hidden also drops it
+   out of the tab order while closed. Motion is a 3px settle, not a morph —
+   an engraved plate is set down, it does not grow. */
+.auth-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 208px;
+  max-width: min(300px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.42);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-6px);
-  transition: opacity 180ms ease, transform 200ms ease, visibility 0s linear 200ms;
+  transform: translateY(-3px);
+  transition: opacity 120ms ease, transform 140ms ease,
+    visibility 0s linear 140ms;
 }
-.auth-panel.expanded .auth-panel-body {
+.auth-menu.open {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
-  transition: opacity 180ms ease 110ms, transform 200ms ease 110ms, visibility 0s linear 0s;
+  transition: opacity 120ms ease, transform 140ms ease, visibility 0s linear 0s;
 }
-/* A clearly clickable, defined button — not plain ghost text — centered in
-   the body row. */
-.auth-logout-btn {
-  background: rgba(233, 230, 224, 0.07);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.85rem;
+
+/* Identity block: the plate marking above the value it annotates — the same
+   brass-mono-caps voice every other label in the app is set in. */
+.auth-menu-id {
+  padding: 12px 14px 11px;
+}
+.auth-menu-label {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
   font-weight: 500;
-  padding: 7px 24px;
-  cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.auth-menu-email {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+/* A full-width ruled row under a hairline, not a floating button — the same
+   shape as every other list entry in the app (Lists Are Ruled, Not Tiled).
+   Ivory rather than red: signing out is reversible, and the local slate it
+   clears comes straight back on the next login. */
+.auth-logout-btn {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  transition: background 140ms ease, color 140ms ease;
 }
 .auth-logout-btn:hover {
-  background: rgba(233, 230, 224, 0.14);
-  border-color: rgba(233, 230, 224, 0.28);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.auth-logout-btn:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: -2px;
 }
 .login-modal-overlay {
   position: fixed;

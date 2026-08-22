@@ -4,6 +4,7 @@
 // wake from an idle pause on first request — R4).
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as SupabaseClient from '../../lib/SupabaseClient';
 
 type Status = 'idle' | 'loading' | 'sent' | 'error';
@@ -44,7 +45,11 @@ export function LoginModal({
     setStatus('sent');
   }
 
-  return (
+  // Portaled to <body>, like every other modal in the app. Without it the
+  // overlay renders inside the Home header — and .home-hero is a stacking
+  // context, so a fixed z-index:200 overlay declared in there still paints
+  // UNDER the catalog rows and the add-deck surface below it.
+  return createPortal(
     <div
       className="login-modal-overlay"
       onClick={(e) => {
@@ -94,6 +99,7 @@ export function LoginModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
