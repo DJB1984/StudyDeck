@@ -390,10 +390,24 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
             </div>
             {/* R14/R15: two rotating slots, staggered so they can never flip together.
                 gcd(3600, 2400) = 1200; the 600ms offset keeps every pair of flips
-                ≥600ms apart forever — more than the 250ms roll, so no overlap. */}
+                ≥600ms apart forever — more than the 250ms roll, so no overlap.
+
+                The sentence is split into three fixed parts rather than left to
+                wrap on its own: "Perplexity" is twice the width of "Grok", so
+                free wrapping re-flowed the whole tagline every few seconds and
+                words hopped between lines under the reader. Each part is a
+                nowrap unit and the line breaks are struck in CSS (part 3 always,
+                part 2 as well on narrow screens), so a longer word can only
+                lengthen its OWN line — nothing moves up or down. */}
             <p className="subtitle tagline">
-              Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to turn
-              your notes into interactive <RotatingWord words={OUTPUTS} intervalMs={2400} />.
+              <span className="tagline-part">
+                Use <RotatingWord words={AI_NAMES} intervalMs={3600} initialDelayMs={600} /> to
+                turn
+              </span>{' '}
+              <span className="tagline-part tagline-part-wrap-sm">your notes</span>{' '}
+              <span className="tagline-part tagline-part-wrap">
+                into interactive <RotatingWord words={OUTPUTS} intervalMs={2400} />.
+              </span>
             </p>
           </div>
           {/* AuthButton is always visible, independent of

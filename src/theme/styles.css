@@ -328,8 +328,41 @@ button { font-family: inherit; cursor: pointer; }
 .tagline {
   font-size: 1.02rem;
   line-height: 1.55;
-  max-width: 34ch;
   margin-bottom: 0;
+  /* The line composition is struck, not wrapped. Both slots swap words on a
+     timer and the words are wildly different widths ("Grok" vs "Perplexity"),
+     so leaving the sentence to wrap on a max-width meant the whole thing
+     re-flowed every few seconds — words moved between lines while the reader
+     was on them. Each .tagline-part is a nowrap unit and the breaks are set
+     below, so a longer word only lengthens its own line. */
+  white-space: nowrap;
+}
+.tagline-part {
+  white-space: nowrap;
+}
+/* Two lines by default: "Use X to turn your notes" / "into interactive Y." */
+.tagline-part-wrap {
+  display: block;
+}
+/* Three lines once the header stacks. The threshold matches the header's own
+   below — measured, not picked: the two-line form is 241px wide at its widest
+   ("Use Perplexity to turn your notes"), and a flex-row header carrying the
+   "Need a new set?" corner and the avatar stops leaving that much beside them
+   at about 640px — 680 is that with a margin. Above the breakpoint there is
+   always room; below it the header is a grid and the column is near-full
+   width. */
+@media (max-width: 680px) {
+  .tagline-part-wrap-sm {
+    display: block;
+  }
+}
+/* The widest of the three lines is 192px ("into interactive flashcards.") and
+   a 320px phone leaves it about 200 — true, but with nothing to spare. A hair
+   off the type buys the margin back without going to a fourth line. */
+@media (max-width: 380px) {
+  .tagline {
+    font-size: 0.95rem;
+  }
 }
 /* The two rotating slots are set in the heading serif's italic — the atlas's
    way of marking a term that stands in for others, and the one place body copy
@@ -510,13 +543,6 @@ button { font-family: inherit; cursor: pointer; }
   flex-shrink: 0;
   margin-top: 8px;
 }
-/* Narrow screens: the header row can't fit title + "Need a new set?" + avatar
-   side by side, and plain flex-wrap dropped the WHOLE right-hand group (avatar
-   included) below the title. The avatar has to stay in the top-right corner,
-   so the header becomes a 2-col grid — title left, avatar right, the Copy
-   Prompt corner spanning row 2. .home-header-right goes display:contents so
-   its two children are placed independently; the login modal's overlay is
-   position:fixed, so it's out of flow and never takes a grid cell. */
 /* On a phone the column is the whole viewport, so a fade that clears the copy
    on a 1280px page starts right on top of it here. Push the field further
    right and let it stay faint — the sky is decoration, the sentence is not. */
@@ -525,6 +551,22 @@ button { font-family: inherit; cursor: pointer; }
     -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.28) 58%, rgba(0, 0, 0, 0.75) 84%);
     mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.28) 58%, rgba(0, 0, 0, 0.75) 84%);
   }
+}
+/* Narrow screens: the header row can't fit title + "Need a new set?" + avatar
+   side by side, and plain flex-wrap dropped the WHOLE right-hand group (avatar
+   included) below the title. The avatar has to stay in the top-right corner,
+   so the header becomes a 2-col grid — title left, avatar right, the Copy
+   Prompt corner spanning row 2. .home-header-right goes display:contents so
+   its two children are placed independently; the login modal's overlay is
+   position:fixed, so it's out of flow and never takes a grid cell.
+
+   The grid starts at 680px rather than 560px, matching the tagline's three-line
+   threshold above. The tagline no longer re-wraps to fit a squeezed column
+   (that reflow was the bug), so the column has a hard minimum and a flex row
+   this narrow would drop the whole right-hand group — avatar included — onto
+   its own line at flex-start. Going to the grid a little earlier keeps the
+   avatar in the top-right corner the way it is at every other width. */
+@media (max-width: 680px) {
   #home-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
