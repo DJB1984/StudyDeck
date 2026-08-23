@@ -269,9 +269,17 @@ button { font-family: inherit; cursor: pointer; }
 
 /* Share and remove sit in one row so the corner reads as a pair of controls
    rather than two independently positioned glyphs. They hold a fixed column at
-   the right margin — always present in the layout so nothing reflows, but held
-   at low contrast until the row is hovered or one of them takes focus, since a
-   list of twenty rows should not be a list of forty buttons. */
+   the right margin — always present in the layout so nothing reflows, and held
+   back from the title until the row is hovered or one of them takes focus,
+   since a list of twenty rows should not read as a list of forty buttons.
+
+   "Held back" is 0.66, not the 0.25 it was until 2026-08-22. A quarter-opacity
+   annotation grey computes to ~1.4:1 against the ink — under the 3:1 that any
+   control carrying its own meaning owes, and low enough that the pair was not
+   dim so much as absent. It was worse than that on a phone: hover never fires
+   on a coarse pointer, so the only way to reach share or remove was to guess
+   where two invisible marks were. 0.66 lands at ~3.1:1 — present as a marking
+   in the margin, still quiet enough that the title wins the row. */
 .file-card-actions {
   grid-column: 2;
   grid-row: 1 / -1;
@@ -279,29 +287,62 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 2px;
-  opacity: 0.25;
+  opacity: 0.66;
   transition: opacity 140ms ease;
 }
 .file-row:hover .file-card-actions,
 .file-card-actions:focus-within { opacity: 1; }
 
+/* The hairline between the pair. Structure in this system is a rule, so the
+   separation between a constructive control and a destructive one is struck
+   rather than spaced — a wider gap alone would just read as sloppy alignment. */
+.file-card-actions-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  flex: none;
+}
+
+/* A 32px box on a 17px icon: the glyph stays small enough to annotate the
+   margin while the target clears the 24px minimum with room for a miss. The
+   box is set on width/height rather than padding so both controls are the
+   same size whatever their drawing does. */
 .file-row .delete-btn,
 .file-row .share-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
   transition: color 140ms;
 }
+.file-row .delete-btn svg,
+.file-row .share-btn svg { width: 17px; height: 17px; display: block; }
 /* Share is the constructive one of the pair, so it takes the everyday accent
    on hover while remove takes the alert ink — the color says which is which
    before the tooltip does. */
-.file-row .share-btn { display: flex; }
-.file-row .share-btn svg { width: 17px; height: 17px; display: block; }
 .file-row .share-btn:hover { color: var(--accent-light); }
 .file-row .delete-btn:hover { color: var(--incorrect); }
+.file-row .delete-btn:focus-visible,
+.file-row .share-btn:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: -2px;
+}
+
+/* A finger has no hover to lean on and a wider contact patch, so on a coarse
+   pointer the boxes go to 44px and the drawings stay 17px. Nothing about the
+   mouse layout changes — the test is the pointer, never the width, matching
+   the flashcard's buttons and the login shell. */
+@media (pointer: coarse) {
+  .file-card-actions { gap: 4px; }
+  .file-row .delete-btn,
+  .file-row .share-btn { width: 44px; height: 44px; }
+}
 
 /* Rotating tagline (Home spec R14–R17) */
 .tagline {
@@ -563,7 +604,10 @@ button { font-family: inherit; cursor: pointer; }
   .home-header-right {
     display: contents;
   }
+  /* .auth-login-btn is placed directly on touch, where login opens a modal
+     and has no plate wrapper around it. */
   .auth-avatar-wrap,
+  .login-plate-wrap,
   .auth-login-btn {
     grid-column: 2;
     grid-row: 1;
@@ -629,71 +673,9 @@ button { font-family: inherit; cursor: pointer; }
   line-height: 1.5;
 }
 
-/* Copy Prompt modal: clicking the button opens a full-screen Quick/Guided
-   choice (HomeScreen.tsx's CopyPromptButton/CopyPromptModal) instead of
-   copying immediately. Overlay/card/close-button structure mirrors
-   LoginModal's .login-modal-overlay/.modal-close — kept as its own
-   Home-scoped classes rather than reusing the auth-named ones. Option cards
-   borrow the ModeSelect .mode-card look (see .mode-card below). */
-.copy-prompt-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-.copy-prompt-modal-card {
-  position: relative;
-  padding: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 560px;
-}
-.copy-prompt-modal-desc {
-  color: var(--text-secondary);
-  margin: 0;
-  font-size: 0.9rem;
-}
-.copy-prompt-modal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-}
-.copy-prompt-modal-option {
-  padding: 18px 16px;
-  cursor: pointer;
-  text-align: left;
-  border: 1px solid var(--border);
-  background: none;
-  border-radius: var(--radius-md);
-  transition: border-color 150ms, background 150ms;
-  color: inherit;
-  font: inherit;
-}
-.copy-prompt-modal-option:hover {
-  background: var(--accent-wash);
-  border-color: var(--accent);
-}
-.copy-prompt-modal-option-title {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 400;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
-.copy-prompt-modal-option-desc {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-
 /* Confirm dialog (components/ConfirmModal.tsx) — the in-app replacement for
-   window.confirm(). Same overlay/card structure as the Copy Prompt modal;
-   narrower card since it holds one sentence and two buttons. */
+   window.confirm(). Same overlay/card structure as the login modal; narrower
+   card since it holds one sentence and two buttons. */
 .confirm-modal-overlay {
   position: fixed;
   inset: 0;
@@ -796,11 +778,8 @@ button { font-family: inherit; cursor: pointer; }
    rather than pushing anything around. 40px matches .btn's rendered height
    (Copy Prompt), so the disc sits on the header's baseline beside it. */
 .auth-avatar-wrap {
-  position: relative;
   width: 40px;
   height: 40px;
-  flex-shrink: 0;
-  z-index: 150;
 }
 
 /* The one disc in the system (DESIGN.md's stated exception to Corners, Not
@@ -840,18 +819,28 @@ button { font-family: inherit; cursor: pointer; }
   transition: fill 140ms ease;
 }
 
-/* The account plate. Right-anchored under the disc: the avatar sits in the
-   header's far corner, so a menu hung off its left edge would run off a
-   narrow viewport. Kept mounted and hidden (not conditionally rendered) so
-   it animates on the way out as well as in; visibility:hidden also drops it
-   out of the tab order while closed. Motion is a 3px settle, not a morph —
-   an engraved plate is set down, it does not grow. */
-.auth-menu {
+/* == The anchored plate ====================================================
+   The header's grammar: a control up there answers a click by setting a small
+   ruled plate down beneath itself, never by covering the viewport. Three
+   consumers - the account menu, Copy Prompt, and (on a mouse) Log in - so the
+   corner reads as one hand rather than three unrelated widgets.
+
+   Kept mounted and hidden rather than conditionally rendered, so it animates on
+   the way out as well as in; visibility:hidden also drops it from the tab order
+   while closed. Motion is a 3px settle, not a morph - an engraved plate is set
+   down, it does not grow. The shadow is the account menu's, which is the one
+   floating shadow this system has ever granted (The Shadow-Is-Motion Rule);
+   these plates share it instead of inventing a second recipe. */
+.anchor-plate-wrap {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 150;
+}
+.anchor-plate {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
   min-width: 208px;
-  max-width: min(300px, calc(100vw - 32px));
+  max-width: min(320px, calc(100vw - 32px));
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -862,43 +851,29 @@ button { font-family: inherit; cursor: pointer; }
   transition: opacity 120ms ease, transform 140ms ease,
     visibility 0s linear 140ms;
 }
-.auth-menu.open {
+/* Right-anchored in the header, where the control sits in the page's far
+   corner and a plate hung off its left edge would run off a narrow viewport;
+   left-anchored when the control sits mid-card, as step 1 of the first-run
+   card does. */
+.anchor-plate-right { right: 0; }
+.anchor-plate-left { left: 0; }
+.anchor-plate.open {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
   transition: opacity 120ms ease, transform 140ms ease, visibility 0s linear 0s;
 }
-
-/* Identity block: the plate marking above the value it annotates — the same
-   brass-mono-caps voice every other label in the app is set in. */
-.auth-menu-id {
-  padding: 12px 14px 11px;
-}
-.auth-menu-label {
-  display: block;
-  margin-bottom: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 500;
-  letter-spacing: var(--label-tracking);
-  text-transform: uppercase;
-  color: var(--brass);
-}
-.auth-menu-email {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--text-primary);
+@media (prefers-reduced-motion: reduce) {
+  .anchor-plate,
+  .anchor-plate.open { transform: none; }
 }
 
-/* A full-width ruled row under a hairline, not a floating button — the same
-   shape as every other list entry in the app (Lists Are Ruled, Not Tiled).
-   Ivory rather than red: signing out is reversible, and the local slate it
-   clears comes straight back on the next login. */
-.auth-logout-btn {
+/* A plate's action is a full-width ruled row under a hairline, not a button
+   floating inside it - the same shape as every other list entry in the app
+   (Lists Are Ruled, Not Tiled). Ivory rather than blue: the header's one
+   star-blue belongs to Copy Prompt (The Signal Rule), and signing out is
+   reversible - the local slate it clears comes straight back on next login. */
+.plate-row-btn {
   display: block;
   width: 100%;
   padding: 11px 14px;
@@ -912,14 +887,121 @@ button { font-family: inherit; cursor: pointer; }
   text-align: left;
   transition: background 140ms ease, color 140ms ease;
 }
-.auth-logout-btn:hover {
+.plate-row-btn:hover:not(:disabled) {
   background: var(--surface-hover);
   color: var(--text-primary);
 }
-.auth-logout-btn:focus-visible {
+.plate-row-btn:focus-visible {
   outline: 2px solid var(--accent-light);
   outline-offset: -2px;
 }
+/* R4/Phase 6: keeps "Sending..." reading as working, not stuck, for the several
+   seconds a paused free-tier Supabase project takes to wake. */
+.plate-row-btn:disabled {
+  animation: btn-pulse 1.4s ease-in-out infinite;
+  cursor: default;
+}
+
+/* == Copy Prompt's plate =================================================== */
+/* Two ruled rows, brass-washed on hover, exactly like the library's catalog
+   rows - the choice is a list of two, so it is ruled, not tiled into the pair
+   of bordered cards the modal it replaces used. */
+.prompt-plate { min-width: 268px; }
+.plate-menu-row {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.plate-menu-row:last-child { border-bottom: 0; }
+.plate-menu-row:hover { background: var(--brass-wash); }
+.plate-menu-row:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: -2px;
+}
+.plate-menu-row-title {
+  display: block;
+  margin-bottom: 3px;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+.plate-menu-row-desc {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+/* The one caret in the header. Copy Prompt is the only control up here whose
+   label promises an immediate result, so it alone has to say that a choice
+   comes first; the avatar and "Log in" already read as destinations. */
+.prompt-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-caret {
+  width: 9px;
+  height: 9px;
+  margin-left: 8px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* == Log in's plate ======================================================== */
+/* Every state holds the same footprint so the plate can't jump under the
+   pointer: the marking changes, the ruled row below the hairline changes its
+   label, and an error grows the body downward only. */
+.login-plate { min-width: 276px; }
+.login-plate-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 14px 13px;
+}
+.login-plate-label { color: var(--brass); }
+.login-plate-desc,
+.login-plate-sent {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.login-plate-address {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* == The account plate ===================================================== */
+/* Identity block: the plate marking above the value it annotates - the same
+   brass-mono-caps voice every other label in the app is set in. */
+.auth-menu-id {
+  padding: 12px 14px 11px;
+}
+.auth-menu-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.62rem;
+  color: var(--brass);
+}
+.auth-menu-email {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
 .login-modal-overlay {
   position: fixed;
   inset: 0;
@@ -943,8 +1025,6 @@ button { font-family: inherit; cursor: pointer; }
   flex-direction: column;
   gap: 12px;
 }
-/* R4/Phase 6: keeps the "Sending…" state reading as working, not stuck, for
-   the several seconds a paused free-tier Supabase project takes to wake. */
 .login-modal-card .btn:disabled {
   animation: btn-pulse 1.4s ease-in-out infinite;
   cursor: default;
@@ -1981,6 +2061,11 @@ button { font-family: inherit; cursor: pointer; }
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 24px;
+  /* Held at the height of the tallest control (Undo's 38px disc) whether or not
+     Undo is rendered. Without the floor the row was only as tall as the pill in
+     Standard, so switching to Mastery grew the row and the centred pill slid
+     down a few pixels under the cursor that had just clicked it. */
+  min-height: 38px;
   margin-bottom: 18px;
 }
 
@@ -2278,7 +2363,7 @@ button { font-family: inherit; cursor: pointer; }
      the word, Settings needs ~100 and the row wraps by a handful of pixels,
      spending a second row of a phone's scarce height on chrome. The icon carries
      it alone — the button keeps its accessible name and its tooltip. */
-  .flash-options { column-gap: 14px; }
+  .flash-options { column-gap: 14px; min-height: 44px; }
   .flash-options .flash-undo-btn { width: 44px; height: 44px; }
   .flash-settings-btn { padding: 10px; }
   .flash-settings-word { display: none; }

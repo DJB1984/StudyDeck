@@ -169,20 +169,3 @@ export function useCardSwipe({ enabled, canSwipe, onCommit }: Options) {
   };
 }
 
-// Small `matchMedia` subscription. The screen needs two of these in JS rather
-// than in CSS alone: which controls exist is React's decision (the Settings
-// panel grows an entry only where the buttons can hide), and so is which hint
-// the card is captioned with.
-export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(query).matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const onChange = () => setMatches(mq.matches);
-    onChange();
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, [query]);
-  return matches;
-}

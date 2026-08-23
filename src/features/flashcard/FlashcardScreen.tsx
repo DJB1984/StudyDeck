@@ -12,7 +12,8 @@ import { createFlashEngine, type FlashEngine } from './flashEngine';
 import { MASTERY_STREAK } from './schedule';
 import { FlashAmbience, type FlashAmbienceHandle } from './FlashAmbience';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { useCardSwipe, useMediaQuery, type SwipeDir } from './useCardSwipe';
+import { useCardSwipe, type SwipeDir } from './useCardSwipe';
+import { useMediaQuery, TOUCH_QUERY } from '../../lib/useMediaQuery';
 
 interface FlashcardScreenProps {
   file: HistoryEntry;
@@ -51,7 +52,7 @@ function tiltFor(dx: number): number {
 // the only question this screen asks about its hands. It decides the hint's
 // wording and whether the action buttons are there at all: a finger has the
 // gesture instead, and anything that points keeps the buttons at every width.
-const TOUCH_QUERY = '(pointer: coarse)';
+// The query itself lives in lib/useMediaQuery — auth asks the same question.
 
 const MODE_LABEL: Record<StudyMode, string> = {
   standard: 'Standard',

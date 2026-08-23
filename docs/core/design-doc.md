@@ -140,7 +140,7 @@ src/
 └── features/           home, modeSelect, quiz, stats, review, flashcard, auth, share
 ```
 
-`src/lib/SupabaseClient.ts` (see `docs/auth/design-doc.md`) is the only module that imports `@supabase/supabase-js`, mirroring how `Storage.ts` is the only module that touches `localStorage`. `src/features/auth/` (`AuthButton.tsx`, `LoginModal.tsx`, `migration.ts`) is the optional email-magic-link login UI, wired into the Home screen header only.
+`src/lib/SupabaseClient.ts` (see `docs/auth/design-doc.md`) is the only module that imports `@supabase/supabase-js`, mirroring how `Storage.ts` is the only module that touches `localStorage`. `src/features/auth/` (`AuthButton.tsx`, `LoginForm.tsx`, `LoginModal.tsx`, `migration.ts`) is the optional email-magic-link login UI, wired into the Home screen header only.
 
 `src/lib/deckIdentity.ts` answers "are these the same deck?" — a canonical, key-order-independent form and a hash of it — for both login migration and sharing, so the two can't disagree. `src/features/share/` (`ShareModal.tsx`, `ShareScreen.tsx`, `shareLibrary.ts`) plus `src/lib/shareLink.ts` is the share-a-study-set feature; see `docs/sharing/design-doc.md`.
 
@@ -278,6 +278,20 @@ border-radius: var(--radius);
 /* plus brass registration marks at the top-left and bottom-right corners,
    drawn by ::before/::after — the plate's signature, and why it needs no shadow */
 ```
+
+**Anchored-plate pattern** (`src/components/AnchorPlate.tsx`) — the Home header's
+controls answer a click by setting a small ruled plate down beneath themselves
+rather than opening a viewport-covering modal. One primitive, three consumers:
+the account menu, Copy Prompt (a two-row Quiz/Flashcards choice that closes the
+instant a row is picked, so the copy is confirmed once, on the control), and Log
+in. Absolute off its own wrapper at `top: calc(100% + 8px)`, right-anchored in
+the header and left-anchored from mid-card, clamped to
+`min(320px, 100vw - 32px)`. Kept mounted and driven by an `open` class so it
+animates out; not a modal and not focus-trapping — Escape returns focus to the
+trigger, tabbing out closes, and a `role="menu"` plate wires arrow keys. Login
+falls back to the centred `LoginModal` on `(pointer: coarse)` and whenever the
+Share flow opens it; `LoginForm` holds the shared four-state machine (idle /
+loading / sent / error) so the plate and the modal cannot drift apart.
 
 **Ruled-row pattern** — Home's library, the quiz's answers, Stats' breakdown are all one object. A full-width row, one hairline underneath, a brass marking in the left margin, `--brass-wash` on hover, and a full colored border only once the row is selected or judged. This replaced the `auto-fill minmax()` card grid.
 

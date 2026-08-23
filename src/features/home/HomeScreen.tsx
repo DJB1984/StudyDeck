@@ -4,7 +4,6 @@
 // decks exist, and paste-to-import removes the save-as-.json hurdle entirely.
 
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { Deck, HistoryEntry } from '../../types';
 import { Storage, MAX_DECKS } from '../../lib/Storage';
 import { validateDeck } from '../../lib/DeckValidation';
@@ -15,18 +14,38 @@ import { stripCodeFences } from '../../lib/deckText';
 import { normalize, tally, type MasteryTally } from '../flashcard/schedule';
 import { RotatingWord } from './RotatingWord';
 import { AuthButton } from '../auth/AuthButton';
+import { AnchorPlate } from '../../components/AnchorPlate';
 import { Starfield } from '../../components/Starfield/Starfield';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { ShareModal } from '../share/ShareModal';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
 // Two links of a chain: the "copy a link" idea, drawn rather than spelled out,
-// so the card's corner stays two small glyphs instead of a word and an ×.
+// so the row's corner stays two small glyphs instead of two words.
 function LinkIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path
         d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.2 1.2M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// Remove, drawn on the same 24px grid at the same 1.8 stroke as LinkIcon. It
+// was a `&times;` character until 2026-08-22: a glyph takes its size and weight
+// from the running font, so it sat visibly lighter than the icon beside it and
+// its box was only ~22px wide — under the target-size minimum — while the
+// link's was 29px. Two controls in one cluster have to be one drawing.
+function RemoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M6.5 6.5l11 11M17.5 6.5l-11 11"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.8"
@@ -79,69 +98,77 @@ function FlashMeta({ file }: { file: HistoryEntry }) {
 }
 
 // R12: label says "Copy Prompt" but the payload is a full composed prompt
-// (deck-type intro + matching schema contract). Clicking opens a full-screen
-// Quiz/Flashcards choice modal (matching LoginModal's overlay pattern) instead
-// of copying immediately.
-function CopyPromptButton({ className = 'btn' }: { className?: string }) {
+// (deck-type intro + matching schema contract). Clicking drops an anchored
+// plate holding the two deck types — it used to open a full-screen modal, which
+// meant travelling from the header's corner to the centre of the screen and
+// back to make a two-item choice, then reading the confirmation in the corner
+// the eye had already left.
+//
+// The plate closes the instant a type is picked, so the copy is confirmed once,
+// on the control, exactly where the pointer already is.
+function CaretIcon() {
+  return (
+    <svg className="btn-caret" viewBox="0 0 10 6" aria-hidden="true" focusable="false">
+      <path d="M1 1.5 5 5 9 1.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const PROMPT_CHOICES = [
+  {
+    title: 'Quiz',
+    desc: 'Multiple choice and more, with practice and test modes.',
+    md: QUIZ_PROMPT_MD,
+  },
+  {
+    title: 'Flashcards',
+    desc: 'Flip cards sorted into "Know It" and "Still Learning" piles.',
+    md: FLASHCARD_PROMPT_MD,
+  },
+];
+
+function CopyPromptButton({
+  className = 'btn',
+  align = 'right',
+}: {
+  className?: string;
+  align?: 'left' | 'right';
+}) {
   const [label, setLabel] = useState('Copy Prompt');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   function pick(text: string) {
-    setModalOpen(false);
+    setOpen(false);
     copyWithFeedback(text, setLabel, 'Copy Prompt');
   }
 
   return (
-    <>
-      <button className={className} onClick={() => setModalOpen(true)}>
-        {label}
-      </button>
-      {modalOpen && <CopyPromptModal onPick={pick} onClose={() => setModalOpen(false)} />}
-    </>
-  );
-}
-
-function CopyPromptModal({
-  onPick,
-  onClose,
-}: {
-  onPick: (text: string) => void;
-  onClose: () => void;
-}) {
-  // Portaled to document.body so the viewport-covering overlay can't get
-  // trapped inside GetStartedCard's box regardless of what ancestor styling
-  // that card picks up later (LoginModal renders inline instead, since
-  // nothing in its own ancestor chain creates a containing block today).
-  return createPortal(
-    <div
-      className="copy-prompt-modal-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="copy-prompt-modal-card glass-card">
-        <button className="modal-close" onClick={onClose} aria-label="Close">
-          &times;
+    <AnchorPlate
+      open={open}
+      onOpenChange={setOpen}
+      align={align}
+      role="menu"
+      label="Choose a study set type"
+      plateClassName="prompt-plate"
+      trigger={(props) => (
+        <button className={className + ' prompt-trigger'} {...props}>
+          {label}
+          <CaretIcon />
         </button>
-        <h3>Copy a prompt</h3>
-        <p className="copy-prompt-modal-desc">What kind of study set do you want?</p>
-        <div className="copy-prompt-modal-grid">
-          <button className="copy-prompt-modal-option" onClick={() => onPick(QUIZ_PROMPT_MD)}>
-            <div className="copy-prompt-modal-option-title">Quiz</div>
-            <div className="copy-prompt-modal-option-desc">
-              Multiple choice and more, with practice and test modes.
-            </div>
-          </button>
-          <button className="copy-prompt-modal-option" onClick={() => onPick(FLASHCARD_PROMPT_MD)}>
-            <div className="copy-prompt-modal-option-title">Flashcards</div>
-            <div className="copy-prompt-modal-option-desc">
-              Flip cards sorted into "Know It" and "Still Learning" piles.
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+      )}
+    >
+      {PROMPT_CHOICES.map((choice) => (
+        <button
+          key={choice.title}
+          className="plate-menu-row"
+          role="menuitem"
+          onClick={() => pick(choice.md)}
+        >
+          <span className="plate-menu-row-title">{choice.title}</span>
+          <span className="plate-menu-row-desc">{choice.desc}</span>
+        </button>
+      ))}
+    </AnchorPlate>
   );
 }
 
@@ -155,7 +182,7 @@ function GetStartedCard() {
         <div className="get-started-step">
           <span className="step-num">1</span>
           <span className="step-text">Copy the prompt</span>
-          <CopyPromptButton />
+          <CopyPromptButton align="left" />
         </div>
         {/* R12: step 2 is a pure handoff — the pasted prompt asks for notes
             itself, so don't tell the student to attach anything here. */}
@@ -476,6 +503,10 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                     )}
                   </div>
                 </div>
+                {/* Share and remove read as one cluster, so a hairline
+                    divides them: the constructive control and the destructive
+                    one should not sit shoulder to shoulder with nothing but a
+                    gap between them. */}
                 <div className="file-card-actions">
                   <button
                     className="share-btn"
@@ -485,13 +516,14 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                   >
                     <LinkIcon />
                   </button>
+                  <span className="file-card-actions-sep" aria-hidden="true" />
                   <button
                     className="delete-btn"
                     title="Remove from history"
                     aria-label={`Remove ${file.title}`}
                     onClick={(e) => deleteCard(e, file.title)}
                   >
-                    &times;
+                    <RemoveIcon />
                   </button>
                 </div>
               </li>

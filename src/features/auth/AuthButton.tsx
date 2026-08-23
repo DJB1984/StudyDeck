@@ -1,18 +1,28 @@
 // AuthButton — Home screen header element.
-// Logged out: ghost "Log in" button. Logged in: a circular avatar (generic
-// person icon, matching the app's solid panel surfaces rather than a solid
-// per-email color) that drops a ruled account plate beneath it — the email
-// under a brass plate marking, and a full-width "Log out" row under a
-// hairline (see styles.css .auth-menu). Also owns the two pieces of
-// app-startup auth wiring that
-// belong nowhere else: detecting an expired/used magic link in the URL (R6),
-// and kicking off migration exactly once per real sign-in (R11/R14, via
+//
+// Logged out: a ghost "Log in" control that drops the login form as an anchored
+// plate — the header's grammar, and the reason typing an email no longer means
+// dimming the whole library to reach a field in the centre of the screen. On
+// touch it opens the centred modal instead, since a plate anchored to the top
+// of the page is exactly where the on-screen keyboard would crowd it.
+//
+// Logged in: a circular avatar (generic person icon, matching the app's solid
+// panel surfaces rather than a solid per-email colour) dropping a ruled account
+// plate beneath it — the email under a brass plate marking, and a full-width
+// "Log out" row under a hairline.
+//
+// It also owns the two pieces of app-startup auth wiring that belong nowhere
+// else: detecting an expired/used magic link in the URL (R6), and kicking off
+// migration exactly once per real sign-in (R11/R14, via
 // SupabaseClient.onSignedIn).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Storage } from '../../lib/Storage';
 import * as SupabaseClient from '../../lib/SupabaseClient';
+import { useMediaQuery, TOUCH_QUERY } from '../../lib/useMediaQuery';
+import { AnchorPlate } from '../../components/AnchorPlate';
 import { LoginModal } from './LoginModal';
+import { LoginForm } from './LoginForm';
 import { syncOnLogin } from './migration';
 
 // Generic person silhouette (head + shoulders), matching the placeholder
@@ -41,45 +51,26 @@ function consumeExpiredLinkError(): boolean {
   return isAuthError;
 }
 
+const EXPIRED_LINK_MESSAGE = 'This link has expired or was already used, request a new one.';
+
 export function AuthButton() {
   const [loggedIn, setLoggedIn] = useState(SupabaseClient.isLoggedIn());
   const [email, setEmail] = useState(SupabaseClient.getUserEmail());
-  const [modalOpen, setModalOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [expiredError, setExpiredError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    // A click anywhere outside the avatar or its plate closes the menu; one
-    // inside (selecting the email text, say) leaves it open. Deferred one
-    // tick so the avatar's own click — the one that set menuOpen=true —
-    // doesn't immediately close it again via this same listener.
-    const onClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    const id = window.setTimeout(() => document.addEventListener('click', onClick), 0);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      window.clearTimeout(id);
-      document.removeEventListener('click', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen]);
+  const touch = useMediaQuery(TOUCH_QUERY);
 
   useEffect(() => {
     if (consumeExpiredLinkError()) {
       setExpiredError(true);
-      setModalOpen(true);
+      setLoginOpen(true);
     }
 
     const unsubState = SupabaseClient.onAuthStateChange((session) => {
       setLoggedIn(session !== null);
       setEmail(session?.user.email ?? null);
-      if (session !== null) setModalOpen(false);
+      if (session !== null) setLoginOpen(false);
     });
     // R11/R14: fires once per real login (not on every mount/page load of an
     // already-persisted session) — the exact moment migration should run.
@@ -100,64 +91,90 @@ export function AuthButton() {
     Storage.clearLocal();
   }
 
+  function closeLogin() {
+    setLoginOpen(false);
+    setExpiredError(false);
+  }
+
   if (!loggedIn) {
-    return (
+    // Same glyph as the logged-in avatar — see .auth-login-btn in styles.css
+    // for why the two states share it.
+    const label = (
       <>
-        {/* Same glyph as the logged-in avatar — see .auth-login-btn in
-            styles.css for why the two states share it. */}
-        <button className="auth-login-btn" onClick={() => setModalOpen(true)}>
-          <PersonIcon className="auth-login-icon" />
-          Log in
-        </button>
-        {modalOpen && (
-          <LoginModal
-            onClose={() => {
-              setModalOpen(false);
-              setExpiredError(false);
-            }}
-            initialError={
-              expiredError
-                ? 'This link has expired or was already used, request a new one.'
-                : undefined
-            }
-          />
-        )}
+        <PersonIcon className="auth-login-icon" />
+        Log in
       </>
+    );
+
+    // Touch keeps the modal: a plate pinned to the top of the page is precisely
+    // where a raised keyboard leaves the least room, and a centred card is the
+    // shape every mobile sign-in already is.
+    if (touch) {
+      return (
+        <>
+          <button className="auth-login-btn" onClick={() => setLoginOpen(true)}>
+            {label}
+          </button>
+          {loginOpen && (
+            <LoginModal
+              onClose={closeLogin}
+              initialError={expiredError ? EXPIRED_LINK_MESSAGE : undefined}
+            />
+          )}
+        </>
+      );
+    }
+
+    return (
+      <AnchorPlate
+        open={loginOpen}
+        onOpenChange={(next) => (next ? setLoginOpen(true) : closeLogin())}
+        haspopup="dialog"
+        role="dialog"
+        label="Log in"
+        deferChildren
+        wrapClassName="login-plate-wrap"
+        plateClassName="login-plate"
+        trigger={(props) => (
+          <button className="auth-login-btn" {...props}>
+            {label}
+          </button>
+        )}
+      >
+        <LoginForm
+          variant="plate"
+          onClose={closeLogin}
+          initialError={expiredError ? EXPIRED_LINK_MESSAGE : undefined}
+        />
+      </AnchorPlate>
     );
   }
 
-  // The plate stays in the DOM always (never conditionally rendered) — the
-  // "open" class alone drives it, both opening AND closing. Conditional
-  // rendering would unmount the plate the instant menuOpen flips false,
-  // skipping the close transition entirely.
-  //
   // The avatar itself never moves or changes shape: the menu is a separate
   // plate set down beneath it. That's the whole difference from the old
   // grow-from-circle morph — no control in this system changes its own
   // geometry, and nothing rounds past the 4px system maximum.
   return (
-    <div className="auth-avatar-wrap" ref={wrapRef}>
-      <button
-        className="auth-avatar-btn"
-        onClick={() => setMenuOpen((v) => !v)}
-        title={email ?? undefined}
-        aria-label="Account"
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-      >
-        <PersonIcon />
-      </button>
-      <div className={'auth-menu' + (menuOpen ? ' open' : '')}>
-        <div className="auth-menu-id">
-          <span className="auth-menu-label">Signed in</span>
-          <span className="auth-menu-email" title={email ?? undefined}>
-            {email}
-          </span>
-        </div>
-        <button className="auth-logout-btn" onClick={handleLogout}>
-          Log out
+    <AnchorPlate
+      open={menuOpen}
+      onOpenChange={setMenuOpen}
+      label="Account"
+      wrapClassName="auth-avatar-wrap"
+      trigger={(props) => (
+        <button className="auth-avatar-btn" title={email ?? undefined} aria-label="Account" {...props}>
+          <PersonIcon />
         </button>
+      )}
+    >
+      <div className="auth-menu-id">
+        <span className="plate-label auth-menu-label">Signed in</span>
+        <span className="auth-menu-email" title={email ?? undefined}>
+          {email}
+        </span>
       </div>
-    </div>
+      <button className="plate-row-btn" onClick={handleLogout}>
+        Log out
+      </button>
+    </AnchorPlate>
   );
 }

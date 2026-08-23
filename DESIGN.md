@@ -347,9 +347,26 @@ redesigns, and renaming it would touch fifteen components for no visual gain.
 Home's library and Stats' breakdown. Grid of content / controls. Deck title in
 Newsreader at `1.25rem` flush with the section label above it, plate-label
 metadata beneath, one hairline underneath, brass wash on hover. The row's two
-controls hold a fixed column so nothing reflows, at 25% opacity until the row is
-hovered or one of them takes focus — twenty rows should not read as forty
-buttons. The row carried a brass plate number in a `46px` left column until
+controls hold a fixed column so nothing reflows, at `0.66` opacity until the row
+is hovered or one of them takes focus — twenty rows should not read as forty
+buttons.
+
+**A held-back control is still a control.** That opacity was `0.25` until
+2026-08-22, which put the annotation grey at ~1.4:1 on the ink — beneath the 3:1
+any control owes when its own drawing is the only thing identifying it, and on a
+coarse pointer, where hover never fires, low enough that share and remove were
+unreachable in practice rather than merely quiet. `0.66` computes to ~3.1:1: read
+as a marking in the margin, never mistaken for the title. **Restraint in this
+system is opacity above the contrast floor, never below it** — anything dimmer
+than 3:1 is hidden, and a hidden control that only a mouse can summon is not a
+design decision. The pair sit in `32px` boxes on `17px` drawings (`44px` under
+`(pointer: coarse)`), divided by a hairline rather than by a gap, since the
+constructive control and the destructive one should not share an edge. Both are
+authored SVG on the same 24px grid at the same `1.8` stroke — remove was a
+`&times;` character until the same date, which took its weight from the running
+font and sat visibly lighter than the icon beside it.
+
+The row carried a brass plate number in a `46px` left column until
 2026-08-22; it was dropped (Davis's call) — a running 001/002/003 down the
 margin annotated nothing the student needed, and the title reads better flush
 left. Don't reintroduce it. The catalog head keeps its total count.
@@ -424,6 +441,47 @@ each particle between its two positions over 700ms. **It is frozen by default** 
 decoration is opt-in on a study screen; a "Play motion" button starts it and the
 choice is remembered per device.
 
+### Anchored Plate (`AnchorPlate`)
+
+The header's grammar, and the app's answer to "a control needs to ask one small
+question." A control in the page's top corner drops a small ruled plate directly
+beneath itself; it never covers the viewport. Three consumers share one
+primitive: the account menu, Copy Prompt, and — on a mouse — Log in.
+
+- Absolute off the control's own wrapper, `top: calc(100% + 8px)`, `min-width`
+  208px, clamped to `min(320px, 100vw - 32px)` so a narrow viewport can't push
+  it off-screen. Right-anchored in the header (the control is in the far corner,
+  so a plate hung off its left edge would overflow); left-anchored when the
+  control sits mid-card, as step 1 of the first-run card does.
+- Kept mounted and hidden rather than conditionally rendered, so it animates out
+  as well as in; `visibility: hidden` is also what drops a closed plate from the
+  tab order. Motion is a **3px settle over 140ms — a plate is set down, it does
+  not grow**. No control in this system changes its own geometry.
+- It carries the account menu's `0 14px 34px` shadow, which remains the system's
+  one sanctioned floating shadow. Plates share it; they do not add a second
+  recipe (The Shadow-Is-Motion Rule).
+- **A plate's action is a ruled row** (`.plate-row-btn`) — full width, under a
+  hairline, ivory ink, brass-free. Not a button floating inside a box (Lists Are
+  Ruled, Not Tiled). Its content rows (`.plate-menu-row`) wash brass on hover,
+  exactly like a catalog row.
+- **Not a modal, and does not trap focus.** Escape closes and hands focus back
+  to the trigger; tabbing past the last control leaves, and leaving closes. A
+  plate declaring `role="menu"` wires arrow keys, Home and End across its rows,
+  and opening it from the keyboard lands on the first row — opening it by
+  pointer does not.
+
+**The two inks hold.** Copy Prompt keeps the header's single star-blue and the
+one caret in the app — it is the only control up there whose label promises an
+immediate result, so it alone has to say a choice comes first. The plate itself
+is ink, hairline and brass; nothing inside it is blue but a focused field's
+border.
+
+**Where a plate is wrong.** Anything needing real room, or reached from
+somewhere other than its own trigger, stays a centred modal: the Share panel,
+Confirm, and login itself both on touch — where a plate sits exactly where the
+on-screen keyboard is about to — and when the Share flow opens it. The test is
+`(pointer: coarse)`, not a width, matching the flashcard's buttons.
+
 ### Mode Icons
 `24px` line SVGs (`stroke="currentColor"`, no fill) — **Brass Dim** at rest, Brass
 on hover, Star Blue Light when selected. They are markings before they are buttons.
@@ -452,6 +510,9 @@ inside the labels so the group is keyboard-operable. Cap it at three.
   brass for everything that annotates (The Two-Inks Rule).
 - **Do** build new structure from rules and space before reaching for a plate —
   most content in this system sits directly on the ink.
+- **Do** answer a header control with an anchored plate, not an overlay — a
+  two-item choice or a single field is not worth dimming the page and walking
+  the pointer to the middle of the screen and back.
 - **Do** set every piece of metadata in the plate-label voice (The
   One-Annotation-Voice Rule).
 - **Do** use Newsreader for headings *and* reading roles, at weight 400.
