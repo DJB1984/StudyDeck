@@ -142,10 +142,7 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
               ? true // a slider always has a value, touched or not — same reasoning as order
               : !!saved?.numericValue && saved.numericValue.trim() !== ''
             : format === 'fillBlank'
-              ? // Every blank has to be filled before "Check answer" means anything —
-                // a half-finished sentence graded all-or-nothing is just a miss.
-                (q.blanks ?? []).length > 0 &&
-                (q.blanks ?? []).every((_, i) => (saved?.blankValues?.[i] ?? '').trim() !== '')
+              ? true // a sentence always has a submittable state — same reasoning as order
               : format === 'code'
                 ? (saved?.codeValue ?? q.starterCode ?? '').trim() !== ''
                 : false;
@@ -350,6 +347,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     });
   }
 
+  // Submittable at any point, including with blanks still empty: an unfilled
+  // blank is a wrong blank, and checking a half-finished sentence is answering
+  // half of it. That means a stray click before typing anything does fix
+  // firstAttemptCorrect at false, exactly as a wrong mcq pick would — Davis's
+  // call 2026-09-14, in exchange for feedback never silently doing nothing.
   function handleBlankSubmit() {
     if (mode !== 'practice' || locked) return;
     setAnswers((prev) => {

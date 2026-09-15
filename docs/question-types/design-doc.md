@@ -107,10 +107,16 @@ to 6–18ch so a long answer isn't a spelling hint) and grows to fit what's type
 ever gets wider than the key's own width). Text runs keep `white-space: pre-wrap` so the single space on either side of
 a blank survives being split into its own inline span.
 
-Per-mode behavior follows the other check-gated formats: Practice needs an explicit **Check answer** (enabled once
-every blank is non-empty; Enter in any blank submits), then highlights each blank individually and reads
-"Incorrect — N of M blanks right" — which blank is wrong is already visible from the highlight, so the tally leaks
-nothing extra. Test shows nothing until Stats. Review passes each blank's canonical answer in read-only. Stats numbers
+Per-mode behavior follows the other check-gated formats: Practice needs an explicit **Check answer** (Enter in any
+blank submits too), then highlights each blank individually and reads "Incorrect — N of M blanks right" — which blank
+is wrong is already visible from the highlight, so the tally leaks nothing extra.
+
+**Check is live at all times, even with every blank still empty** (Davis's call 2026-09-14, correcting a first cut
+that required all blanks filled — which made a partial answer silently do nothing at all, the worst possible
+response). An empty blank grades as a wrong blank: red border and tint like any other miss, counted against the
+tally, no separate "left blank" state. The trade is that a stray Check before typing anything does fix
+`firstAttemptCorrect` at false, exactly as a wrong mcq pick would — checking half a sentence is answering half of
+it. Stats renders an untouched blank as `(left blank)` in the your-answer row. Test shows nothing until Stats. Review passes each blank's canonical answer in read-only. Stats numbers
 the blanks in the your-answer/correct-answer rows once there's more than one.
 
 **Not built:** a word bank variant (tap a chip into a slot). Deferred at Davis's call 2026-09-14 — recall and
