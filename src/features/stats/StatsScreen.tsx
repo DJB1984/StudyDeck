@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Chart } from 'chart.js/auto';
 import type { AnswerRecord, QuizQuestion, QuizSession, SessionRecord } from '../../types';
 import { Katex } from '../../components/Math/Katex';
-import { LETTERS } from '../../components/QuizUI';
+import { letterFor } from '../../components/QuizUI';
 import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
 import { buildPieData, formatDuration } from './stats';
 
@@ -68,7 +68,7 @@ function formatAnswerText(ans: AnswerRecord, q: QuizQuestion, format: string, wh
   if (format === 'multiSelect') {
     const indices = which === 'chosen' ? ans.chosenIndices : ans.correctIndices;
     if (!indices || indices.length === 0) return which === 'chosen' ? "You didn't answer this one" : '';
-    return indices.map((i) => `${LETTERS[i]}) ${q.answers[i]}`).join(', ');
+    return indices.map((i) => `${letterFor(i)}) ${q.answers[i]}`).join(', ');
   }
   if (format === 'order') {
     const ids = which === 'chosen' ? ans.chosenOrder : ans.correctOrder;
@@ -126,7 +126,7 @@ function BreakdownItem({ ans, q }: { ans: AnswerRecord; q: QuizQuestion }) {
         {format === 'mcq' ? (
           wasAnswered ? (
             <>
-              Your answer: <Katex text={`${LETTERS[ans.chosenIndex]}) ${q.answers[ans.chosenIndex]}`} />
+              Your answer: <Katex text={`${letterFor(ans.chosenIndex)}) ${q.answers[ans.chosenIndex]}`} />
             </>
           ) : (
             "You didn't answer this one"
@@ -151,7 +151,7 @@ function BreakdownItem({ ans, q }: { ans: AnswerRecord; q: QuizQuestion }) {
       <div className="breakdown-answer-row correct-row">
         Correct answer:{' '}
         {format === 'mcq' ? (
-          <Katex text={`${LETTERS[ans.correctIndex]}) ${q.answers[ans.correctIndex]}`} />
+          <Katex text={`${letterFor(ans.correctIndex)}) ${q.answers[ans.correctIndex]}`} />
         ) : format === 'code' ? (
           <span className="code-breakdown-expected">
             {q.checks?.structure?.requiredNames?.length ? (

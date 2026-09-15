@@ -476,7 +476,9 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     );
   }
 
-  // Keyboard: 1–4 select enabled mcq answers only (other formats have no
+  // Keyboard: 1–9 select enabled mcq answers only — a question may carry any
+  // number of choices from 2 up, and a key past the last one is ignored (other
+  // formats have no
   // single-key-per-option mapping); ←/→ freely move between questions (no
   // answer required); Enter also advances/finishes. Skipped entirely while a
   // form control (numeric text input, slider, code editor) is focused —
@@ -490,11 +492,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     }
     function onKey(e: KeyboardEvent) {
       // The quit confirm is modal: while it's up, keys must not reach the
-      // question underneath (Enter would advance it, 1–4 would answer it).
+      // question underneath (Enter would advance it, a digit would answer it).
       // window.confirm() used to block the page for us; this doesn't.
       if (confirmQuit) return;
       if (isFormField(e.target as HTMLElement)) return;
-      if (format === 'mcq' && ['1', '2', '3', '4'].includes(e.key)) {
+      if (format === 'mcq' && /^[1-9]$/.test(e.key)) {
         const i = parseInt(e.key, 10) - 1;
         if (i < q.answers.length && !isDisabled(i)) handleAnswerClick(i);
       } else if (e.key === 'ArrowLeft') {

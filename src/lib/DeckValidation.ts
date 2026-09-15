@@ -86,7 +86,7 @@ export function validateDeck(data: Raw): string[] {
     // R10
     if (!q.question) errors.push(`Question ${n}: Missing 'question' field.`);
 
-    // answerFormat discriminator. Omitted = 'mcq', today's exact-4/single-correct behavior.
+    // answerFormat discriminator. Omitted = 'mcq', a 2-or-more answer list with a single correct index.
     const validFormats = ['mcq', 'numeric', 'multiSelect', 'order', 'graphClick', 'code', 'command'];
     const answerFormat = q.answerFormat === undefined ? 'mcq' : (q.answerFormat as string);
     if (!validFormats.includes(answerFormat)) {
@@ -96,18 +96,27 @@ export function validateDeck(data: Raw): string[] {
     }
 
     if (answerFormat === 'mcq') {
-      // R11
+      // R11: any number of choices from 2 up — a true/false pair and an eight-option
+      // list are both legitimate questions; only a lone "choice" isn't one.
+      let answerCount = 0;
       if (!Array.isArray(q.answers)) {
         errors.push(`Question ${n}: Missing 'answers' array.`);
-      } else if (q.answers.length !== 4) {
-        errors.push(`Question ${n}: Expected exactly 4 answer choices, found ${q.answers.length}.`);
+      } else if (q.answers.length < 2) {
+        errors.push(`Question ${n}: Expected at least 2 answer choices, found ${q.answers.length}.`);
+      } else {
+        answerCount = q.answers.length;
       }
 
-      // R12
+      // R12: the valid range comes from the answers actually given, so it moves
+      // with the choice count rather than assuming 0–3.
       if (q.correct === undefined || q.correct === null) {
         errors.push(`Question ${n}: Missing 'correct' field.`);
-      } else if (!Number.isInteger(q.correct) || (q.correct as number) < 0 || (q.correct as number) > 3) {
-        errors.push(`Question ${n}: 'correct' index ${q.correct} is out of range (0–3).`);
+      } else if (!Number.isInteger(q.correct) || (q.correct as number) < 0) {
+        errors.push(`Question ${n}: 'correct' index ${q.correct} is out of range.`);
+      } else if (answerCount > 0 && (q.correct as number) >= answerCount) {
+        errors.push(
+          `Question ${n}: 'correct' index ${q.correct} is out of range (0–${answerCount - 1}).`
+        );
       }
     } else if (answerFormat === 'multiSelect') {
       let answerCount = 0;

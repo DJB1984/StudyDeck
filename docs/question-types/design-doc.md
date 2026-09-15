@@ -77,7 +77,7 @@ Grading: `answerMatching.matchNumeric`. Rendering: a plain numeric `<input>` (te
 }
 ```
 
-`answers` is no longer locked to exactly 4 entries for this sub-type (real SATA questions commonly have 5-8 options) — `DeckValidation.ts` only enforces the fixed-4 rule when `answerFormat` is `'mcq'` or omitted. `correctIndices` is an array of indices instead of a single `correct` int (shipped field name — this doc originally sketched it as `correct`; the actual implementation uses `correctIndices` to stay unambiguous alongside mcq's `correct`). Grading is all-or-nothing (the full correct set, no partial credit), matching real SATA convention. Rendering: checkboxes instead of single-select buttons.
+`answers` is no longer locked to exactly 4 entries for this sub-type (real SATA questions commonly have 5-8 options). The fixed-4 rule that `DeckValidation.ts` still applied to `'mcq'` was itself dropped on 2026-09-06 — every format now takes any answer count from 2 up. `correctIndices` is an array of indices instead of a single `correct` int (shipped field name — this doc originally sketched it as `correct`; the actual implementation uses `correctIndices` to stay unambiguous alongside mcq's `correct`). Grading is all-or-nothing (the full correct set, no partial credit), matching real SATA convention. Rendering: checkboxes instead of single-select buttons.
 
 ## Feature: Drag-to-order
 

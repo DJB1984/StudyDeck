@@ -5,7 +5,10 @@
 
 import type { QuizQuestion, GraphSpec } from '../types';
 
-const LETTERS = ['A', 'B', 'C', 'D'];
+// Deliberately its own copy of QuizUI's letterFor — lib doesn't import from components.
+function letterFor(i: number): string {
+  return i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
+}
 
 function buildGraphDescription(graph: GraphSpec): string {
   const lines = [`[Graph: "${graph.title}"]`, `X-axis: ${graph.x_label}`, `Y-axis: ${graph.y_label}`];
@@ -31,7 +34,7 @@ export function buildPrompt(question: QuizQuestion, chosenIndex?: number): strin
   if (question.graph) {
     lines.push('', buildGraphDescription(question.graph));
   }
-  lines.push('', 'The options were:', ...question.answers.map((a, i) => `${LETTERS[i]}) ${a}`));
+  lines.push('', 'The options were:', ...question.answers.map((a, i) => `${letterFor(i)}) ${a}`));
   if (chosenIndex !== undefined && chosenIndex >= 0) {
     lines.push('', `I chose: ${question.answers[chosenIndex]}`);
   }

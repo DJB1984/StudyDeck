@@ -39,8 +39,8 @@ Technical contract for a **quiz**-type `.json` file for StudyDeck, a free study 
 | `questions` | **Yes** | Non-empty array. |
 | `.id` | **Yes** | Short, unique, **stable** — `"q1"`, `"q2"`… Used for progress tracking, so never renumber existing questions when editing a deck; give new ones fresh ids. |
 | `.question` | **Yes** | LaTeX via `$...$` / `$$...$$`. |
-| `.answers` | **Yes** | **Exactly 4** strings (mcq only — see §2). |
-| `.correct` | **Yes** | Index into `answers`, `0`–`3`. |
+| `.answers` | **Yes** | **2 or more** strings — 4 is the usual choice, but use however many the question actually needs (mcq only — see §2). |
+| `.correct` | **Yes** | Index into `answers` — `0` is the first choice, and the largest valid value is one less than the number of answers. |
 
 ## 2. Answer formats
 
@@ -48,7 +48,7 @@ The schema above is `"mcq"` — the default, and the right choice for most quest
 
 | `answerFormat` | Use for | Replaces `answers`/`correct` with |
 |---|---|---|
-| `"multiSelect"` | Any number of correct options | `answers` (5–8 strings, **not** locked to 4) + `correctIndices` — in-range, non-duplicate. Graded all-or-nothing. |
+| `"multiSelect"` | Any number of correct options | `answers` (5–8 strings is typical for select-all) + `correctIndices` — in-range, non-duplicate. Graded all-or-nothing. |
 | `"numeric"` | A typed or slider-dragged number | `correctValue` + `tolerance` (`0` = exact). Optional `inputWidget: "slider"`, which then **requires** `sliderMin` < `sliderMax` plus `sliderStep`. |
 | `"order"` | Arranging steps into a sequence | `items` (≥2 `{id, text}`; StudyDeck shuffles them, so listing order isn't a spoiler) + `correctOrder` — the same ids, each exactly once. Graded exact-match. |
 | `"code"` | Writing real code | `language` (`"javascript"` or `"python"` **only** — never `"java"`) + `checks`, needing at least one of `syntax` / `structure` / `tests`. Optional `starterCode`. |
@@ -138,7 +138,8 @@ Hold question *content* to a strict academic examiner's standard (a content stan
 - **Difficulty:** calibrate to the rigor the materials themselves demonstrate — the material is the difficulty signal. Don't ask what difficulty they want; adjust only if they raise it unprompted.
 - **Depth:** default to conceptual understanding, application, and analysis — what-ifs, relationships, compare/contrast. Rephrase rather than quote, so questions test understanding over recognition. Avoid definition-retrieval and trivia unless the material is itself definitional (glossaries, term lists).
 - **Student preferences outrank all of the above.** Aim for mostly deep questions with a few warm-ups, and shift that mix freely with whatever they've told you.
-- **Distractors:** all 3 highly plausible and closely related to the material, each requiring thought to rule out. Exactly one clearly correct answer. No filler, no "All/None of the above."
+- **How many options:** 4 by default. Drop to 2–3 where the question genuinely has only that many defensible choices (true/false, a binary increase/decrease, a three-way classification) rather than padding it with filler; go to 5–6 where the material really does offer that many plausible confusions. Vary it question to question as the content warrants — don't force every question to 4, and don't drift to short lists just to save effort.
+- **Distractors:** every distractor highly plausible and closely related to the material, each requiring thought to rule out. Exactly one clearly correct answer. No filler, no "All/None of the above."
 - **Self-contained:** no question should depend on another. Match the source material's exact notation and terminology.
 
 ## 6. Validation checklist
@@ -147,7 +148,7 @@ StudyDeck rejects the **entire file** if any of these fail — it will not silen
 
 - [ ] `version` is `1`; `title` is a non-empty string; `type`, if present, is `"quiz"`
 - [ ] `questions` is non-empty; every question has a non-empty `id` and `question`
-- [ ] mcq questions have **exactly 4** `answers` and an integer `correct` of `0`–`3`
+- [ ] mcq questions have **at least 2** `answers`, and an integer `correct` that indexes one of them
 - [ ] Any other `answerFormat` has all of its own required fields from §2
 - [ ] Any `table`/`graph` has its required fields, and your answers match its actual values
 - [ ] Every LaTeX backslash is doubled (`\\`)

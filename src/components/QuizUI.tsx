@@ -13,7 +13,14 @@ import { Table } from './Table/Table';
 import type { CodeCheckResult } from '../lib/codeRunners';
 import type { OrderItem, QuizQuestion } from '../types';
 
-export const LETTERS = ['A', 'B', 'C', 'D'];
+/**
+ * Label for the i-th answer choice. A question carries any number of choices
+ * from 2 up, so this is generated rather than the fixed A–D list it used to be;
+ * past Z it falls back to a number so a label can never render `undefined`.
+ */
+export function letterFor(i: number): string {
+  return i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
+}
 
 interface ProgressHeaderProps {
   current: number;
@@ -65,7 +72,7 @@ interface AnswerListProps {
   onSelect: (i: number) => void;
 }
 
-/** The four A–D answer buttons. Styling/interactivity per button is fully caller-driven. */
+/** The lettered answer buttons — two or more of them. Styling/interactivity per button is fully caller-driven. */
 export function AnswerList({ answers, getClassName, isDisabled, onSelect }: AnswerListProps) {
   return (
     <div className="answer-list">
@@ -76,7 +83,7 @@ export function AnswerList({ answers, getClassName, isDisabled, onSelect }: Answ
           disabled={isDisabled(i)}
           onClick={() => onSelect(i)}
         >
-          <span className="answer-label">{LETTERS[i]}</span>
+          <span className="answer-label">{letterFor(i)}</span>
           <Katex className="answer-text" text={ans} />
         </button>
       ))}

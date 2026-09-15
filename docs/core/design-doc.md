@@ -72,8 +72,8 @@ Quiz decks and flashcard decks are structurally different — a top-level `type`
 - `title` — string, displayed on home screen card and at quiz start
 - `questions[].id` — string, unique stable identifier (e.g. `"q1"`, `"q12"`). Required. Must remain stable if question order changes. Used internally for stats, flashcard progress, and future compatibility.
 - `question` — string, LaTeX via `$...$` (inline) or `$$...$$` (display block)
-- `answers` — array of exactly 4 strings, LaTeX supported
-- `correct` — integer 0–3, index into answers array
+- `answers` — array of 2 or more strings, LaTeX supported. Four is the conventional count and what most decks use, but the schema takes any number from 2 up, so a true/false pair or a six-way classification is a legal `mcq` question. (`multiSelect` has always been free of the old fixed-4 rule; as of 2026-09-06 `mcq` is too.)
+- `correct` — integer, index into answers array: `0` to `answers.length - 1`
 - `graph` — optional object (omit entirely if no graph)
   - `type`: `"points"` or `"equation"`
   - `data`: array of `[x, y]` pairs if points; equation string (e.g. `"9.8 * x"`) if equation
@@ -120,9 +120,9 @@ Mode Select reads `type` to decide what to show: a quiz deck only offers Practic
 
 **Validation errors** must be specific and actionable. Examples:
 - `Question 7: Missing 'answers' array.`
-- `Question 12: 'correct' index 4 is out of range (0–3).`
+- `Question 12: 'correct' index 4 is out of range (0–3).` — the upper bound is derived from that question's own `answers` length
 - `Question 4: Graph object is missing 'x_label'.`
-- `Question 15: Expected exactly 4 answer choices, found 3.`
+- `Question 15: Expected at least 2 answer choices, found 1.`
 - `Missing top-level 'version' field.`
 
 ## App Architecture

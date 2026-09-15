@@ -7,8 +7,8 @@ export type QuizMode = 'practice' | 'test';
 
 /**
  * Discriminates which shape a quiz question's answer takes. Omitted = 'mcq',
- * today's exact-4-answers/single-`correct`-index behavior — every field added
- * below is optional and additive, so existing decks are unaffected.
+ * a list of two or more `answers` with a single `correct` index — every field
+ * added below is optional and additive, so existing decks are unaffected.
  */
 export type AnswerFormat = 'mcq' | 'numeric' | 'multiSelect' | 'order' | 'graphClick' | 'code' | 'command';
 
