@@ -85,6 +85,39 @@ function mirror(promise: Promise<{ error: string | null }>): void {
     });
 }
 
+// Both cloud tables are keyed by TITLE, so renaming a deck is a write under the
+// new title followed by a delete of the old one — never an update in place.
+//
+// Save first, delete second: an interrupted rename should leave a duplicate the
+// next login's merge can reconcile, not a hole where the deck was. The one case
+// the order can't serve is an account sitting exactly at the deck cap, where
+// the server's insert trigger refuses the new row before the old one is gone;
+// that — and only that — falls back to delete-then-save.
+async function renameInCloud(
+  renamed: HistoryEntry,
+  oldTitle: string,
+  flash: FlashState | null,
+): Promise<{ error: string | null }> {
+  let saved = await SupabaseClient.saveDeck(renamed);
+  if (saved.error) {
+    const dropped = await SupabaseClient.deleteDeck(oldTitle);
+    if (dropped.error) return saved;
+    saved = await SupabaseClient.saveDeck(renamed);
+    if (saved.error) return saved;
+  } else {
+    const dropped = await SupabaseClient.deleteDeck(oldTitle);
+    if (dropped.error) return dropped;
+  }
+  // The piles move with the deck. Skipped when there is nothing filed under the
+  // old title — an unstudied deck has no row to carry over, and writing an
+  // empty one would only create work for the delete below.
+  if (flash && (flash.known.length > 0 || flash.learning.length > 0)) {
+    const moved = await SupabaseClient.setFlashState(renamed.title, flash);
+    if (moved.error) return moved;
+  }
+  return SupabaseClient.deleteFlashState(oldTitle);
+}
+
 export const Storage = {
   // R17: register for "local cache was bulk-overwritten externally" events.
   // Returns an unsubscribe function.
@@ -266,6 +299,47 @@ export const Storage = {
     }
     const ok = this.set(HISTORY_KEY, history);
     if (SupabaseClient.isLoggedIn()) mirror(SupabaseClient.saveDeck(entry));
+    return ok;
+  },
+
+  /**
+   * Rename a study set in place.
+   *
+   * Deliberately NOT `saveFile` under a new title: saveFile upserts BY title,
+   * so that would add a second deck and strand the first — along with the
+   * mastery progress filed under its id.
+   *
+   * The entry keeps its id, its shareToken and its `data` — including
+   * `data.title`, which stays exactly as generated or published. Nothing
+   * renders it, and on a deck added from a link it is part of the content hash
+   * that a later click of the same link uses to recognize this copy. A deck the
+   * student published keeps its old name in the snapshot for the same reason:
+   * `shared_decks` has no update path, and recipients hold their own copies.
+   *
+   * Returns false and changes nothing when the deck isn't in history or the new
+   * title already belongs to another one — titles are the cloud's unique key,
+   * so two decks cannot share one.
+   */
+  renameFile(oldTitle: string, newTitle: string): boolean {
+    const title = newTitle.trim();
+    if (!title) return false;
+    const history = this.getHistory();
+    const idx = history.findIndex((f) => f.title === oldTitle);
+    if (idx < 0) return false;
+    if (title === oldTitle) return true;
+    if (history.some((f, i) => i !== idx && f.title === title)) return false;
+
+    const entry = history[idx];
+    // Force the pre-id, title-keyed pile across to the id key BEFORE the title
+    // moves out from under it: getFlashState's one-time migration looks the
+    // legacy key up by the deck's CURRENT title, so after the rename there is
+    // nothing left to find it by and the progress would be orphaned.
+    const flash = entry.id ? this.getFlashState(entry.id) : null;
+
+    const renamed: HistoryEntry = { ...entry, title, name: `${title}.json` };
+    history[idx] = renamed;
+    const ok = this.set(HISTORY_KEY, history);
+    if (SupabaseClient.isLoggedIn()) mirror(renameInCloud(renamed, oldTitle, flash));
     return ok;
   },
 

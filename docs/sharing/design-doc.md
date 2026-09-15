@@ -17,7 +17,7 @@ A share is a **snapshot of a deck, stored exactly once**, addressed by an ungues
 | --- | --- |
 | Copy or live pointer? | **Own copy, single stored payload.** Recipients study their own deck; the JSON is stored once. |
 | How do we know they already have it? | **Stamped share token first, content hash as fallback.** Never title. |
-| Sharer's version changed since? | **Not applicable — decks can't be edited yet.** See "Gotchas for when deck editing lands". |
+| Sharer's version changed since? | **Not applicable — a deck's questions can't be edited yet.** (Renaming can, and deliberately doesn't reach the snapshot.) See "Gotchas for when deck editing lands". |
 | Can a signed-out user create a link? | **No — creating needs a login.** *Adding* from a link works signed out. |
 
 ## Data model
@@ -92,12 +92,12 @@ strip the token from the address bar → `await SupabaseClient.ready()` (adding 
 
 ## Gotchas for when deck editing lands
 
-There is **no way to edit or rename a deck in the app today** — that is the only reason the staleness question has no answer here. When editing arrives:
+**Renaming shipped 2026-09-06** (the pencil in a Home row's margin, `Storage.renameFile`). Editing a deck's *questions* still does not exist — which is why the staleness question below still has no answer. When it arrives:
 
 1. **A share-pointer row has no payload of its own.** Editing a deck whose cloud row is `data: null, share_token: '…'` must **fork it**: write the edited JSON into `decks.data` and clear `share_token` (copy-on-write). Editing the `shared_decks` row instead would silently rewrite the questions under every other recipient.
 2. **An edit changes the content hash**, so the edited copy stops matching its snapshot. That's correct — it is no longer that deck — but it means the *token* stamp becomes the only thing tying them together. Decide deliberately whether an edited copy keeps the token (dedupe still works, but "add" and "already have it" get fuzzy) or drops it.
 3. **The sharer's edit does not reach recipients**, by design (own-copy model). If "a newer version is available" is ever wanted, `shared_decks` needs a version/updated_at column and the offer screen needs an update path — Davis was asked and deferred this on 2026-08-19 because there was nothing to be stale about yet.
-4. **Renaming isn't just `saveFile`.** `Storage.saveFile` upserts *by title*, so writing an entry under a new title adds a second deck rather than renaming the first. A real rename has to go through `replaceHistory` (and mirror a delete of the old title to the cloud).
+4. **Renaming isn't just `saveFile` — handled, see `Storage.renameFile`.** `saveFile` upserts *by title*, so writing an entry under a new title would add a second deck rather than rename the first. `renameFile` writes history directly (id, `shareToken` and `data` all preserved) and mirrors to the cloud as save-new-title → delete-old-title, for `decks` and `flash_state` alike, since both are title-keyed. Save runs first so an interrupted rename leaves a duplicate the next login's merge can reconcile rather than a hole; the one exception is an account sitting exactly at the 100-deck cap, where the server's insert trigger refuses the new row until the old one is gone, so a refused save falls back to delete-then-save. A rename does **not** touch `data.title`, so a shared copy's content hash — and with it the link's dedupe — survives it, and it does not touch the `shared_decks` snapshot at all: there is no update policy on that table, and recipients hold their own copies under their own names by design.
 
 ## Per-account ceilings
 

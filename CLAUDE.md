@@ -106,13 +106,14 @@ The app is LIVE at **https://studydeck.brookslanding.com** (HostGator shared hos
 - **Deploys are manual.** Pushing to GitHub does NOT update the live site — run the deploy script when a change should go live.
 - **Caching:** HostGator's server-side cache can serve the previous deploy for up to ~2h. The script auto-sends an HTTP `PURGE` when `siteUrl` is set (a 501 response means that endpoint doesn't support purging — the cache just expires on its own). Browsers cache favicons extra-aggressively.
 
-## Gotcha — deck editing does not exist yet
+## Gotcha — question editing does not exist yet
 
-There is no way to edit or rename a deck in the app, and two shipped systems quietly depend on that. **When editing/renaming lands, read `docs/sharing/design-doc.md` "Gotchas for when deck editing lands" first.** The short version:
+Renaming a study set shipped 2026-09-06 (the pencil in a Home row's margin). Editing a deck's **questions** still does not exist, and two shipped systems quietly depend on that. **When it lands, read `docs/sharing/design-doc.md` "Gotchas for when deck editing lands" first.** The short version:
 
 - A deck added from a share link has **no payload of its own in the cloud** (`decks.data` is null, `share_token` points at the snapshot). Editing it must **fork** — write the edited JSON into `decks.data` and clear `share_token` — or the edit rewrites the questions for every other recipient.
-- `Storage.saveFile` upserts **by title**, so saving an entry under a new title adds a second deck rather than renaming the first. A real rename must go through `replaceHistory` plus a cloud delete of the old title.
 - Sharer-side edits deliberately do not reach recipients (own-copy model). "A newer version is available" would need a version column on `shared_decks`; Davis was asked on 2026-08-19 and deferred it precisely because nothing could go stale yet.
+
+**Renaming goes through `Storage.renameFile` and nothing else.** `saveFile` upserts *by title*, so saving an entry under a new title would add a second deck instead of renaming the first. `renameFile` rewrites history directly (id, `shareToken` and `data` all preserved — `data.title` is deliberately left alone, so a shared copy's content hash and the link dedupe survive) and mirrors to the cloud as save-new-title → delete-old-title for BOTH title-keyed tables, `decks` and `flash_state`. It refuses a title another deck already holds; the UI says so under the field rather than freeing a "(2)" name. The published `shared_decks` snapshot is never touched — that table has no update policy, and recipients keep their own copies under their own names.
 
 ## Key constraints to preserve
 

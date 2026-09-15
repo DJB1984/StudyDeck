@@ -308,6 +308,7 @@ button { font-family: inherit; cursor: pointer; }
    box is set on width/height rather than padding so both controls are the
    same size whatever their drawing does. */
 .file-row .delete-btn,
+.file-row .rename-btn,
 .file-row .share-btn {
   background: none;
   border: none;
@@ -322,13 +323,16 @@ button { font-family: inherit; cursor: pointer; }
   transition: color 140ms;
 }
 .file-row .delete-btn svg,
+.file-row .rename-btn svg,
 .file-row .share-btn svg { width: 17px; height: 17px; display: block; }
 /* Share is the constructive one of the pair, so it takes the everyday accent
    on hover while remove takes the alert ink — the color says which is which
    before the tooltip does. */
+.file-row .rename-btn:hover,
 .file-row .share-btn:hover { color: var(--accent-light); }
 .file-row .delete-btn:hover { color: var(--incorrect); }
 .file-row .delete-btn:focus-visible,
+.file-row .rename-btn:focus-visible,
 .file-row .share-btn:focus-visible {
   outline: 2px solid var(--accent-light);
   outline-offset: -2px;
@@ -341,7 +345,39 @@ button { font-family: inherit; cursor: pointer; }
 @media (pointer: coarse) {
   .file-card-actions { gap: 4px; }
   .file-row .delete-btn,
+  .file-row .rename-btn,
   .file-row .share-btn { width: 44px; height: 44px; }
+}
+
+/* The title editor. It inherits .file-row-title, so the name is set in the
+   same face at the same size in the same place — the row does not change shape
+   when it becomes editable, and nothing jumps when the edit commits. What marks
+   it as a field is a single rule under the text, the way every other structure
+   in this system is struck rather than boxed. */
+.file-row-title-input {
+  display: block;
+  width: 100%;
+  padding: 0 0 3px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--accent-light);
+  border-radius: 0;
+  font-family: inherit;
+  /* .file-row is a click target and sets cursor:pointer; the field inside it
+     is not, and would otherwise inherit the hand. */
+  cursor: text;
+  outline: none;
+}
+.file-row-title-input[aria-invalid='true'] { border-bottom-color: var(--incorrect); }
+
+/* The refusal, in the metadata voice the rest of the row already speaks —
+   alert ink rather than brass, since this one is a fault and not a marking. */
+.rename-error {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--incorrect);
 }
 
 /* Rotating tagline (Home spec R14–R17) */

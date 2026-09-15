@@ -36,6 +36,23 @@ function LinkIcon() {
   );
 }
 
+// Rename, on the same 24px grid at the same 1.8 stroke — a nib on a rule, so
+// the three controls in the margin read as one drawing at one weight.
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M4.5 19.5h4l10-10a2.1 2.1 0 0 0-3-3l-10 10zM14.5 7.5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // Remove, drawn on the same 24px grid at the same 1.8 stroke as LinkIcon. It
 // was a `&times;` character until 2026-08-22: a glyph takes its size and weight
 // from the running font, so it sat visibly lighter than the icon beside it and
@@ -208,12 +225,30 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   const [pasteText, setPasteText] = useState('');
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [sharing, setSharing] = useState<HistoryEntry | null>(null);
+  // The title being renamed, its working text, and the reason the last attempt
+  // was refused. Holding the TITLE (not a boolean) keeps one editor serving
+  // every row, the same way pendingDelete serves one modal.
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pasteBoxRef = useRef<HTMLTextAreaElement>(null);
+  const renameBoxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (pasteOpen) pasteBoxRef.current?.focus();
   }, [pasteOpen]);
+
+  // Opening the editor puts the cursor in it with the current name selected —
+  // one keystroke replaces the whole title, which is the common case, and
+  // arrowing to the end is still there for a small correction.
+  useEffect(() => {
+    if (renaming === null) return;
+    // focus() before select(): select() alone highlights the text without
+    // necessarily moving the caret into the field.
+    renameBoxRef.current?.focus();
+    renameBoxRef.current?.select();
+  }, [renaming]);
 
   // Re-read history after a login-time hydration/migration bulk-overwrites
   // the local cache — without this, the write succeeds but
@@ -307,6 +342,9 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   }
 
   function openCard(file: HistoryEntry) {
+    // A click anywhere in the row being renamed belongs to the editor — the
+    // student is typing a name, not asking to start studying.
+    if (renaming === file.title) return;
     // R4: bump lastOpened, re-save, then open.
     const updated: HistoryEntry = { ...file, lastOpened: today() };
     Storage.saveFile(updated);
@@ -325,6 +363,45 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
   function shareCard(e: React.MouseEvent, file: HistoryEntry) {
     e.stopPropagation(); // don't also open the deck.
     setSharing(file);
+  }
+
+  // Rename is edited in place rather than in a modal: the title is one short
+  // line the student is looking straight at, and a dialog to change it would
+  // ask them to leave the thing they are editing.
+  function renameCard(e: React.MouseEvent, file: HistoryEntry) {
+    e.stopPropagation(); // don't also open the deck.
+    setRenaming(file.title);
+    setDraft(file.title);
+    setRenameError(null);
+  }
+
+  function cancelRename() {
+    setRenaming(null);
+    setRenameError(null);
+  }
+
+  // Commit, or explain why not. A refused name leaves the editor open holding
+  // what was typed — nothing here steals focus back, so a refusal can be walked
+  // away from (Escape, or the pencil again) instead of trapping the tab key.
+  function commitRename() {
+    if (renaming === null) return;
+    const next = draft.trim();
+    // Cleared or unchanged is a cancel, not an error: there is no name to save
+    // and no question about what the student meant.
+    if (!next || next === renaming) {
+      cancelRename();
+      return;
+    }
+    if (history.some((f) => f.title === next)) {
+      setRenameError('You already have a set with that name.');
+      return;
+    }
+    if (!Storage.renameFile(renaming, next)) {
+      setRenameError("That name couldn't be saved — try another.");
+      return;
+    }
+    cancelRename();
+    refresh();
   }
 
   function confirmDelete() {
@@ -479,12 +556,51 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
           <ol id="file-history-list">
             {history.map((file) => (
               <li
-                key={file.title}
+                // Keyed by the deck's stable id, not its title: a rename changes
+                // the title, and keying on it would unmount the row mid-edit —
+                // taking the click the student is in the middle of making with
+                // it (the × on a just-renamed row would land on nothing).
+                key={file.id ?? file.title}
                 className="file-row"
                 onClick={() => openCard(file)}
               >
                 <div className="file-row-body">
-                  <h3 className="file-row-title">{file.title}</h3>
+                  {/* The title IS the field — it swaps to an input at the same
+                      size and position rather than opening one somewhere else,
+                      so the name never appears twice on screen at once. */}
+                  {renaming === file.title ? (
+                    <>
+                      <input
+                        ref={renameBoxRef}
+                        className="file-row-title file-row-title-input"
+                        value={draft}
+                        aria-label={`Name for ${file.title}`}
+                        aria-invalid={renameError !== null}
+                        onChange={(e) => {
+                          setDraft(e.target.value);
+                          setRenameError(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            commitRename();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            cancelRename();
+                          }
+                        }}
+                        onBlur={commitRename}
+                      />
+                      {renameError && (
+                        <p className="rename-error" role="alert">
+                          {renameError}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <h3 className="file-row-title">{file.title}</h3>
+                  )}
                   {/* Flashcard decks show the Know It tally IN PLACE OF the
                       question count — progress is what a returning student is
                       looking for, and the count survives as its denominator.
@@ -503,11 +619,19 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                     )}
                   </div>
                 </div>
-                {/* Share and remove read as one cluster, so a hairline
-                    divides them: the constructive control and the destructive
-                    one should not sit shoulder to shoulder with nothing but a
-                    gap between them. */}
+                {/* Rename and share are the constructive controls and sit
+                    together; a hairline divides them from remove, because the
+                    destructive one should not sit shoulder to shoulder with
+                    them with nothing but a gap between. */}
                 <div className="file-card-actions">
+                  <button
+                    className="rename-btn"
+                    title="Rename this study set"
+                    aria-label={`Rename ${file.title}`}
+                    onClick={(e) => renameCard(e, file)}
+                  >
+                    <PencilIcon />
+                  </button>
                   <button
                     className="share-btn"
                     title="Share this study set"
