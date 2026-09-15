@@ -95,7 +95,7 @@ Practice shows live feedback with retries (retries don't affect stats); Test sho
 **The redesign changed material and composition only — no workflow, control, flow or piece of state moved.** Four things in particular are load-bearing and are the reasons the old look read as generated; don't reintroduce any of them without asking:
 
 - **No glow, ever** — no gradient-filled buttons, no colored box-shadows, no glow behind a headline, no gradient-clipped text. Buttons are flat stamps that translate 1px on press.
-- **Corners, not curves** — `--radius` is 4px and is the system maximum; controls are 3px, small chrome 2px. No pills (`999px`), no discs (`50%`) except the auth avatar.
+- **Corners, not curves** — `--radius` is 4px and is the system maximum; controls are 3px, small chrome 2px. No pills (`999px`), and no discs (`50%`) at all — the auth avatar was the last one and was squared off on 2026-09-14.
 - **Lists are ruled, not tiled** — Home's library, quiz answers and the Stats breakdown are full-width rows separated by one hairline each. The old `auto-fill minmax()` card grid is gone.
 - **Two inks** — star-blue means "act on this / this is selected"; brass (`--brass`) means "this is a marking on the plate" and is never interactive. Every piece of metadata in the app shares one voice: small letter-spaced uppercase brass mono.
 

@@ -812,17 +812,18 @@ button { font-family: inherit; cursor: pointer; }
 /* The avatar's anchor. Fixed 40px so the header row never shifts, and the
    menu below is absolutely positioned off it — the plate hangs over the page
    rather than pushing anything around. 40px matches .btn's rendered height
-   (Copy Prompt), so the disc sits on the header's baseline beside it. */
+   (Copy Prompt), so it sits on the header's baseline beside it. */
 .auth-avatar-wrap {
   width: 40px;
   height: 40px;
 }
 
-/* The one disc in the system (DESIGN.md's stated exception to Corners, Not
-   Curves): an avatar reads as a person, and a person is not a plate. Ghost
-   ink, never blue — Copy Prompt is the header's one action (The Signal
-   Rule), so an open account menu marks itself with a stronger rule and
-   brighter glyph rather than by taking the star blue. */
+/* Cornered like everything else (Corners, Not Curves — the avatar was the
+   system's last disc and stopped being an exception on 2026-09-14): it sits
+   beside Copy Prompt and the login button, and a disc among stamps read as
+   borrowed chrome. Ghost ink, never blue — Copy Prompt is the header's one
+   action (The Signal Rule), so an open account menu marks itself with a
+   stronger rule and brighter glyph rather than by taking the star blue. */
 .auth-avatar-btn {
   display: flex;
   align-items: center;
@@ -832,7 +833,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   transition: background 140ms ease, border-color 140ms ease;
 }
 .auth-avatar-btn:hover,

@@ -316,8 +316,9 @@ the flashcard; controls step down to `3px` (`--radius-md`) and the smallest chro
 to `2px`. The radius exists to stop a 1px edge looking chipped, not to soften
 anything. The prior system's `16px` signature curve, its `999px` pills and its
 `50%` discs are all gone — a rounded pill on a ruled plate is the one shape that
-gives the game away. Circles survive only where the object genuinely is one: the
-auth avatar.
+gives the game away. The auth avatar was the last disc and was squared off on
+2026-09-14: it stands in the header beside Copy Prompt and the login button, and
+a circle among stamps read as borrowed chrome. There are no circles left.
 
 Border weight no longer signals interactivity — everything is 1px, and the
 distinction is carried by color instead (a ruled row washes brass on hover; a
