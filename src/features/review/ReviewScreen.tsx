@@ -61,7 +61,22 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
     <section id="review-screen" className="screen">
       <ProgressHeader current={current} total={total} onAbandon={onBack} abandonTitle="Quit review" />
 
-      <QuestionBody question={q} />
+      {/* fillBlank shows the canonical answer sitting in each blank, read-only —
+          Review's whole job is showing the correct answer in place. */}
+      <QuestionBody
+        question={q}
+        blankSlots={
+          format === 'fillBlank'
+            ? {
+                values: (q.blanks ?? []).map((b) => b.accept[0] ?? ''),
+                onChange: () => {},
+                onEnter: () => {},
+                disabled: true,
+                getClassName: () => 'correct-answer',
+              }
+            : undefined
+        }
+      />
 
       {format === 'mcq' && (
         <AnswerList
@@ -132,6 +147,7 @@ export function ReviewScreen({ questions, order, onBack }: ReviewScreenProps) {
         format !== 'multiSelect' &&
         format !== 'order' &&
         format !== 'numeric' &&
+        format !== 'fillBlank' &&
         format !== 'code' && (
           <div className="format-unsupported glass-card">
             This question type isn't supported yet in this build.

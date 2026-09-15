@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Fill-in-the-Blank Test Deck",
+  "questions": [
+    {
+      "id": "fb1",
+      "answerFormat": "fillBlank",
+      "question": "The organelle that produces most of a cell's ATP is the ___, and the process it uses is called ___ respiration.",
+      "blanks": [
+        {
+          "accept": [
+            "mitochondria",
+            "mitochondrion"
+          ]
+        },
+        {
+          "accept": [
+            "cellular",
+            "aerobic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fb2",
+      "answerFormat": "fillBlank",
+      "question": "In a $2 \\times 2$ Punnett square crossing $Aa \\times Aa$, the genotype appearing in exactly two of the four boxes is ___.",
+      "blanks": [
+        {
+          "accept": [
+            "Aa",
+            "aA"
+          ]
+        }
+      ],
+      "caseSensitive": true
+    },
+    {
+      "id": "fb3",
+      "answerFormat": "fillBlank",
+      "question": "Newton's second law states that $F = ma$, so force is measured in ___ when mass is in kilograms and acceleration is in $\\text{m/s}^2$.",
+      "blanks": [
+        {
+          "accept": [
+            "newtons",
+            "newton",
+            "N"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fb4",
+      "answerFormat": "fillBlank",
+      "question": "Order of operations: evaluate ___ first, then exponents, then ___ and division left to right, and finally addition and ___.",
+      "blanks": [
+        {
+          "accept": [
+            "parentheses",
+            "brackets",
+            "grouping"
+          ]
+        },
+        {
+          "accept": [
+            "multiplication"
+          ]
+        },
+        {
+          "accept": [
+            "subtraction"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fb5",
+      "answerFormat": "fillBlank",
+      "question": "The variable holding a loop counter in `for (let i = 0; i < n; i++)` is named ___, and the identifier `snake_case` here should pass through untouched.",
+      "blanks": [
+        {
+          "accept": [
+            "i"
+          ]
+        }
+      ],
+      "caseSensitive": true
+    },
+    {
+      "id": "fb6",
+      "question": "Which of these is a control question, proving mcq still renders normally?",
+      "answers": [
+        "This one",
+        "Not this one",
+        "Nor this"
+      ],
+      "correct": 0
+    }
+  ]
+}

@@ -1365,6 +1365,61 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 30px;
   max-width: 62ch;
 }
+/* A fill-in-the-blank sentence: the blanks sit in the line of type, drawn the
+   way a blank is engraved on a plate — a rule under empty space, no box. The
+   text runs keep pre-wrap so the single space on either side of a blank
+   survives being split into its own inline span. Line-height is opened up
+   because the inputs are taller than the type they sit in. */
+.fill-blank-text {
+  line-height: 2.1;
+}
+.fill-blank-seg {
+  white-space: pre-wrap;
+}
+.fill-blank-input {
+  display: inline-block;
+  vertical-align: baseline;
+  max-width: 100%;
+  min-width: 0;
+  /* Tight enough that a following comma or period still reads as attached to
+     the blank rather than floating off it. */
+  margin: 0 1px;
+  padding: 0 3px 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--text-secondary);
+  border-radius: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  letter-spacing: 0.01em;
+  text-align: center;
+  transition: border-color 150ms, background-color 150ms;
+}
+.fill-blank-input:focus {
+  outline: none;
+  border-bottom-color: var(--accent-light);
+  background: rgba(147, 184, 245, 0.08);
+}
+.fill-blank-input:disabled {
+  /* Review and a locked-correct Practice answer both land here — still fully
+     legible, since in Review this IS the answer being shown. */
+  opacity: 1;
+  cursor: default;
+}
+/* Feedback arrives as a full border + tint, same as an answer row: right/wrong
+   has to survive being glanced at (Feedback-Only Rule). */
+.fill-blank-input.correct-answer {
+  border: 1px solid var(--correct);
+  border-radius: var(--radius-sm);
+  background: rgba(99, 189, 128, 0.12);
+}
+.fill-blank-input.wrong-answer {
+  border: 1px solid var(--incorrect);
+  border-radius: var(--radius-sm);
+  background: rgba(227, 95, 90, 0.12);
+}
+
 /* An answer is a ruled entry, not a raised tile: the row carries its own
    hairline and a brass letter in the margin, and hovering washes it rather
    than lifting it. Feedback still arrives as a full border + tint, because

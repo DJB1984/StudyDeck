@@ -50,6 +50,7 @@ The schema above is `"mcq"` — the default, and the right choice for most quest
 |---|---|---|
 | `"multiSelect"` | Any number of correct options | `answers` (5–8 strings is typical for select-all) + `correctIndices` — in-range, non-duplicate. Graded all-or-nothing. |
 | `"numeric"` | A typed or slider-dragged number | `correctValue` + `tolerance` (`0` = exact). Optional `inputWidget: "slider"`, which then **requires** `sliderMin` < `sliderMax` plus `sliderStep`. |
+| `"fillBlank"` | A sentence with one or more terms missing | `blanks` — one `{ "accept": [...] }` per blank, in reading order. Mark each blank in `question` with **three or more underscores** (`___`); the marker count must equal `blanks`' length. Graded all-or-nothing. Optional `"caseSensitive": true`. |
 | `"order"` | Arranging steps into a sequence | `items` (≥2 `{id, text}`; StudyDeck shuffles them, so listing order isn't a spoiler) + `correctOrder` — the same ids, each exactly once. Graded exact-match. |
 | `"code"` | Writing real code | `language` (`"javascript"` or `"python"` **only** — never `"java"`) + `checks`, needing at least one of `syntax` / `structure` / `tests`. Optional `starterCode`. |
 
@@ -65,12 +66,16 @@ One example of each, as they'd appear inside `questions`:
 { "id": "q3", "answerFormat": "numeric",
   "question": "An object accelerates from rest at $a = 9.8\\text{ m/s}^2$. Its velocity after $t=3$ s?",
   "correctValue": 29.4, "tolerance": 0.1 },
-{ "id": "q4", "answerFormat": "order",
+{ "id": "q4", "answerFormat": "fillBlank",
+  "question": "Glycolysis takes place in the ___, while the electron transport chain is embedded in the ___ membrane.",
+  "blanks": [{ "accept": ["cytoplasm", "cytosol"] },
+             { "accept": ["inner mitochondrial", "inner"] }] },
+{ "id": "q5", "answerFormat": "order",
   "question": "Order these steps of the nursing process.",
   "items": [{ "id": "a", "text": "Assessment" }, { "id": "b", "text": "Diagnosis" },
             { "id": "c", "text": "Planning" }, { "id": "d", "text": "Evaluation" }],
   "correctOrder": ["a", "b", "c", "d"] },
-{ "id": "q5", "answerFormat": "code",
+{ "id": "q6", "answerFormat": "code",
   "question": "Write a function `reverse_string(s)` that returns the input string reversed.",
   "language": "python",
   "starterCode": "def reverse_string(s):\n    pass\n",
@@ -79,6 +84,8 @@ One example of each, as they'd appear inside `questions`:
     "structure": { "requiredNames": ["reverse_string"] },
     "tests": [{ "call": "reverse_string('abc')", "expect": "'cba'" }] } }
 ```
+
+For `fillBlank`, blank out the term being tested, not filler — one to three blanks per sentence, and never the first word (a sentence has to give the student something to reason from). Leave enough of the sentence intact that the answer is determined by it. List in `accept` every form a student might reasonably type: singular and plural, an abbreviation and its full name, a synonym the material itself uses. Matching already forgives case, extra whitespace, curly apostrophes and a trailing period, but **not** typos — so alternates matter. The first entry in `accept` is canonical: it's what the results screen shows and what sizes the input. Set `"caseSensitive": true` only where case is itself the answer (`Aa` vs `aa`, an identifier, a `-r`/`-R` flag). Markers inside `$...$` are left alone, so put a blank outside the math, not inside it.
 
 For `code`, every `call`/`expect` must be a valid expression **in that question's own language** — not JSON, not pseudocode (`"True"` in Python, `"true"` in JavaScript). `structure` alone is fine when the point is shape, not behavior.
 
@@ -150,6 +157,7 @@ StudyDeck rejects the **entire file** if any of these fail — it will not silen
 - [ ] `questions` is non-empty; every question has a non-empty `id` and `question`
 - [ ] mcq questions have **at least 2** `answers`, and an integer `correct` that indexes one of them
 - [ ] Any other `answerFormat` has all of its own required fields from §2
+- [ ] Every `fillBlank` question has exactly as many `___` markers in its `question` as entries in `blanks`
 - [ ] Any `table`/`graph` has its required fields, and your answers match its actual values
 - [ ] Every LaTeX backslash is doubled (`\\`)
 - [ ] The whole file is valid JSON — no trailing commas, no unescaped quotes

@@ -12,9 +12,12 @@
 // the session ends is scored wrong, not omitted.
 //
 // answerFormat support: 'mcq' (default) is untouched from the original single-click
-// behavior below. 'multiSelect' and 'order' need an explicit "Check answer" step in
-// Practice mode (unlike mcq, a single click/drag doesn't mean "done answering"), but
-// stay ungated in Test mode exactly like mcq — no feedback until Stats either way.
+// behavior below. Every other format ('multiSelect', 'order', 'numeric', 'fillBlank',
+// 'code') needs an explicit "Check answer" step in Practice mode (unlike mcq, a single
+// click/drag/keystroke doesn't mean "done answering"), but stays ungated in Test mode
+// exactly like mcq — no feedback until Stats either way. 'fillBlank' grades every blank
+// all-or-nothing, and its inputs live inside the question sentence itself (QuestionBody's
+// blankSlots), not in an answer block below it.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnswerRecord, OrderItem, QuizQuestion, QuizSession, SessionRecord } from '../../types';
@@ -32,7 +35,7 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { buildPrompt, copyWithFeedback } from '../../lib/clipboard';
 import { buildRecord, formatDuration } from '../stats/stats';
 import { shuffleArray } from '../../lib/shuffle';
-import { matchNumeric } from '../../lib/answerMatching';
+import { matchBlankText, matchNumeric } from '../../lib/answerMatching';
 import { runCodeChecks } from '../../lib/codeRunners';
 import type { CodeCheckResult } from '../../lib/codeRunners';
 
@@ -46,11 +49,13 @@ interface SavedAnswer {
   chosenOrder?: string[];
   /** numeric only — raw text/slider value as typed, graded via answerMatching.matchNumeric. */
   numericValue?: string;
+  /** fillBlank only — one raw value per blank, graded via answerMatching.matchBlankText. */
+  blankValues?: string[];
   /** code only — current editor text, graded via lib/codeRunners. */
   codeValue?: string;
   /** code only — result of the last "Run Tests" click in Practice mode. */
   codeResult?: CodeCheckResult;
-  /** multiSelect/order/numeric/code only: has "Check answer" been pressed in Practice mode. */
+  /** multiSelect/order/numeric/fillBlank/code only: has "Check answer" been pressed in Practice mode. */
   submitted?: boolean;
 }
 
@@ -73,6 +78,24 @@ function isCorrectOrder(question: QuizQuestion, chosenOrder: string[] | undefine
     chosenOrder.length === question.correctOrder.length &&
     chosenOrder.every((id, i) => id === question.correctOrder![i])
   );
+}
+
+/** Per-blank grade — also what drives the "3 of 4 blanks right" hint and the highlight. */
+function blankIsCorrect(question: QuizQuestion, i: number, values: string[] | undefined): boolean {
+  const accept = question.blanks?.[i]?.accept;
+  if (!accept) return false;
+  return matchBlankText(values?.[i] ?? '', accept, question.caseSensitive ?? false);
+}
+
+/** All-or-nothing, like multiSelect and order: every blank has to land. */
+function isCorrectFillBlank(question: QuizQuestion, values: string[] | undefined): boolean {
+  const blanks = question.blanks;
+  if (!blanks || blanks.length === 0) return false;
+  return blanks.every((_, i) => blankIsCorrect(question, i, values));
+}
+
+function countCorrectBlanks(question: QuizQuestion, values: string[] | undefined): number {
+  return (question.blanks ?? []).reduce((n, _, i) => (blankIsCorrect(question, i, values) ? n + 1 : n), 0);
 }
 
 export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
@@ -118,9 +141,14 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
             ? q.inputWidget === 'slider'
               ? true // a slider always has a value, touched or not — same reasoning as order
               : !!saved?.numericValue && saved.numericValue.trim() !== ''
-            : format === 'code'
-              ? (saved?.codeValue ?? q.starterCode ?? '').trim() !== ''
-              : false;
+            : format === 'fillBlank'
+              ? // Every blank has to be filled before "Check answer" means anything —
+                // a half-finished sentence graded all-or-nothing is just a miss.
+                (q.blanks ?? []).length > 0 &&
+                (q.blanks ?? []).every((_, i) => (saved?.blankValues?.[i] ?? '').trim() !== '')
+              : format === 'code'
+                ? (saved?.codeValue ?? q.starterCode ?? '').trim() !== ''
+                : false;
 
   // Practice-mode "locked" (correct, no more retries) is format-aware; Test never locks.
   const isCurrentlyCorrect =
@@ -132,9 +160,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
           ? !!saved?.submitted && isCorrectOrder(q, saved?.chosenOrder)
           : format === 'numeric'
             ? !!saved?.submitted && matchNumeric(saved?.numericValue ?? '', q.correctValue ?? 0, q.tolerance ?? 0)
-            : format === 'code'
-              ? !!saved?.submitted && !!saved?.codeResult?.overallPass
-              : false;
+            : format === 'fillBlank'
+              ? !!saved?.submitted && isCorrectFillBlank(q, saved?.blankValues)
+              : format === 'code'
+                ? !!saved?.submitted && !!saved?.codeResult?.overallPass
+                : false;
   const locked = mode === 'practice' && isCurrentlyCorrect;
 
   // 'order' display order: restores the saved order if the student already
@@ -302,6 +332,40 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     return isCurrentlyCorrect ? 'correct-answer' : 'wrong-answer';
   }
 
+  // --- fillBlank handlers ---
+  function handleBlankChange(i: number, v: string) {
+    if (locked) return;
+    setAnswers((prev) => {
+      const existing = prev[q.id];
+      const next = (q.blanks ?? []).map((_, bi) => (bi === i ? v : (existing?.blankValues?.[bi] ?? '')));
+      return {
+        ...prev,
+        [q.id]: {
+          chosenIndex: -1,
+          blankValues: next,
+          firstAttemptCorrect: existing?.firstAttemptCorrect ?? null,
+          submitted: mode === 'practice' ? false : true,
+        },
+      };
+    });
+  }
+
+  function handleBlankSubmit() {
+    if (mode !== 'practice' || locked) return;
+    setAnswers((prev) => {
+      const existing = prev[q.id];
+      const blankValues = existing?.blankValues ?? [];
+      const correct = isCorrectFillBlank(q, blankValues);
+      const firstAttemptCorrect = existing?.firstAttemptCorrect ?? correct;
+      return { ...prev, [q.id]: { chosenIndex: -1, blankValues, firstAttemptCorrect, submitted: true } };
+    });
+  }
+
+  function blankClass(i: number): string {
+    if (mode !== 'practice' || !saved?.submitted) return '';
+    return blankIsCorrect(q, i, saved.blankValues) ? 'correct-answer' : 'wrong-answer';
+  }
+
   // --- code handlers ---
   function handleCodeChange(v: string) {
     if (locked) return;
@@ -412,6 +476,25 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         };
       }
 
+      if (qFormat === 'fillBlank') {
+        const blanks = question.blanks ?? [];
+        // Padded to one entry per blank so the record's shape doesn't depend on
+        // which blanks were touched — Stats reads it positionally.
+        const values = blanks.map((_, i) => a?.blankValues?.[i] ?? '');
+        const hasValue = values.some((v) => v.trim() !== '');
+        const correct = isCorrectFillBlank(question, values);
+        const firstAttemptCorrect = !hasValue ? false : mode === 'practice' ? (a!.firstAttemptCorrect ?? false) : correct;
+        return {
+          id: question.id,
+          firstAttemptCorrect,
+          chosenIndex: -1,
+          correctIndex: -1,
+          blankInputs: hasValue ? values : undefined,
+          correctBlanks: blanks.map((b) => b.accept[0] ?? ''),
+          timeSpent,
+        };
+      }
+
       if (qFormat === 'code') {
         const codeValue = a?.codeValue ?? question.starterCode ?? '';
         const hasCode = codeValue.trim() !== '';
@@ -514,6 +597,15 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, answers, confirmQuit]);
 
+  // fillBlank: a partial score is worth saying out loud even though the question
+  // is graded all-or-nothing — with four blanks, "try again" doesn't tell the
+  // student whether they missed one or all of them. Which blank is wrong is
+  // already visible from the per-input highlight, so this leaks nothing extra.
+  const blankTally =
+    format === 'fillBlank' && (q.blanks?.length ?? 0) > 1
+      ? `Incorrect — ${countCorrectBlanks(q, saved?.blankValues)} of ${q.blanks!.length} blanks right`
+      : 'Incorrect — try again';
+
   const feedbackMsg =
     mode !== 'practice' || !answered || format === 'code' // code's detailed pass/fail lives in CodeResultsPanel instead
       ? ''
@@ -526,7 +618,9 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
             ? 'Correct!'
             : format === 'multiSelect'
               ? 'Incorrect — recheck your selections' // no more/fewer hint, that leaks info
-              : 'Incorrect — try again'
+              : format === 'fillBlank'
+                ? blankTally
+                : 'Incorrect — try again'
           : '';
   const feedbackClass =
     !answered || format === 'code' || (format !== 'mcq' && !saved?.submitted)
@@ -550,7 +644,20 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
     <section id="quiz-screen" className="screen">
       <ProgressHeader current={current} total={total} onAbandon={handleAbandon} abandonTitle="Quit quiz" />
 
-      <QuestionBody question={q} />
+      <QuestionBody
+        question={q}
+        blankSlots={
+          format === 'fillBlank'
+            ? {
+                values: saved?.blankValues ?? [],
+                onChange: handleBlankChange,
+                onEnter: handleBlankSubmit,
+                disabled: locked,
+                getClassName: blankClass,
+              }
+            : undefined
+        }
+      />
 
       {format === 'mcq' && (
         <AnswerList
@@ -612,6 +719,7 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         format !== 'multiSelect' &&
         format !== 'order' &&
         format !== 'numeric' &&
+        format !== 'fillBlank' &&
         format !== 'code' && (
           <div className="format-unsupported glass-card">
             This question type isn't supported yet in this build.
@@ -619,7 +727,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
         )}
 
       {mode === 'practice' &&
-        (format === 'multiSelect' || format === 'order' || format === 'numeric' || format === 'code') &&
+        (format === 'multiSelect' ||
+          format === 'order' ||
+          format === 'numeric' ||
+          format === 'fillBlank' ||
+          format === 'code') &&
         !locked && (
           <button
             className="btn quiz-check-btn"
@@ -628,9 +740,11 @@ export function QuizScreen({ session, onFinish, onAbandon }: QuizScreenProps) {
                 ? handleMultiSubmit
                 : format === 'order'
                   ? handleOrderSubmit
-                  : format === 'code'
-                    ? handleCodeSubmit
-                    : handleNumericSubmit
+                  : format === 'fillBlank'
+                    ? handleBlankSubmit
+                    : format === 'code'
+                      ? handleCodeSubmit
+                      : handleNumericSubmit
             }
             disabled={!answered || (format === 'code' && codeRunning)}
           >

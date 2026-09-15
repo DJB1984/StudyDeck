@@ -104,3 +104,18 @@ Hand this file to [[Claude Code]] along with `PRD.md` and `design-doc.md` (this 
 - [ ] Confirm the same matcher also grades command-style type-the-answer flashcards (Phase 6) — no separate implementation needed, just reuse
 - [ ] Validate `acceptedAnswers` is a non-empty array of strings in `DeckValidation.ts`
 - [ ] Verify: a small cybersecurity-flavored test deck (a handful of common commands) correctly accepts flag-order/whitespace variants and correctly rejects genuinely wrong commands
+
+---
+
+## Phase 9 — Fill-in-the-Blank Sentences (added 2026-09-14)
+
+**Goal:** A sentence with one or more missing terms, typed into blanks that sit in the line of type.
+
+- [x] Add `answerFormat: 'fillBlank'` to `types.ts` with `blanks: BlankSpec[]` (one `{ accept: string[] }` per blank) and optional `caseSensitive`
+- [x] `src/lib/fillBlank.ts` — the marker syntax (three or more underscores), defined once: `parseBlanks` splits a sentence into text runs and blank slots, `countBlanks` feeds validation. Markers inside `$...$`/`$$...$$` and runs of one or two underscores are left as text
+- [x] `answerMatching.matchBlankText(input, accepted, caseSensitive)` — case/whitespace/curly-apostrophe/trailing-punctuation normalization, no edit-distance tolerance (Davis's call 2026-09-14: a typo is a miss, since one character is often the whole distinction)
+- [x] Validate `blanks` and, critically, that the marker count matches its length — a mismatch silently grades every later blank against the wrong key
+- [x] `FillBlankText` in `QuizUI.tsx`, reached via `QuestionBody`'s optional `blankSlots` prop — inline inputs, sized from the canonical answer (clamped so a long answer isn't a spelling hint) and growing to fit what's typed
+- [x] Wire Practice (per-blank highlight + "N of M blanks right"), Test (no feedback), Review (canonical answers read-only in place), and Stats (numbered your-answer/correct-answer rows)
+- [x] Verified live in a headless browser against `test-decks/phase9-fill-blank.json`: two-blank partial feedback, retry to correct then lock, `caseSensitive` rejecting `aa` for `Aa`, KaTeX `\\times` rendering either side of a blank in the same sentence, Enter submitting without advancing the question, `snake_case` passing through untouched, Stats breakdown, Review, Test mode showing no check button or highlight, and 390px-wide layout with no horizontal overflow — zero console errors
+- [ ] Not built: a word bank variant (tap a chip into a slot). Deliberately deferred — recall and recognition are different questions, and it can arrive as its own opt-in flag without reworking this

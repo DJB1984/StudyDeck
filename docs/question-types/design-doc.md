@@ -16,17 +16,19 @@ All new question sub-types are introduced via an optional `answerFormat` discrim
 
 ### `src/lib/answerMatching.ts` (new)
 
-One module, two grading modes, used by every free-response-shaped feature instead of each reimplementing comparison logic:
+One module, one matcher per kind of comparison, used by every free-response-shaped feature instead of each reimplementing comparison logic:
 
 ```ts
 matchNumeric(input: string, correctValue: number, tolerance: number): boolean
 matchNormalizedString(input: string, accepted: string[]): boolean
+matchBlankText(input: string, accepted: string[], caseSensitive?: boolean): boolean
 ```
 
 - `matchNumeric` — parses `input` as a float, returns `Math.abs(parsed - correctValue) <= tolerance`. Non-numeric input is always a non-match (not a thrown error — same never-crash posture as the rest of the app).
 - `matchNormalizedString` — collapses whitespace, then for tokens matching a combined-short-flag shape (`/^-[a-zA-Z]{2,}$/`) decomposes them into a set of single-character flags so `-la` and `-al` compare equal; other tokens compare literally. Returns true if the normalized input matches the normalized form of any string in `accepted`. Used by both command-line questions and type-the-answer flashcards.
+- `matchBlankText` — the fill-in-the-blank matcher (see its own feature section below). Straightens curly quotes/apostrophes, collapses whitespace, trims, drops trailing sentence punctuation, and lowercases unless `caseSensitive`. Empty input is always a non-match. No edit-distance tolerance by design.
 
-Used by: numeric free-response, slider, type-the-answer flashcards, command-line matching.
+Used by: numeric free-response, slider, fill-in-the-blank sentences, type-the-answer flashcards, command-line matching.
 
 ### `src/types.ts` additions
 
@@ -64,6 +66,56 @@ Pyodide and CheerpJ are both tens-of-MB WASM runtimes. Neither may be part of th
 | `sliderMin`/`sliderMax`/`sliderStep` | number | Required if `inputWidget: "slider"` | Slider range and granularity. |
 
 Grading: `answerMatching.matchNumeric`. Rendering: a plain numeric `<input>` (text mode) or `<input type="range">` (slider mode) replaces the four MCQ answer buttons in `QuizScreen.tsx`.
+
+## Feature: Fill-in-the-blank sentences (added 2026-09-14, shipped)
+
+```json
+{
+  "id": "q1",
+  "answerFormat": "fillBlank",
+  "question": "Glycolysis takes place in the ___, while the electron transport chain is embedded in the ___ membrane.",
+  "blanks": [
+    { "accept": ["cytoplasm", "cytosol"] },
+    { "accept": ["inner mitochondrial", "inner"] }
+  ],
+  "caseSensitive": false
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `blanks` | `{ accept: string[] }[]` | Yes | One entry per blank, in reading order. Each `accept` is non-empty; its FIRST entry is canonical (shown in Review/Stats, sizes the field). |
+| `caseSensitive` | boolean | No | Default `false`. Opt in where case is itself the answer (`Aa` vs `aa`, an identifier, `-r` vs `-R`). |
+
+**Marker syntax** lives in `src/lib/fillBlank.ts` and nowhere else: a blank is a run of **three or more underscores**
+in `question`. A run of one or two (`snake_case`, `some__name`) stays text, and a marker inside `$...$` / `$$...$$` is
+ignored entirely — a subscript chain must never read as a blank, and splitting mid-formula would hand KaTeX half a math
+span. `parseBlanks` returns the interleaved text runs and blank slots; `countBlanks` feeds validation, which rejects any
+question whose marker count doesn't equal `blanks.length` (a mismatch would silently grade every later blank against
+the wrong key).
+
+Grading: `answerMatching.matchBlankText`, **all-or-nothing** per question, matching `multiSelect` and `order` so
+`AnswerRecord.firstAttemptCorrect` stays a boolean (Davis's call 2026-09-14 — partial credit would have turned every
+format's scoring math into a fraction). Normalization: straighten curly quotes, collapse whitespace, trim, drop
+trailing sentence punctuation, lowercase unless `caseSensitive`. Deliberately **not** fuzzy — no edit distance, since
+one character is often the entire distinction (affect/effect, `Aa`/`aa`); real alternates belong in `accept`.
+
+Rendering: `FillBlankText` in `QuizUI.tsx`, reached through `QuestionBody`'s optional `blankSlots` prop. Unlike every
+other format, the answer surface is *inside* the question sentence rather than a block below it — inline `<input>`s
+flow and wrap with the type, drawn as a ruled line rather than a box. Each is sized from its canonical answer (clamped
+to 6–18ch so a long answer isn't a spelling hint) and grows to fit what's typed (which reveals nothing: the field only
+ever gets wider than the key's own width). Text runs keep `white-space: pre-wrap` so the single space on either side of
+a blank survives being split into its own inline span.
+
+Per-mode behavior follows the other check-gated formats: Practice needs an explicit **Check answer** (enabled once
+every blank is non-empty; Enter in any blank submits), then highlights each blank individually and reads
+"Incorrect — N of M blanks right" — which blank is wrong is already visible from the highlight, so the tally leaks
+nothing extra. Test shows nothing until Stats. Review passes each blank's canonical answer in read-only. Stats numbers
+the blanks in the your-answer/correct-answer rows once there's more than one.
+
+**Not built:** a word bank variant (tap a chip into a slot). Deferred at Davis's call 2026-09-14 — recall and
+recognition are genuinely different questions, and a word bank can arrive later as its own opt-in flag without
+reworking any of this.
 
 ## Feature: Select-all-that-apply
 

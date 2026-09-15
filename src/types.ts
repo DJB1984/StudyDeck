@@ -10,7 +10,15 @@ export type QuizMode = 'practice' | 'test';
  * a list of two or more `answers` with a single `correct` index — every field
  * added below is optional and additive, so existing decks are unaffected.
  */
-export type AnswerFormat = 'mcq' | 'numeric' | 'multiSelect' | 'order' | 'graphClick' | 'code' | 'command';
+export type AnswerFormat =
+  | 'mcq'
+  | 'numeric'
+  | 'multiSelect'
+  | 'order'
+  | 'graphClick'
+  | 'code'
+  | 'command'
+  | 'fillBlank';
 
 export interface GraphSpec {
   type: 'points' | 'equation';
@@ -58,6 +66,16 @@ export interface CodeChecks {
   tests?: CodeCheckTest[];
 }
 
+/** One blank in a `fillBlank` sentence. */
+export interface BlankSpec {
+  /**
+   * Every form that counts as correct, compared via answerMatching's
+   * `matchBlankText`. The FIRST entry is canonical: it's what Review and Stats
+   * show, and what the input field is sized from.
+   */
+  accept: string[];
+}
+
 export interface QuizQuestion {
   id: string;
   question: string;
@@ -91,6 +109,18 @@ export interface QuizQuestion {
   language?: 'javascript' | 'python' | 'java';
   starterCode?: string;
   checks?: CodeChecks;
+
+  // --- answerFormat: 'fillBlank' ---
+  /**
+   * One entry per `___` marker in `question`, in reading order — the count must
+   * match exactly (DeckValidation enforces it). See lib/fillBlank.ts.
+   */
+  blanks?: BlankSpec[];
+  /**
+   * fillBlank only — opt in to case-sensitive matching, for material where case
+   * IS the answer (genotypes, code identifiers, `-r` vs `-R`). Default false.
+   */
+  caseSensitive?: boolean;
 
   // --- answerFormat: 'command' ---
   /** Any one of these normalized forms counts as correct — see answerMatching.ts. */
@@ -173,6 +203,13 @@ export interface AnswerRecord {
   numericInput?: string;
   /** code only — the submitted source text, undefined if left at/before starterCode-empty. */
   codeInput?: string;
+  /**
+   * fillBlank only — what was typed in each blank, one entry per blank ('' for
+   * one left empty). Undefined when every blank was left empty.
+   */
+  blankInputs?: string[];
+  /** fillBlank only — each blank's canonical (first-accepted) answer. */
+  correctBlanks?: string[];
 }
 
 /** The aggregated session, built by Stats after a quiz ends. */

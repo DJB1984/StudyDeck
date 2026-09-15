@@ -75,6 +75,14 @@ function formatAnswerText(ans: AnswerRecord, q: QuizQuestion, format: string, wh
     if (!ids || ids.length === 0) return which === 'chosen' ? "You didn't answer this one" : '';
     return ids.map((id) => q.items?.find((it) => it.id === id)?.text ?? id).join(' → ');
   }
+  if (format === 'fillBlank') {
+    const values = which === 'chosen' ? ans.blankInputs : ans.correctBlanks;
+    if (!values || values.length === 0) return which === 'chosen' ? "You didn't answer this one" : '';
+    // Numbered once there's more than one blank, so a wrong answer lines up
+    // against the right one blank for blank.
+    if (values.length === 1) return values[0] === '' ? '(left blank)' : values[0];
+    return values.map((v, i) => `${i + 1}) ${v === '' ? '(left blank)' : v}`).join('   ');
+  }
   if (format === 'numeric') {
     if (which === 'chosen') return ans.numericInput ?? "You didn't answer this one";
     // Stats always reveals the correct answer regardless of Practice's no-hint
@@ -97,9 +105,11 @@ function BreakdownItem({ ans, q }: { ans: AnswerRecord; q: QuizQuestion }) {
         ? !!ans.chosenOrder && ans.chosenOrder.length > 0
         : format === 'numeric'
           ? !!ans.numericInput
-          : format === 'code'
-            ? !!ans.codeInput
-            : ans.chosenIndex !== -1;
+          : format === 'fillBlank'
+            ? !!ans.blankInputs
+            : format === 'code'
+              ? !!ans.codeInput
+              : ans.chosenIndex !== -1;
   const copy = () =>
     copyWithFeedback(buildPrompt(q, ans.chosenIndex), setLabel, 'Copy explanation prompt');
 

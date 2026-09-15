@@ -6,10 +6,11 @@
 // each screen (scoring/retry-locking in Quiz, always-disabled-and-correct in
 // Review) — only the markup and CSS classes are shared here, not any state.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Katex } from './Math/Katex';
 import { Graph } from './Graph/Graph';
 import { Table } from './Table/Table';
+import { parseBlanks } from '../lib/fillBlank';
 import type { CodeCheckResult } from '../lib/codeRunners';
 import type { OrderItem, QuizQuestion } from '../types';
 
@@ -52,15 +53,121 @@ export function ProgressHeader({ current, total, onAbandon, abandonTitle }: Prog
   );
 }
 
-/** Graph/table context (if any) + KaTeX-rendered question text. */
-export function QuestionBody({ question }: { question: QuizQuestion }) {
+/**
+ * Per-blank state for a `fillBlank` question, owned by the caller — Quiz holds
+ * what the student typed and grades it, Review passes the canonical answers in
+ * read-only. Same shell/state split as every other answer component here.
+ */
+export interface BlankSlotState {
+  /** One value per blank, indexed to match `question.blanks`. */
+  values: string[];
+  onChange: (index: number, value: string) => void;
+  /** Fired on Enter in any blank, so it submits instead of the global keydown
+   * handler treating Enter as "advance to next question". */
+  onEnter: () => void;
+  disabled: boolean;
+  /** e.g. per-blank correct/wrong highlight after a Practice submit. */
+  getClassName: (index: number) => string;
+}
+
+/** Width of a blank, in `ch`. */
+const BLANK_MIN_CH = 6;
+/** Cap on the width the answer key implies, so a long answer isn't a spelling hint. */
+const BLANK_HINT_MAX_CH = 18;
+/** Cap on the width a long typed value can grow the field to. */
+const BLANK_GROW_MAX_CH = 32;
+
+/**
+ * A blank is sized from its canonical answer the way a worksheet's ruled line
+ * is — enough of a cue to read as a blank, clamped short of spelling the answer
+ * out. It then grows to fit whatever is actually typed (which reveals nothing:
+ * the field only ever gets wider than the key's own width).
+ */
+function blankWidthCh(canonical: string, value: string): number {
+  const fromKey = Math.min(BLANK_HINT_MAX_CH, Math.max(BLANK_MIN_CH, canonical.length + 1));
+  return Math.min(BLANK_GROW_MAX_CH, Math.max(fromKey, value.length + 1));
+}
+
+/**
+ * The question sentence for `answerFormat: 'fillBlank'`, with an `<input>` in
+ * place of each `___` marker. Text runs between the blanks are KaTeX-rendered
+ * individually, so math on either side of a blank still renders — see
+ * lib/fillBlank.ts for why a marker inside `$...$` is never treated as one.
+ */
+export function FillBlankText({
+  question,
+  slots,
+}: {
+  question: QuizQuestion;
+  slots: BlankSlotState;
+}) {
+  const segments = useMemo(() => parseBlanks(question.question), [question.question]);
+  const total = question.blanks?.length ?? 0;
+
+  return (
+    <div className="question-text fill-blank-text">
+      {segments.map((seg, i) => {
+        if (seg.kind === 'text') {
+          return (
+            <Katex
+              key={`t${i}`}
+              className="fill-blank-seg"
+              text={seg.text}
+            />
+          );
+        }
+        const canonical = question.blanks?.[seg.index]?.accept?.[0] ?? '';
+        const value = slots.values[seg.index] ?? '';
+        const extra = slots.getClassName(seg.index);
+        return (
+          <input
+            key={`b${seg.index}`}
+            type="text"
+            className={'fill-blank-input' + (extra ? ' ' + extra : '')}
+            style={{ width: `${blankWidthCh(canonical, value)}ch` }}
+            value={value}
+            disabled={slots.disabled}
+            aria-label={total > 1 ? `Blank ${seg.index + 1} of ${total}` : 'Blank'}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            onChange={(e) => slots.onChange(seg.index, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') slots.onEnter();
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Graph/table context (if any) + KaTeX-rendered question text. A `fillBlank`
+ * question renders its sentence through FillBlankText instead — the blanks ARE
+ * the answer surface, so they can't be a separate block below the question.
+ * Passing `blankSlots` is what selects that path; without it (a deck that
+ * declares the format with no caller support) the raw sentence still renders.
+ */
+export function QuestionBody({
+  question,
+  blankSlots,
+}: {
+  question: QuizQuestion;
+  blankSlots?: BlankSlotState;
+}) {
+  const isFillBlank = (question.answerFormat ?? 'mcq') === 'fillBlank' && !!blankSlots;
   return (
     <>
       {question.graph && <Graph key={question.id} graph={question.graph} />}
       {question.table && <Table key={question.id + '-table'} table={question.table} />}
-      <div className="question-text">
-        <Katex key={question.id + '-q'} text={question.question} />
-      </div>
+      {isFillBlank ? (
+        <FillBlankText key={question.id + '-fb'} question={question} slots={blankSlots!} />
+      ) : (
+        <div className="question-text">
+          <Katex key={question.id + '-q'} text={question.question} />
+        </div>
+      )}
     </>
   );
 }

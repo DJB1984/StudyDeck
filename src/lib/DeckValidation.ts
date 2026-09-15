@@ -3,6 +3,8 @@
 // rejected as a WHOLE on any error —
 // never silently skip bad questions.
 
+import { countBlanks } from './fillBlank';
+
 // Input is untrusted JSON, so we validate against `unknown` / loose shapes.
 type Raw = Record<string, unknown>;
 
@@ -87,7 +89,7 @@ export function validateDeck(data: Raw): string[] {
     if (!q.question) errors.push(`Question ${n}: Missing 'question' field.`);
 
     // answerFormat discriminator. Omitted = 'mcq', a 2-or-more answer list with a single correct index.
-    const validFormats = ['mcq', 'numeric', 'multiSelect', 'order', 'graphClick', 'code', 'command'];
+    const validFormats = ['mcq', 'numeric', 'multiSelect', 'order', 'graphClick', 'code', 'command', 'fillBlank'];
     const answerFormat = q.answerFormat === undefined ? 'mcq' : (q.answerFormat as string);
     if (!validFormats.includes(answerFormat)) {
       errors.push(
@@ -202,6 +204,35 @@ export function validateDeck(data: Raw): string[] {
             errors.push(`Question ${n}: checks.tests[${ti}] requires string 'call' and 'expect' fields.`);
           }
         });
+      }
+    } else if (answerFormat === 'fillBlank') {
+      // The sentence and the answer key have to agree on how many blanks there
+      // are, or every blank after the mismatch is graded against the wrong key.
+      const markers = typeof q.question === 'string' ? countBlanks(q.question) : 0;
+      if (!Array.isArray(q.blanks) || q.blanks.length === 0) {
+        errors.push(`Question ${n}: 'fillBlank' questions require a non-empty 'blanks' array.`);
+      } else {
+        (q.blanks as Raw[]).forEach((b, bi) => {
+          const accept = b?.accept;
+          if (!Array.isArray(accept) || accept.length === 0) {
+            errors.push(
+              `Question ${n}: blanks[${bi}] requires a non-empty 'accept' array of acceptable answers.`
+            );
+          } else if (accept.some((a) => typeof a !== 'string' || a.trim() === '')) {
+            errors.push(`Question ${n}: blanks[${bi}].accept must contain only non-empty strings.`);
+          }
+        });
+        const declared = (q.blanks as unknown[]).length;
+        if (markers !== declared) {
+          errors.push(
+            `Question ${n}: 'question' contains ${markers} blank marker(s) but 'blanks' lists ${declared}. ` +
+              'Mark each blank with three or more underscores (___) in the sentence, in the same order as ' +
+              "'blanks' — markers inside $...$ math don't count."
+          );
+        }
+      }
+      if (q.caseSensitive !== undefined && typeof q.caseSensitive !== 'boolean') {
+        errors.push(`Question ${n}: 'caseSensitive' must be true or false.`);
       }
     } else if (answerFormat === 'command') {
       if (!Array.isArray(q.acceptedAnswers) || q.acceptedAnswers.length === 0) {
