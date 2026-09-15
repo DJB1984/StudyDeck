@@ -5,7 +5,8 @@
 
 import { useState } from 'react';
 import type { HistoryEntry, QuizMode, QuizQuestion } from '../../types';
-import { naturalOrder } from '../../lib/shuffle';
+import { naturalOrder, shuffleArray } from '../../lib/shuffle';
+import { Storage } from '../../lib/Storage';
 
 type Mode = QuizMode | 'review';
 
@@ -89,10 +90,24 @@ interface ModeSelectProps {
 export function ModeSelectScreen({ file, onBack, onStartQuiz, onStartReview }: ModeSelectProps) {
   // R4: selection resets on every entry (fresh component per mount).
   const [selected, setSelected] = useState<Mode>('practice');
+  // The order preference does NOT reset — it belongs to the deck, not the
+  // visit, so it comes back off the last answer given for this set.
+  const [randomOrder, setRandomOrder] = useState(() => Storage.getQuizOrderRandom(file.id!));
+
+  // Review browses the deck as it was written; shuffling a read-through would
+  // only make the same pass harder to find your place in. So the switch is
+  // Practice/Test's, and slides away with them.
+  const orderApplies = selected !== 'review';
+
+  function toggleRandomOrder(on: boolean) {
+    setRandomOrder(on);
+    Storage.setQuizOrderRandom(file.id!, on);
+  }
 
   function start() {
     const questions = file.data.questions as QuizQuestion[];
-    const order = naturalOrder(questions.length);
+    const natural = naturalOrder(questions.length);
+    const order = orderApplies && randomOrder ? shuffleArray(natural) : natural;
 
     if (selected === 'review') onStartReview(order);
     else onStartQuiz(selected, order);
@@ -124,9 +139,28 @@ export function ModeSelectScreen({ file, onBack, onStartQuiz, onStartReview }: M
         ))}
       </div>
 
-      <button id="mode-start-btn" className="btn" onClick={start}>
-        Start
-      </button>
+      <div className="mode-start-row">
+        <button id="mode-start-btn" className="btn" onClick={start}>
+          Start
+        </button>
+        {/* Always mounted so it can animate in and out; `hidden` on the input
+            (not display:none on the label) is what takes it out of the tab
+            order and the accessibility tree while it's away, leaving CSS free
+            to slide the visual. */}
+        <label
+          className={'toggle-label mode-order-toggle' + (orderApplies ? ' shown' : '')}
+          aria-hidden={!orderApplies}
+        >
+          <input
+            type="checkbox"
+            checked={randomOrder}
+            hidden={!orderApplies}
+            onChange={(e) => toggleRandomOrder(e.target.checked)}
+          />
+          <span className="toggle-track"></span>
+          <span className="mode-order-name">Random order</span>
+        </label>
+      </div>
     </section>
   );
 }

@@ -84,6 +84,8 @@ This replaced a two-stage cross-day ladder — next-day cold checks plus 3/7/16/
 
 **Sharing** adds one screen off to the side: a `?s=<token>` link opens the Share screen (the only screen reachable without passing through Home), which offers **Add to my library** — working signed in or out. Creating a link requires a login (Davis, 2026-08-19); adding never does. A shared deck's questions are stored **once** (`shared_decks`), and each recipient's cloud row points at that snapshot instead of copying the JSON, while their progress stays entirely their own. Clicking a link for a deck you already have adds nothing — it opens your copy. **Don't add title-based deck matching** to that dedupe: two classes' "Chapter 4" are two study sets.
 
+Mode Select carries a **Random order** switch beside Start, sliding in for Practice/Test and away under Review. It is per deck and device-local (`studydeck_quiz_order`, keyed by deck id, absence = off) — restored 2026-09-14 after an early version was removed as unhelpful, the difference being that this one remembers per set. Don't mirror it to Supabase; Davis's call is that it's a preference about how to study, not the studying.
+
 Practice shows live feedback with retries (retries don't affect stats); Test shows no feedback until Stats and disallows retries; Review is a read-only browser with the correct answer shown.
 
 ### Visual design

@@ -1865,9 +1865,55 @@ button { font-family: inherit; cursor: pointer; }
   background: white;
 }
 
+/* Start and the order switch on one baseline — the switch sits beside the
+   action it modifies rather than above the mode cards, so it reads as part of
+   the same sentence: start this deck, shuffled or not. */
+.mode-start-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 #mode-start-btn {
   padding: 12px 36px;
   font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Present in the row at all times and slid out of the way when Review is
+   selected, so the switch arrives from behind Start rather than appearing on
+   top of it and pushing nothing around. `visibility` is what makes it inert
+   while away; its transition is stepped to the end of the fade so it doesn't
+   vanish mid-slide. */
+.mode-order-toggle {
+  opacity: 0;
+  transform: translateX(-14px);
+  visibility: hidden;
+  transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+}
+.mode-order-toggle.shown {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition: opacity 220ms ease, transform 220ms ease, visibility 0s;
+}
+/* Metadata voice (DESIGN.md's Two Inks): the switch's label is a marking on
+   the plate beside the one blue action, not a second action. */
+.mode-order-name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-order-toggle,
+  .mode-order-toggle.shown {
+    transform: none;
+    transition: opacity 1ms linear, visibility 0s;
+  }
 }
 
 /* Stats screen */

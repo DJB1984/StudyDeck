@@ -27,6 +27,11 @@ const MOTION_KEY = 'studydeck_ambient_motion';
 // prefix as deck progress, and neither of these is deck progress.
 const SWIPE_HINT_KEY = 'studydeck_swipe_hint';
 const CARD_BUTTONS_KEY = 'studydeck_card_buttons';
+// One map for every deck's quiz order preference rather than a key per deck:
+// the value is a single bit, and a hundred one-bit keys would be a hundred
+// entries for the quota path to step over. Keyed by deck id like flash state —
+// a renamed deck keeps the order it was being studied in.
+const QUIZ_ORDER_KEY = 'studydeck_quiz_order';
 
 // Flash state is keyed by the deck's stable id, not its title — mastery
 // scheduling is worth more than a display string is stable. `legacyFlashKey`
@@ -144,7 +149,10 @@ export const Storage = {
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key === HISTORY_KEY || key?.startsWith(FLASH_PREFIX)) keysToRemove.push(key);
+        // The order map goes too: it's keyed by deck id, and every id it names
+        // is about to stop existing.
+        if (key === HISTORY_KEY || key === QUIZ_ORDER_KEY || key?.startsWith(FLASH_PREFIX))
+          keysToRemove.push(key);
       }
       keysToRemove.forEach((k) => localStorage.removeItem(k));
       // Nothing left for a remembered id to belong to.
@@ -367,6 +375,7 @@ export const Storage = {
       // Leaving either behind would strand bytes that nothing can ever read.
       if (doomed?.id) localStorage.removeItem(flashKey(doomed.id));
       localStorage.removeItem(legacyFlashKey(title));
+      if (doomed?.id) this.forgetQuizOrderRandom(doomed.id);
     } catch {
       /* flash-key removal must never throw out */
     }
@@ -455,6 +464,35 @@ export const Storage = {
 
   setCardButtons(on: boolean): boolean {
     return this.set(CARD_BUTTONS_KEY, on);
+  },
+
+  // Whether Practice and Test shuffle this deck's questions. Per deck, because
+  // the choice is about the material and not the person: a vocabulary set wants
+  // shuffling and a worked-derivation set wants its order. Device-local and
+  // never mirrored — it's a preference about how to study, not the studying
+  // itself, and Davis's call (2026-09-14) was to keep it off the account.
+  //
+  // Absence means off, which is the default for a set never answered on.
+  // Only the `true` entries are stored, so turning it back off drops the entry
+  // instead of leaving a false behind.
+  getQuizOrderRandom(deckId: string): boolean {
+    return this.get<Record<string, boolean>>(QUIZ_ORDER_KEY)?.[deckId] === true;
+  },
+
+  setQuizOrderRandom(deckId: string, on: boolean): boolean {
+    const map = this.get<Record<string, boolean>>(QUIZ_ORDER_KEY) ?? {};
+    if (on) map[deckId] = true;
+    else delete map[deckId];
+    return this.set(QUIZ_ORDER_KEY, map);
+  },
+
+  // Drops one deck's entry from the map above. Called on delete so a removed
+  // deck leaves nothing behind; a deck re-added later starts off, like new.
+  forgetQuizOrderRandom(deckId: string): void {
+    const map = this.get<Record<string, boolean>>(QUIZ_ORDER_KEY);
+    if (!map || !(deckId in map)) return;
+    delete map[deckId];
+    this.set(QUIZ_ORDER_KEY, map);
   },
 
   // R8: persist piles (inherits R3 quota handling via set).
