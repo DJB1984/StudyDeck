@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "type": "quiz",
+  "title": "Photosynthesis & Cellular Respiration — Fill in the Blank",
+  "questions": [
+    {
+      "id": "q1",
+      "answerFormat": "fillBlank",
+      "question": "In a plant cell, photosynthesis takes place in the ___, an organelle whose green color comes from the light-absorbing pigment ___.",
+      "blanks": [
+        {
+          "accept": [
+            "chloroplast",
+            "chloroplasts"
+          ]
+        },
+        {
+          "accept": [
+            "chlorophyll"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "answerFormat": "fillBlank",
+      "question": "The overall equation for photosynthesis is $6CO_2 + 6H_2O + \\text{light} \\rightarrow C_6H_{12}O_6 + 6O_2$, which means the sugar the plant builds is ___ and the gas it releases as a by-product is ___.",
+      "blanks": [
+        {
+          "accept": [
+            "glucose",
+            "sugar",
+            "C6H12O6"
+          ]
+        },
+        {
+          "accept": [
+            "oxygen",
+            "O2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q3",
+      "answerFormat": "fillBlank",
+      "question": "Inside a chloroplast, the light-dependent reactions happen across the ___ membranes, while the Calvin cycle happens in the fluid surrounding them, called the ___.",
+      "blanks": [
+        {
+          "accept": [
+            "thylakoid",
+            "thylakoids",
+            "thylakoid membrane"
+          ]
+        },
+        {
+          "accept": [
+            "stroma"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q4",
+      "answerFormat": "fillBlank",
+      "question": "The Calvin cycle fixes atmospheric carbon using ___, an enzyme so plentiful it is considered the most abundant protein on Earth.",
+      "blanks": [
+        {
+          "accept": [
+            "rubisco",
+            "RuBisCO",
+            "ribulose bisphosphate carboxylase"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q5",
+      "answerFormat": "fillBlank",
+      "question": "Glycolysis needs no oxygen and takes place in the ___, yielding a net gain of only ___ ATP per molecule of glucose.",
+      "blanks": [
+        {
+          "accept": [
+            "cytoplasm",
+            "cytosol"
+          ]
+        },
+        {
+          "accept": [
+            "2",
+            "two"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q6",
+      "answerFormat": "fillBlank",
+      "question": "The citric acid cycle — also called the ___ cycle — runs in the mitochondrial ___, the fluid enclosed by the inner membrane.",
+      "blanks": [
+        {
+          "accept": [
+            "Krebs",
+            "TCA",
+            "tricarboxylic acid"
+          ]
+        },
+        {
+          "accept": [
+            "matrix"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q7",
+      "answerFormat": "fillBlank",
+      "question": "As electrons move down the electron transport chain, their energy pumps ___ ions into the intermembrane space; the flow of those ions back through ATP synthase is called ___.",
+      "blanks": [
+        {
+          "accept": [
+            "hydrogen",
+            "H+",
+            "proton",
+            "protons"
+          ]
+        },
+        {
+          "accept": [
+            "chemiosmosis"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q8",
+      "answerFormat": "fillBlank",
+      "question": "In aerobic respiration the final electron acceptor is ___, and once it accepts those electrons it combines with hydrogen to form ___.",
+      "blanks": [
+        {
+          "accept": [
+            "oxygen",
+            "O2"
+          ]
+        },
+        {
+          "accept": [
+            "water",
+            "H2O"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q9",
+      "answerFormat": "fillBlank",
+      "question": "Deprived of oxygen, yeast ferments glucose into carbon dioxide and ___, while overworked human muscle cells instead accumulate ___.",
+      "blanks": [
+        {
+          "accept": [
+            "ethanol",
+            "alcohol",
+            "ethyl alcohol"
+          ]
+        },
+        {
+          "accept": [
+            "lactic acid",
+            "lactate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q10",
+      "answerFormat": "fillBlank",
+      "question": "ATP is the cell's energy currency; the abbreviation stands for ___.",
+      "blanks": [
+        {
+          "accept": [
+            "adenosine triphosphate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q11",
+      "answerFormat": "fillBlank",
+      "question": "A leaf exchanges gas with the air through pores called ___, each of which is opened and closed by a pair of ___ cells.",
+      "blanks": [
+        {
+          "accept": [
+            "stomata",
+            "stoma",
+            "stomate"
+          ]
+        },
+        {
+          "accept": [
+            "guard"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q12",
+      "answerFormat": "fillBlank",
+      "question": "Capitalization matters in chemical symbols, so write these exactly: the gas photosynthesis releases is ___ and the gas it consumes is ___.",
+      "blanks": [
+        {
+          "accept": [
+            "O2",
+            "O_2"
+          ]
+        },
+        {
+          "accept": [
+            "CO2",
+            "CO_2"
+          ]
+        }
+      ],
+      "caseSensitive": true
+    }
+  ]
+}
