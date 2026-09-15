@@ -170,6 +170,20 @@ export interface HistoryEntry {
    * SupabaseClient.saveDeck.
    */
   shareToken?: string;
+  /**
+   * Whether THIS student is the one who published `shareToken`.
+   *
+   * The discriminator the whole ownership model rests on, because the token
+   * alone can't tell the two apart — it is stamped on the publisher's deck and
+   * on every copy added from the link. True means "mine, I can rename it and my
+   * name for it is what recipients see"; absent or false on a deck that arrived
+   * through a link, which is read-only and tracks the owner's name.
+   *
+   * Local, because a deck can be added from a link while signed out and there
+   * is no cloud row to ask. A login corrects it either way: getDecks resolves
+   * ownership from shared_decks.owner_id, which is the real authority.
+   */
+  shareOwner?: boolean;
   name: string;
   title: string;
   count: number;

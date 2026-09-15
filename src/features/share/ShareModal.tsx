@@ -58,7 +58,12 @@ export function ShareModal({ file, onClose }: { file: HistoryEntry; onClose: () 
       // Stamp the token on the deck so a second Share is instant and offline,
       // and so a link the sharer clicks themselves finds this deck instead of
       // adding a copy of it.
-      Storage.saveFile({ ...file, shareToken: created });
+      //
+      // shareOwner is the half that matters after publishing: this student is
+      // the set's author, so they keep the right to rename it and their name
+      // for it is the one every recipient sees. Recipients get the same token
+      // with the flag false, which is what makes their copy read-only.
+      Storage.saveFile({ ...file, shareToken: created, shareOwner: true });
       setToken(created);
       setStatus('ready');
     }

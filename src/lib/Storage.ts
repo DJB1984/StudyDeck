@@ -290,6 +290,11 @@ export const Storage = {
       // strip the token and the next click of that link would add a duplicate
       // instead of opening this deck.
       entry.shareToken = entry.shareToken ?? history[idx].shareToken;
+      // Ownership rides along with the token, for the same reason: it is the
+      // difference between a deck this student may rename and a read-only copy
+      // of someone else's, and dropping it on a lastOpened bump would hand a
+      // recipient edit rights over the owner's set.
+      entry.shareOwner = entry.shareOwner ?? history[idx].shareOwner;
       history[idx] = entry;
     } else {
       // The cap applies to ADDING a deck, never to updating one already here —
@@ -317,12 +322,15 @@ export const Storage = {
    * so that would add a second deck and strand the first — along with the
    * mastery progress filed under its id.
    *
-   * The entry keeps its id, its shareToken and its `data` — including
-   * `data.title`, which stays exactly as generated or published. Nothing
-   * renders it, and on a deck added from a link it is part of the content hash
-   * that a later click of the same link uses to recognize this copy. A deck the
-   * student published keeps its old name in the snapshot for the same reason:
-   * `shared_decks` has no update path, and recipients hold their own copies.
+   * The entry keeps its id, its shareToken, its shareOwner flag and its `data` —
+   * including `data.title`, which stays exactly as generated or published.
+   * Nothing renders it, and it is part of the content hash that a later click of
+   * the same link uses to recognize this copy, so it has to survive a rename.
+   *
+   * PERSISTENCE ONLY. This function has no opinion on whether the deck was the
+   * student's to rename, nor on pushing a new name out to a share's recipients.
+   * Both of those are share questions and live in features/share/shareSync
+   * (`renameSharedDeck`), which is what Home calls — never this directly.
    *
    * Returns false and changes nothing when the deck isn't in history or the new
    * title already belongs to another one — titles are the cloud's unique key,

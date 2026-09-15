@@ -15,6 +15,23 @@ function today(): string {
 }
 
 /**
+ * Whether this deck is a copy of someone else's share — and so read-only.
+ *
+ * The one place the ownership rule is written down (Davis, 2026-09-14: the
+ * person who shares a set is the only one who can change it). A linked deck is
+ * the student's own only when they published it; absence of the flag means
+ * "not known to be mine", which reads as read-only on purpose — a rename has to
+ * reach the snapshot, and a student who can't prove they own it can't do that
+ * anyway. Signing in back-fills the flag from shared_decks.owner_id.
+ *
+ * A deck with no share link at all is nobody's copy: freely renameable, as
+ * every unshared deck has always been.
+ */
+export function isSharedCopy(entry: HistoryEntry): boolean {
+  return entry.shareToken !== undefined && entry.shareOwner !== true;
+}
+
+/**
  * The deck this student already has for `shared`, or null.
  *
  * Two passes, in order of confidence:
@@ -38,6 +55,12 @@ export function findExistingCopy(shared: SharedDeck): HistoryEntry | null {
 
   const byHash = history.find((e) => deckHash(e.data) === shared.hash);
   if (byHash) {
+    // Ownership is deliberately left unset rather than stamped false: this deck
+    // arrived some other way, so nothing here knows whose share it is. The next
+    // signed-in sync settles it from shared_decks.owner_id — which matters for
+    // the publisher opening their own link on a device that only ever had the
+    // deck as a file. Until then it reads as a copy, which is the safe way to
+    // be wrong.
     const stamped: HistoryEntry = { ...byHash, shareToken: shared.token };
     Storage.saveFile(stamped);
     return stamped;
@@ -63,6 +86,10 @@ export function addSharedDeck(shared: SharedDeck): HistoryEntry {
     count: shared.data.questions.length,
     lastOpened: today(),
     shareToken: shared.token,
+    // Someone else's set: read-only here, and its name is theirs to change.
+    // A publisher who lands on their own link never reaches this function —
+    // findExistingCopy matches their deck by token first.
+    shareOwner: false,
     data: shared.data,
   };
   // Storage upserts by title, so an unrelated local deck already holding this

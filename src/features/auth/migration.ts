@@ -12,6 +12,7 @@
 // the account's copy with the local one and there was no way to get it back).
 
 import { fromPiles } from '../flashcard/schedule';
+import { syncSharedNames } from '../share/shareSync';
 import { canonicalDeck, freeTitle, retitle } from '../../lib/deckIdentity';
 import { Storage } from '../../lib/Storage';
 import * as SupabaseClient from '../../lib/SupabaseClient';
@@ -24,6 +25,13 @@ import type { HistoryEntry, FlashState } from '../../types';
 // cache, per R21, believing everything reached the cloud).
 export async function syncOnLogin(): Promise<void> {
   try {
+    // Settle shared names BEFORE either direction, because both key off the
+    // title. A set whose owner renamed it is still under the old name locally
+    // until this runs — and mergeDown, seeing the account's copy under a name
+    // no local deck holds, would take it for a different deck and add a second
+    // copy of it. Signing in is also what settles which linked decks are this
+    // student's OWN, so it has to come before the upload that writes them.
+    await syncSharedNames();
     // Pull BEFORE pushing. upload() upserts by title, so a colliding cloud
     // deck's content is gone the moment we push — we need the account's
     // original copy in hand to tell "same deck" from "different deck with

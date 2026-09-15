@@ -18,6 +18,8 @@ import { AnchorPlate } from '../../components/AnchorPlate';
 import { Starfield } from '../../components/Starfield/Starfield';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { ShareModal } from '../share/ShareModal';
+import { isSharedCopy } from '../share/shareLibrary';
+import { renameSharedDeck, syncSharedNamesOnce } from '../share/shareSync';
 
 // R17: word lists live here — adding an AI or a mode is a one-line edit.
 // Two links of a chain: the "copy a link" idea, drawn rather than spelled out,
@@ -258,6 +260,23 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sets added from a link are named by whoever shared them, so opening
+  // StudyDeck is when their names catch up. Silent and once per session (Home
+  // remounts on every return from a quiz): a renamed set is simply called the
+  // right thing by the time the student looks at the list. Nothing here can
+  // fail loudly — a library that is a session behind on a name is not an error
+  // worth a screen, and it settles itself on the next open.
+  useEffect(() => {
+    let cancelled = false;
+    void syncSharedNamesOnce().then((changed) => {
+      if (changed && !cancelled) refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function refresh() {
     setHistory(Storage.getHistory());
   }
@@ -396,7 +415,16 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
       setRenameError('You already have a set with that name.');
       return;
     }
-    if (!Storage.renameFile(renaming, next)) {
+    const entry = history.find((f) => f.title === renaming);
+    if (!entry) {
+      cancelRename();
+      return;
+    }
+    // renameSharedDeck, not Storage.renameFile: on a set this student published,
+    // the new name has to reach everyone holding the link, because the owner's
+    // name for a set is the name every copy of it goes by. It refuses a copy of
+    // someone ELSE'S set, which is why the pencil isn't offered on one.
+    if (!renameSharedDeck(entry, next)) {
       setRenameError("That name couldn't be saved — try another.");
       return;
     }
@@ -617,6 +645,16 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                         {file.count} questions · {file.lastOpened}
                       </>
                     )}
+                    {/* Brass, like every other marking on the plate: a statement
+                        about the set, not something to act on. It is also what
+                        explains the missing pencil beside it — the name belongs
+                        to whoever shared it. */}
+                    {isSharedCopy(file) && (
+                      <>
+                        {' · '}
+                        <span className="plate-label">Shared with you</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 {/* Rename and share are the constructive controls and sit
@@ -624,14 +662,19 @@ export function HomeScreen({ onOpenDeck }: { onOpenDeck: (entry: HistoryEntry) =
                     destructive one should not sit shoulder to shoulder with
                     them with nothing but a gap between. */}
                 <div className="file-card-actions">
-                  <button
-                    className="rename-btn"
-                    title="Rename this study set"
-                    aria-label={`Rename ${file.title}`}
-                    onClick={(e) => renameCard(e, file)}
-                  >
-                    <PencilIcon />
-                  </button>
+                  {/* No pencil on a set someone shared with you: its name is the
+                      owner's and tracks theirs. Removing it from your own
+                      library is still yours to do, which is why the × stays. */}
+                  {!isSharedCopy(file) && (
+                    <button
+                      className="rename-btn"
+                      title="Rename this study set"
+                      aria-label={`Rename ${file.title}`}
+                      onClick={(e) => renameCard(e, file)}
+                    >
+                      <PencilIcon />
+                    </button>
+                  )}
                   <button
                     className="share-btn"
                     title="Share this study set"

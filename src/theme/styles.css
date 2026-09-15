@@ -3004,6 +3004,12 @@ button { font-family: inherit; cursor: pointer; }
   margin: 0;
   line-height: 1.55;
 }
+/* The ownership note under the count: a footnote on the plate, so it sits
+   quieter than the line it follows and never competes with Add. */
+.share-panel-note {
+  margin-top: 8px;
+  font-size: 0.88em;
+}
 .share-panel-actions {
   display: flex;
   align-items: center;

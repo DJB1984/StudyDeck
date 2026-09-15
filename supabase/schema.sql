@@ -72,6 +72,12 @@ create policy "flash_state_delete_own" on flash_state
 -- unguessable token that lives in the link. Recipients' library rows POINT at
 -- that snapshot (decks.share_token) instead of storing the payload again, so
 -- fifty recipients cost one payload row, not fifty.
+--
+-- The sharer OWNS the study set (Davis, 2026-09-14). A recipient's copy is
+-- read-only and tracks the snapshot's `title`, so renaming a shared set is
+-- something only its publisher can do — see rename_share() and
+-- get_shared_titles() below. Progress stays entirely the recipient's own:
+-- nothing about mastery or stats lives in this table.
 
 create table if not exists shared_decks (
   id uuid primary key default gen_random_uuid(),
@@ -206,9 +212,66 @@ begin
 end;
 $$;
 
+-- Rename a share IN PLACE. The owner's name for a study set is the name every
+-- recipient sees: recipients hold read-only copies (Davis, 2026-09-14), so the
+-- title has exactly one author and it is whoever published the link.
+--
+-- SECURITY DEFINER, and deliberately still no UPDATE policy on shared_decks —
+-- this function is the only write path into an existing row, and it can only
+-- ever touch `title`. `data`, `content_hash` and `owner_id` stay immutable,
+-- which is what keeps every recipient's content hash (and so the link dedupe)
+-- valid across a rename. A non-owner's call matches no row and changes
+-- nothing, without saying whether the token exists.
+create or replace function rename_share(p_token text, p_title text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in to rename a shared study set.';
+  end if;
+  update shared_decks s
+     set title = p_title
+   where s.token = p_token and s.owner_id = auth.uid();
+end;
+$$;
+
+-- The current names of shares the caller already holds tokens for — how a
+-- recipient's copy picks up the owner's rename. SECURITY DEFINER and granted to
+-- anon for the same reason get_shared_deck is: a deck added while signed out has
+-- no cloud row to sync through, so the token in localStorage is its only handle.
+--
+-- Still exact-token only, so this is no more of a directory than
+-- get_shared_deck is — you learn nothing about a share whose token you do not
+-- already have. The array is sliced rather than rejected so one oversized
+-- request degrades to a partial answer instead of an error; the client batches
+-- well under the cap.
+--
+-- `is_owner` is what lets a client tell its own published deck from a copy of
+-- someone else's without a second query — and it is how decks published before
+-- ownership was tracked get their flag back-filled. False for anon, which is
+-- correct: proving you own a share means being signed in as its owner.
+create or replace function get_shared_titles(p_tokens text[])
+returns table (token text, title text, question_count int, content_hash text, is_owner boolean)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select s.token, s.title, s.question_count, s.content_hash,
+         (auth.uid() is not null and s.owner_id = auth.uid()) as is_owner
+  from shared_decks s
+  where s.token = any (p_tokens[1:200]);
+$$;
+
 grant execute on function get_shared_deck(text) to anon, authenticated;
 revoke execute on function create_share(text, int, text, jsonb) from public;
 grant execute on function create_share(text, int, text, jsonb) to authenticated;
+grant execute on function get_shared_titles(text[]) to anon, authenticated;
+revoke execute on function rename_share(text, text) from public;
+grant execute on function rename_share(text, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Per-account ceilings

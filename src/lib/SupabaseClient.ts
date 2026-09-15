@@ -115,10 +115,11 @@ export async function getDecks(): Promise<HistoryEntry[]> {
   // keeps one deck shared with fifty people down to one stored copy. Resolve
   // the pointers in ONE follow-up query rather than a PostgREST embed, so
   // nothing depends on a generated relationship name.
-  const payloads = await resolveSharePayloads(rows);
+  const snapshots = await resolveSharePayloads(rows);
   const entries: HistoryEntry[] = [];
   for (const row of rows) {
-    const deck = row.data ?? (row.share_token ? payloads.get(row.share_token) : undefined);
+    const snapshot = row.share_token ? snapshots.get(row.share_token) : undefined;
+    const deck = row.data ?? snapshot?.data;
     if (!deck) {
       // A pointer whose snapshot is gone (owner deleted it) has no questions to
       // study. Dropping it beats handing the app a deck-shaped hole.
@@ -135,26 +136,41 @@ export async function getDecks(): Promise<HistoryEntry[]> {
       // raw "2026-07-20T00:00:00+00:00" string until the deck is opened once.
       lastOpened: new Date(row.last_opened).toLocaleDateString(),
       shareToken: row.share_token ?? undefined,
+      // owner_id on the snapshot is the real authority on "is this mine?" — the
+      // token alone is stamped on the publisher's deck and on every copy made
+      // from it. A login is therefore what corrects a local guess, in either
+      // direction. Left undefined when the snapshot didn't resolve, so a failed
+      // lookup can't demote an owner's own deck to a read-only copy.
+      shareOwner: snapshot ? snapshot.ownerId === currentSession.user.id : undefined,
       data: deck,
     });
   }
   return entries;
 }
 
-async function resolveSharePayloads(rows: DeckRow[]): Promise<Map<string, HistoryEntry['data']>> {
-  const out = new Map<string, HistoryEntry['data']>();
+interface Snapshot {
+  data: HistoryEntry['data'];
+  ownerId: string;
+}
+
+async function resolveSharePayloads(rows: DeckRow[]): Promise<Map<string, Snapshot>> {
+  const out = new Map<string, Snapshot>();
   const tokens = rows.filter((r) => !r.data && r.share_token).map((r) => r.share_token as string);
   if (!client || tokens.length === 0) return out;
   const { data, error } = await client
     .from('shared_decks')
-    .select('token, data')
+    .select('token, data, owner_id')
     .in('token', tokens);
   if (error) {
     console.error('SupabaseClient: resolving shared payloads failed', error);
     return out;
   }
-  for (const row of data as Array<{ token: string; data: HistoryEntry['data'] }>) {
-    out.set(row.token, row.data);
+  for (const row of data as Array<{
+    token: string;
+    data: HistoryEntry['data'];
+    owner_id: string;
+  }>) {
+    out.set(row.token, { data: row.data, ownerId: row.owner_id });
   }
   return out;
 }
@@ -252,6 +268,70 @@ export async function createShare(
     return { token: null, error: error.message };
   }
   return { token: data as string, error: null };
+}
+
+/**
+ * Rename a share the caller owns. The owner's name for a study set IS the name
+ * every recipient sees (Davis, 2026-09-14), so a rename has to reach the
+ * snapshot — the one and only write into an existing `shared_decks` row.
+ *
+ * Touches `title` alone. `data` and `content_hash` stay exactly as published,
+ * which is what keeps every recipient's copy hashing to the same deck and the
+ * link's dedupe working across any number of renames.
+ *
+ * A call for a token the caller doesn't own matches no row and reports success,
+ * deliberately — it neither changes anything nor confirms the token exists.
+ */
+export async function renameShare(
+  token: string,
+  title: string,
+): Promise<{ error: string | null }> {
+  if (!client) return { error: 'Sharing is not set up for this deployment.' };
+  if (!currentSession) return { error: 'Not logged in.' };
+  const { error } = await client.rpc('rename_share', { p_token: token, p_title: title });
+  if (error) console.error('SupabaseClient.renameShare failed', error);
+  return { error: error ? error.message : null };
+}
+
+/** One share's current published state, as get_shared_titles returns it. */
+export interface SharedTitle {
+  token: string;
+  title: string;
+  count: number;
+  hash: string;
+  /** Whether the caller is this share's publisher. Always false signed out. */
+  isOwner: boolean;
+}
+
+/**
+ * The current names of shares we already hold tokens for — how a recipient's
+ * read-only copy picks up the owner's rename.
+ *
+ * Deliberately does NOT require a session, like fetchSharedDeck: a deck added
+ * from a link while signed out has no cloud row to sync through, so the token
+ * in local storage is the only handle it has. One round trip for the whole
+ * library rather than a call per deck.
+ */
+export async function fetchSharedTitles(
+  tokens: string[],
+): Promise<{ titles: SharedTitle[]; error: string | null }> {
+  if (!client || tokens.length === 0) return { titles: [], error: null };
+  const { data, error } = await client.rpc('get_shared_titles', { p_tokens: tokens });
+  if (error) {
+    console.error('SupabaseClient.fetchSharedTitles failed', error);
+    return { titles: [], error: error.message };
+  }
+  const rows = (data as Array<Record<string, unknown>> | null) ?? [];
+  return {
+    titles: rows.map((row) => ({
+      token: row.token as string,
+      title: row.title as string,
+      count: row.question_count as number,
+      hash: row.content_hash as string,
+      isOwner: row.is_owner === true,
+    })),
+    error: null,
+  };
 }
 
 // --- flash_state table -------------------------------------------------------

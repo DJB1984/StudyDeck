@@ -134,6 +134,12 @@ export function ShareScreen({
               {state.shared.data.type === 'flashcard' ? 'cards' : 'questions'} · add it to your
               library to study it. No account needed.
             </p>
+            {/* Said before they add it, not discovered afterwards when the
+                pencil turns out to be missing. Both halves matter: the set
+                stays the sharer's, and the studying is entirely theirs. */}
+            <p className="share-panel-desc share-panel-note">
+              The person who shared it keeps it up to date — your progress is your own.
+            </p>
             <div className="share-panel-actions">
               <button className="btn" onClick={() => add(state.shared)}>
                 Add to my library
